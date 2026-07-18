@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme — semantic design tokens */
+  --color-surface-base: #FAFAFA;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-overlay: rgba(0, 0, 0, 0.5);
+
+  --color-content-primary: #1A1A2E;
+  --color-content-secondary: #6B7280;
+  --color-content-tertiary: #9CA3AF;
+
+  --color-accent-primary: #6366F1;
+  --color-accent-secondary: #818CF8;
+
+  --color-positive: #10B981;
+  --color-negative: #F472B6;
+  --color-warning: #F59E0B;
+
+  --shadow-sm: 0 1px 2px rgba(99, 102, 241, 0.06);
+  --shadow-md: 0 4px 6px rgba(99, 102, 241, 0.08);
+  --shadow-lg: 0 10px 25px rgba(99, 102, 241, 0.10);
+}
+
+.dark {
+  --color-surface-base: #0A0A0F;
+  --color-surface-raised: #16161F;
+  --color-surface-overlay: rgba(255, 255, 255, 0.5);
+
+  --color-content-primary: #F1F5F9;
+  --color-content-secondary: #94A3B8;
+  --color-content-tertiary: #64748B;
+
+  --color-accent-primary: #818CF8;
+  --color-accent-secondary: #A5B4FC;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Inter', 'Public Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* Tabular numbers for all monetary values */
+.money {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-content-tertiary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-content-secondary);
+}
