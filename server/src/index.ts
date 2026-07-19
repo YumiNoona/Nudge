@@ -105,10 +105,11 @@ function setupRoutes() {
 
       const stmt = db.prepare('SELECT * FROM devices WHERE pairing_code = ? AND is_active = 1');
       stmt.bind([pairingCode]);
-      const existing = stmt.getAsObject();
+      const found = stmt.step();
+      const existing = found ? stmt.getAsObject() : null;
       stmt.free();
 
-      if (!existing || !Object.keys(existing).length) {
+      if (!existing) {
         return res.status(404).json({ error: 'Invalid pairing code' });
       }
 
@@ -146,19 +147,20 @@ function setupRoutes() {
 
       const stateStmt = db.prepare('SELECT last_push_sequence FROM sync_state WHERE device_id = ?');
       stateStmt.bind([deviceId]);
-      const state = stateStmt.getAsObject();
+      const hasState = stateStmt.step();
+      const lastPushSeq = hasState ? (stateStmt.getAsObject() as any).last_push_sequence : 0;
       stateStmt.free();
 
-      let nextSeq = ((state as any).last_push_sequence ?? 0) + 1;
+      let nextSeq = (lastPushSeq ?? 0) + 1;
       let inserted = 0;
 
       for (const blob of blobs) {
         const checkStmt = db.prepare('SELECT id FROM sync_blobs WHERE blob_hash = ?');
         checkStmt.bind([blob.blobHash]);
-        const existing = checkStmt.getAsObject();
+        const hasExisting = checkStmt.step();
         checkStmt.free();
 
-        if (Object.keys(existing).length > 0) continue;
+        if (hasExisting) continue;
 
         db.run(
           'INSERT OR IGNORE INTO sync_blobs (id, device_id, encrypted_payload, blob_hash, created_at, sequence_number) VALUES (?, ?, ?, ?, ?, ?)',
@@ -240,10 +242,12 @@ function setupRoutes() {
 
       const stateStmt = db.prepare('SELECT * FROM sync_state WHERE device_id = ?');
       stateStmt.bind([deviceId]);
-      const state = stateStmt.getAsObject();
+      const hasState = stateStmt.step();
+      const state = hasState ? stateStmt.getAsObject() : { last_pull_at: 0, last_push_sequence: 0 };
       stateStmt.free();
 
       const countStmt = db.prepare('SELECT COUNT(*) as count FROM sync_blobs');
+      countStmt.step();
       const count = countStmt.getAsObject();
       countStmt.free();
 
@@ -283,9 +287,9 @@ function verifyDevice(deviceId: string, pairingCode: string): boolean {
     'SELECT id FROM devices WHERE id = ? AND pairing_code = ? AND is_active = 1'
   );
   stmt.bind([deviceId, pairingCode]);
-  const result = stmt.getAsObject();
+  const hasRow = stmt.step(); // REQUIRED by sql.js — step() before reading
   stmt.free();
-  return Object.keys(result).length > 0;
+  return hasRow;
 }
 
 function generatePairingCode(): string {

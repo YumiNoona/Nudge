@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import android.app.Application
+import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nudge.android.NudgeApp
@@ -11,6 +12,7 @@ import com.nudge.util.IdGenerator
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import java.security.SecureRandom
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -27,8 +29,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val app = application as NudgeApp
         val passphrase = app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
-            ?: run { val p = ByteArray(32) { it.toByte() }; app.encryptedPrefs.edit().putString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, String(p)).apply(); String(p) }
-        db = NudgeDatabase.getInstance(application, passphrase.toByteArray())
+            ?: run {
+                val keyBytes = ByteArray(32)
+                SecureRandom().nextBytes(keyBytes)
+                val encoded = Base64.encodeToString(keyBytes, Base64.NO_WRAP)
+                app.encryptedPrefs.edit().putString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, encoded).apply()
+                encoded
+            }
+        db = NudgeDatabase.getInstance(application, Base64.decode(passphrase, Base64.NO_WRAP))
 
         transactions = db.transactionDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

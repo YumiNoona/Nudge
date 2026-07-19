@@ -3,34 +3,35 @@ package com.nudge.android.service
 import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import androidx.work.*
-import com.nudge.android.NudgeApp
-import com.nudge.android.data.*
-import com.nudge.util.IdGenerator
-import kotlinx.datetime.Clock
-import java.util.concurrent.TimeUnit
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 
 /**
  * Notification Listener Service — captures bank/UPI app notifications
  * (GPay, PhonePe, Paytm, etc.) for automated transaction tracking.
  * Event-driven, never polls. Raw notification data never leaves the device.
+ *
+ * Delegates actual parsing to NotificationParsingWorker (defined in ParsingWorkers.kt).
  */
 class NudgeNotificationListener : NotificationListenerService() {
 
     companion object {
         private val TARGET_PACKAGES = setOf(
-            "com.google.android.apps.nbu.paisa.user", // GPay
-            "com.phonepe.app",                         // PhonePe
-            "net.one97.paytm",                         // Paytm
-            "com.amazon.mShop.android.shopping",       // Amazon Pay
-            "in.org.npci.upiapp",                      // BHIM
-            "com.idfcfirstbank.optimus",               // IDFC First
-            "com.kotak.neo",                           // Kotak
-            "com.icici.bank.icicico",                  // iMobile
-            "com.hdfc.retail.netbanking",              // HDFC Mobile
-            "com.yesbank.nomad",                       // YES Bank
-            "com.axis.mobile",                         // Axis Mobile
-            "com.sbi.lotus"                            // YONO SBI
+            "com.google.android.apps.nbu.paisa.user",
+            "com.phonepe.app",
+            "net.one97.paytm",
+            "com.amazon.mShop.android.shopping",
+            "in.org.npci.upiapp",
+            "com.idfcfirstbank.optimus",
+            "com.kotak.neo",
+            "com.icici.bank.icicico",
+            "com.hdfc.retail.netbanking",
+            "com.yesbank.nomad",
+            "com.axis.mobile",
+            "com.sbi.lotus"
         )
 
         private var instance: NudgeNotificationListener? = null
@@ -66,7 +67,6 @@ class NudgeNotificationListener : NotificationListenerService() {
         val text = extras.getString("android.text") ?: return
         val fullText = "$title: $text"
 
-        // Quick heuristic: does this look like a transaction notification?
         if (!looksLikeTransaction(fullText)) return
 
         val workData = Data.Builder()
@@ -104,83 +104,4 @@ class NudgeNotificationListener : NotificationListenerService() {
         )
         return transactionKeywords.any { text.contains(it, ignoreCase = true) }
     }
-}
-
-class NotificationParsingWorker(
-    context: Context,
-    params: WorkerParameters
-) : CoroutineWorker(context, params) {
-
-    override suspend fun doWork(): Result {
-        val packageName = inputData.getString("package_name") ?: return Result.failure()
-        val text = inputData.getString("notification_text") ?: return Result.failure()
-
-        val app = applicationContext as NudgeApp
-        val passphrase = app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
-            ?: return Result.failure()
-
-        val db = NudgeDatabase.getInstance(applicationContext, passphrase.toByteArray())
-
-        // Use the same SMS parsing logic for notification text
-        val parsed = parseNotification(text, packageName) ?: return Result.failure()
-
-        val now = Clock.System.now()
-        val txn = TransactionEntity(
-            id = IdGenerator.generate(),
-            amountCents = parsed.first,
-            type = parsed.second,
-            merchantRaw = parsed.third,
-            merchantNormalized = null,
-            accountId = "",
-            source = "notification",
-            sourceRawText = text,
-            confidenceScore = parsed.fourth,
-            isReviewed = false,
-            timestampEpoch = now.toEpochMilliseconds()
-        )
-
-        db.transactionDao().insert(txn)
-        return Result.success()
-    }
-
-    private fun parseNotification(text: String, packageName: String): Quadruple? {
-        val upiDebit = Regex(
-            """(?:Rs\.|INR|₹)\s*([\d,]+\.?\d*)\s*(?:debited|spent|paid|sent)""",
-            RegexOption.IGNORE_CASE
-        )
-        upiDebit.find(text)?.let { match ->
-            val amount = extractAmount(match.groupValues[1])
-            val merchant = extractMerchant(text)
-            return Quadruple(amount, "debit", merchant, 0.75f)
-        }
-
-        val upiCredit = Regex(
-            """(?:Rs\.|INR|₹)\s*([\d,]+\.?\d*)\s*(?:credited|received|added)""",
-            RegexOption.IGNORE_CASE
-        )
-        upiCredit.find(text)?.let { match ->
-            val amount = extractAmount(match.groupValues[1])
-            return Quadruple(amount, "credit", "Income", 0.65f)
-        }
-
-        return null
-    }
-
-    private fun extractAmount(raw: String): Long {
-        val cleaned = raw.replace(",", "").trim()
-        return (cleaned.toDoubleOrNull()?.times(100))?.toLong() ?: 0L
-    }
-
-    private fun extractMerchant(text: String): String {
-        val patterns = listOf(
-            Regex("""(?:at|to|via|from)\s+(\S+(?:\s+\S+){0,3})""", RegexOption.IGNORE_CASE),
-            Regex("""(?:at|to|via|from)\s+(\S+(?:\s+\S+){0,3})""", RegexOption.IGNORE_CASE)
-        )
-        for (p in patterns) {
-            p.find(text)?.let { return it.groupValues[1].trim() }
-        }
-        return "Unknown"
-    }
-
-    data class Quadruple(val first: Long, val second: String, val third: String, val fourth: Float)
 }
