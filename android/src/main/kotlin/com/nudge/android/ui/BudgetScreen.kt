@@ -24,17 +24,12 @@ import com.nudge.android.data.BudgetEntity
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.NudgeRadius
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private object NudgeRadius {
-    const val SM = 8
-    const val MD = 14
-    const val LG = 20
-    const val XL = 28
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -28,17 +28,12 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.GamificationProfileEntity
 import com.nudge.android.ui.theme.MotionDuration
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.android.ui.theme.SpringBouncy
 import com.nudge.engine.GamificationMath
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 
-private object NudgeRadius {
-    const val SM = 8
-    const val MD = 14
-    const val LG = 20
-    const val XL = 28
-}
 
 data class BadgeData(
     val id: String,

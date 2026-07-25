@@ -33,14 +33,9 @@ import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.MotionDuration
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.engine.GamificationMath
 
-private object NudgeRadius {
-    const val SM = 8
-    const val MD = 14
-    const val LG = 20
-    const val XL = 28
-}
 
 data class ChallengeData(
     val id: String,

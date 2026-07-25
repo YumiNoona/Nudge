@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.engine.GamificationMath
 import java.text.NumberFormat
 import java.util.Locale
@@ -464,9 +465,3 @@ fun EmptyState() {
 }
 
 // Shared radius values matching the design system
-private object NudgeRadius {
-    const val SM = 8
-    const val MD = 14
-    const val LG = 20
-    const val XL = 28
-}

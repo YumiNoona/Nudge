@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.engine.GamificationMath
 import com.nudge.engine.RecurringDetection
 import com.nudge.model.RecurringInterval
@@ -303,9 +304,3 @@ fun SubscriptionsScreen(
 }
 
 // Shared radius values
-private object NudgeRadius {
-    const val SM = 8
-    const val MD = 14
-    const val LG = 20
-    const val XL = 28
-}
