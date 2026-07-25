@@ -1,75 +1,45 @@
 <p align="center">
-  <img src="web/public/favicon.svg" alt="Nudge" width="80" />
+  <img src="web/public/favicon.png" alt="Nudge" width="72" />
 </p>
 
 <p align="center">
-  <strong>A local-first, privacy-first personal finance tracker that turns budgeting into a game.</strong>
+  <strong>A local-first, privacy-first personal finance tracker.<br>Auto-detects expenses from SMS, turns budgeting into a game.</strong>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Web-indigo?style=flat-square" alt="Platform" />
-  <img src="https://img.shields.io/badge/kotlin-1.9%2B-purple?style=flat-square" alt="Kotlin" />
-  <img src="https://img.shields.io/badge/typescript-5.3%2B-blue?style=flat-square" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/status-active-brightgreen?style=flat-square" alt="Status" />
+  <a href="https://github.com/YumiNoona/Nudge/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/kotlin-1.9%2B-7C6FF0?style=flat-square&logo=kotlin" alt="Kotlin" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/typescript-5.3%2B-3178C6?style=flat-square&logo=typescript" alt="TypeScript" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/android-API%2026%2B-3DDC84?style=flat-square&logo=android" alt="Android" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/react-18-61DAFB?style=flat-square&logo=react" alt="React" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/platform-Android%20%7C%20Web-7C6FF0?style=flat-square" alt="Platform" /></a>
+  <a href="#"><img src="https://img.shields.io/badge/status-active-F0574B?style=flat-square" alt="Status" /></a>
 </p>
 
 ---
 
-Nudge automatically detects expenses from bank SMS and notifications, requires almost zero manual entry, and makes budgeting fun with XP, streaks, badges, and challenges — all wrapped in a tactile, animated UI.
+## What is Nudge
 
-> **Privacy by default.** SMS parsing happens 100% on-device. Nothing is uploaded. No account required. Your data lives where it belongs — with you.
+Nudge automatically detects expenses from bank SMS and UPI notifications — on-device, never uploaded. It requires almost zero manual entry and wraps budgeting in a warm, playful layer of XP, streaks, badges, and goals. **Your data stays yours.**
+
+> **Privacy by default.** SMS parsing happens 100% on-device. No account required. Nothing leaves your phone.
 
 ---
 
 ## Features
 
-### Capture
-- **Auto-detect transactions** from bank SMS and UPI app notifications (Android)
-- **Smart parsing engine** — 30+ regex templates across 20+ banks (IN/US/UK), merchant normalization, deduplication
-- **Swipe-to-categorize** — Tinder-style card deck for pending reviews
-- **Manual entry** with amount-first numeric pad and category grid
-- **CSV import** with drag-and-drop, auto-column detection, and preview
-
-### Organize
-- **Custom categories & subcategories** with icons and colors
-- **Tags** for cross-cutting labels (e.g. "trip:goa", "reimbursable")
-- **Merchant aliases** — teach the app once, it remembers forever
-- **Multi-account support** — bank accounts, credit cards, UPI, wallets, cash
-
-### Gamification
-- **XP & Levels** — earn XP for reviewing, logging, and staying under budget
-- **42 achievement badges** — trophy-shelf grid with locked silhouettes and unlock animations
-- **Weekly challenges** — auto-generated from your spending patterns
-- **Savings goals** — 4 visual metaphors (growing plant, filling jar, building house, launching rocket)
-- **Streak system** — daily check-in streaks with freeze tokens (no guilt — just encouragement)
-- **Level-up celebrations** with confetti bursts and haptic feedback
-
-### Budgets & Analytics
-- **Category budgets** with rollover support
-- **Envelope budgeting mode** — fill-level bars with animated progress
-- **Spending trends** — area charts with month-over-month comparisons
-- **Category breakdown** — donut charts with color-coded slices
-- **Cash-flow calendar heatmap** — GitHub-contribution-style intensity grid
-- **Merchant leaderboard** — your top 10 spending destinations
-
-### Security & Privacy
-- **Local-first** — all data stored on-device by default
-- **SQLCipher** encrypted database on Android (AES-256)
-- **WebCrypto** field-level encryption on Web (AES-256-GCM + PBKDF2)
-- **Biometric/PIN app lock** on Android
-- **E2E encrypted sync** — sync relay server stores only encrypted blobs it cannot read
-- **Full data export/import** with encrypted backup support
-- **Anti-dark-pattern guardrails** — no shame-based messaging, no fake urgency
-
-### Design
-- **Electric indigo accent** — not generic fintech blue
-- **True OLED dark mode** — near-black `#0A0A0F` surfaces
-- **Semantic design tokens** — 16-color categorical palette, type scale, spacing scale
-- **Micro-animations** — card slide-ins, amount count-ups, budget ring interpolations, streak flame breathing
-- **Haptic feedback** — semantic events (confirm, warning, error, celebration) mapped to Android rich haptics
-- **Reduced motion** support for accessibility
-- **Tabular figures** everywhere money is shown
+| Capability | Detail |
+|---|---|
+| **Auto-capture** | Bank SMS + UPI notification parsing (50+ bank regex templates, IN/US/UK) |
+| **Swipe-to-categorize** | Tinder-style card deck — swipe right to tag, left to skip |
+| **Smart budgets** | Category budgets with rollover, animated progress rings, envelope mode |
+| **Gamification** | 42 badges, XP/level system, weekly challenges, streak freezes |
+| **Analytics** | Spend trends, category donut, cash-flow calendar heatmap, merchant leaderboard |
+| **CSV import** | Drag-and-drop with auto-column detection + preview |
+| **E2E sync** | Encrypted cross-device sync (server stores only unreadable blobs) |
+| **Encryption** | AES-256 on-device DB + field-level IndexedDB encryption on Web |
+| **Dark mode** | OLED-friendly near-black surfaces |
+| **Anti-guilt design** | No shame-based messaging — everything framed as encouragement |
 
 ---
 
@@ -79,21 +49,21 @@ Nudge automatically detects expenses from bank SMS and notifications, requires a
 nudge/
 ├── shared/          Kotlin Multiplatform — models, engines, sync protocol
 │   ├── model/       Transaction, Account, Category, Budget, Gamification
-│   ├── engine/      Categorization, Budget math, Recurring detection, SMS parser, Gamification math
+│   ├── engine/      Categorization, Budget math, SMS parser, Gamification math
 │   ├── sync/        E2E sync protocol, merge engine
 │   └── util/        Design tokens, ID generator, anti-guilt messages
 │
-├── android/         Android app — Jetpack Compose + Room + SQLCipher
-│   ├── data/        10 Room entities, 5 DAOs, encrypted database
-│   ├── ui/          15+ Compose screens, animations, themes
+├── android/         Android app — Jetpack Compose + Room
+│   ├── data/        10 Room entities, 5 DAOs
+│   ├── ui/          16 Compose screens, shared components, animations, themes
 │   └── service/     SMS receiver, notification listener, sync worker
 │
 ├── web/             Web dashboard — React + TypeScript + Tailwind + Dexie.js
-│   ├── components/  14 screens (dashboard, analytics, needs-review, badges, etc.)
+│   ├── components/  14 screens + 8 shared UI components
 │   ├── lib/         DB, crypto, categorization, sync, animations, seed data
 │   └── styles/      CSS custom properties (semantic tokens)
 │
-└── server/          Sync relay — Node.js + Express + sql.js
+└── server/          Sync relay — Node.js + Express + sql.js (WASM)
     └── src/         E2E encrypted blob storage (zero plaintext)
 ```
 
@@ -102,18 +72,18 @@ nudge/
 ## Tech Stack
 
 | Layer | Android | Web | Server |
-|-------|---------|-----|--------|
-| **UI** | Jetpack Compose (Material 3) | React + TypeScript + Tailwind | — |
-| **DB** | Room + SQLCipher (AES-256) | Dexie.js (IndexedDB) | sql.js (SQLite WASM) |
-| **Logic** | Kotlin (shared via KMP) | TypeScript (mirrored engines) | — |
-| **Charts** | Canvas/Compose custom | Recharts | — |
+|---|---|---|---|
+| **UI** | Jetpack Compose (Material 3) | React 18 + Tailwind CSS | — |
+| **DB** | Room (SQLite) | Dexie.js (IndexedDB) | sql.js (SQLite WASM) |
+| **Shared logic** | Kotlin Multiplatform (KMP) | TypeScript (mirrored engines) | — |
+| **Charts** | Canvas / Compose custom | Recharts | — |
 | **Animation** | `animateXAsState` + Spring | Framer Motion | — |
-| **Encryption** | Android Keystore + SQLCipher | WebCrypto AES-GCM + PBKDF2 | — |
-| **Sync** | WorkManager + AES-GCM | fetch + WebCrypto | Express |
+| **Encryption** | EncryptedSharedPreferences | WebCrypto AES-GCM + PBKDF2 | — |
+| **Sync** | WorkManager + AES-GCM | fetch + WebCrypto | Express REST |
 
 ---
 
-## Getting Started
+## Quick Start
 
 ### Web Dashboard
 
@@ -121,16 +91,16 @@ nudge/
 cd web
 npm install
 npm run dev        # → http://localhost:3000
-npm run build      # production build → web/dist/
+npm run build      # → web/dist/
 ```
 
-### Android App
+### Android
 
-Open `android/` in Android Studio. The project uses standard Gradle with Kotlin Multiplatform support.
+Open `android/` in Android Studio, or:
 
 ```bash
 cd android
-./gradlew assembleDebug
+./gradlew assembleDebug   # → android/build/outputs/apk/debug/
 ```
 
 ### Sync Relay Server
@@ -141,19 +111,17 @@ npm install
 npm run dev        # → http://localhost:3741
 ```
 
-Environment variables:
-- `PORT` — server port (default: `3741`)
-- `DB_PATH` — SQLite database path (default: `./nudge-sync.db`)
+Set `PORT` and `DB_PATH` env vars to customize.
 
 ---
 
 ## Design Principles
 
-1. **Local-first, not local-only.** All data on-device by default. Sync is optional and E2E encrypted.
-2. **Zero-friction capture.** SMS and notification parsing does the heavy lifting.
-3. **Privacy by default.** On-device processing. Nothing uploaded. Granular permission explainers.
-4. **Delight in every interaction.** Haptics, micro-animations, and motion are core feedback mechanisms.
-5. **One codebase philosophy.** Shared business logic in KMP. TypeScript mirrors for web.
+1. **Local-first, not local-only** — all data on-device, sync is optional and E2E encrypted
+2. **Zero-friction capture** — SMS and notification parsing does the heavy lifting
+3. **Privacy by default** — on-device processing, nothing uploaded, granular permissions
+4. **Delight in every interaction** — haptics, micro-animations, spring physics
+5. **One codebase philosophy** — shared business logic in KMP, mirrored in TypeScript
 
 ---
 
@@ -161,8 +129,4 @@ Environment variables:
 
 MIT © Nudge contributors
 
----
-
-<p align="center">
-  <sub>Built with • care • and • a • lot • of • animations</sub>
-</p>
+Built with 💙 Made by Veil 

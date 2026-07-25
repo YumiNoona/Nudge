@@ -1,4 +1,4 @@
-# Gradle
+# ── Gradle ──
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -8,7 +8,7 @@ build/
 *.iws
 local.properties
 
-# Android
+# ── Android ──
 android/.cxx/
 android/build/
 android/app/build/
@@ -16,43 +16,48 @@ android/captures/
 *.apk
 *.aab
 *.hprof
+*.dex
+*.ap_
 
-# Node / Web
+# ── Node / Web ──
 node_modules/
 web/dist/
 web/node_modules/
 server/node_modules/
 server/dist/
+server/nudge-sync.db
 
-# Dependencies from shared KMP
+# ── KMP shared ──
 shared/build/
 
-# OS files
+# ── OS ──
 .DS_Store
 Thumbs.db
 *.swp
 *.swo
 *~
 
-# Environment
+# ── Env ──
 .env
 .env.local
 .env.*.local
 
-# IDE
+# ── IDE ──
 .vscode/
 .idea/
 *.sublime-*
 
-# Sync database (local only)
+# ── Sync ──
 nudge-sync.db
 
-# Logs
+# ── Logs ──
 *.log
 npm-debug.log*
+Reports/
 
-# Secret / sensitive
+# ── Secrets ──
 *.keystore
 *.jks
 *.p12
 secrets.properties
+google-services.json
