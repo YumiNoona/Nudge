@@ -53,7 +53,8 @@ fun NeedsReviewSwipeScreen(
     onDismiss: (transactionId: String) -> Unit,
     onBack: () -> Unit
 ) {
-    val haptics = remember { NudgeHaptics(LocalContext.current) }
+    val context = LocalContext.current
+    val haptics = remember { NudgeHaptics(context) }
 
     if (transactions.isEmpty()) {
         // Empty state — all caught up

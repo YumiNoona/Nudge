@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -235,7 +236,7 @@ private fun LevelXpHeader(profile: GamificationProfileEntity) {
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = { levelProgress },
+                    progress = levelProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)

@@ -116,7 +116,7 @@ fun CardSlideIn(
         visible = visible,
         enter = slideInVertically(
             initialOffsetY = { it },
-            animationSpec = SpringBouncy
+            animationSpec = spring(dampingRatio = 0.65f, stiffness = 300f)
         ) + fadeIn(animationSpec = tween(MotionDuration.STANDARD)),
         exit = slideOutVertically(
             targetOffsetY = { it },
@@ -170,7 +170,7 @@ fun AnimatedBudgetRing(
 
     Box(contentAlignment = Alignment.Center, modifier = modifier.size(size)) {
         CircularProgressIndicator(
-            progress = { animatedProgress.coerceAtMost(1f) },
+            progress = animatedProgress.coerceAtMost(1f),
             modifier = Modifier.fillMaxSize(),
             color = ringColor,
             strokeWidth = strokeWidth,
@@ -359,7 +359,7 @@ fun SwipeToDeleteContainer(
                 modifier = Modifier
                     .matchParentSize()
                     .alpha(deleteBgAlpha)
-                    .clip(RoundedCornerShape(NudgeRadius.MD))
+                    .clip(RoundedCornerShape(14.dp))
                     .background(NudgeColors.Negative.copy(alpha = 0.15f))
             )
         }
@@ -405,9 +405,15 @@ fun NudgePullRefreshIndicator(
     pullProgress: Float, // 0.0 to 1.0
     modifier: Modifier = Modifier
 ) {
-    val rotation by infiniteRepeatable(
-        animation = tween(1000, easing = LinearEasing),
-        repeatMode = RepeatMode.Restart
+    val infiniteTransition = rememberInfiniteTransition(label = "spin")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
     )
 
     val rotationAngle by animateFloatAsState(
@@ -542,14 +548,14 @@ fun BadgeUnlockAnimation(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .graphicsLayer {
-                rotationY = rotationY
+                this.rotationY = rotationY
                 cameraDistance = 12f * density
             }
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .clip(RoundedCornerShape(NudgeRadius.LG))
+                .clip(RoundedCornerShape(20.dp))
                 .background(NudgeColors.AccentPrimary.copy(alpha = 0.1f))
                 .padding(16.dp)
         ) {

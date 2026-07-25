@@ -60,14 +60,14 @@ fun BackupScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        uri?.let { exportToUri(context, it, transactions, categories, accounts, budgets, gamification) }
+        uri?.let { scope.launch { exportToUri(context, it, transactions, categories, accounts, budgets, gamification) } }
     }
 
     // File picker for import
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
-        uri?.let { importFromUri(context, it, viewModel) }
+        uri?.let { scope.launch { importFromUri(context, it, viewModel) } }
     }
 
     Column(

@@ -91,7 +91,7 @@ class SyncWorker(
             val passphrase = prefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
                 ?: return@withContext Result.success()
 
-            val db = NudgeDatabase.getInstance(applicationContext, passphrase.toByteArray())
+            val db = NudgeDatabase.getInstance(applicationContext)
 
             val config = loadSyncConfig(prefs)
             val key = SyncCrypto.deriveKey(passphrase)

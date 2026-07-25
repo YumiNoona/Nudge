@@ -249,7 +249,7 @@ fun BudgetRingsRow(
                     modifier = Modifier.size(56.dp)
                 ) {
                     CircularProgressIndicator(
-                        progress = { progress.coerceAtMost(1f) },
+                        progress = progress.coerceAtMost(1f),
                         modifier = Modifier.fillMaxSize(),
                         color = when {
                             progress > 1f -> NudgeColors.Negative
@@ -338,7 +338,7 @@ fun StreakXpStrip(gamification: com.nudge.android.data.GamificationProfileEntity
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = { levelProgress },
+                    progress = levelProgress,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(6.dp)

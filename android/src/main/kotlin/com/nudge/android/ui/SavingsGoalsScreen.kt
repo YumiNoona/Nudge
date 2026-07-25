@@ -223,7 +223,7 @@ private fun SavingsGoalCard(goal: SavingsGoalData) {
                     Spacer(modifier = Modifier.height(6.dp))
 
                     LinearProgressIndicator(
-                        progress = { animatedProgress },
+                        progress = animatedProgress,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)

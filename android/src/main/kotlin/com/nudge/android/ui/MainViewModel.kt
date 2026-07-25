@@ -28,15 +28,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val app = application as NudgeApp
-        val passphrase = app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
-            ?: run {
-                val keyBytes = ByteArray(32)
-                SecureRandom().nextBytes(keyBytes)
-                val encoded = Base64.encodeToString(keyBytes, Base64.NO_WRAP)
-                app.encryptedPrefs.edit().putString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, encoded).apply()
-                encoded
-            }
-        db = NudgeDatabase.getInstance(application, Base64.decode(passphrase, Base64.NO_WRAP))
+        // Generate and store a secure passphrase (used by sync encryption, not by Room anymore)
+        if (app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null) == null) {
+            val keyBytes = ByteArray(32)
+            SecureRandom().nextBytes(keyBytes)
+            val encoded = Base64.encodeToString(keyBytes, Base64.NO_WRAP)
+            app.encryptedPrefs.edit().putString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, encoded).apply()
+        }
+        db = NudgeDatabase.getInstance(application)
 
         transactions = db.transactionDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -116,7 +115,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 name = name,
                 accountType = type.name.lowercase(),
                 bankName = bankName,
-                last4Digits = last4Digits
+                last4Digits = last4Digits,
+                color = null,
+                icon = null
             )
             db.accountDao().insert(account)
         }

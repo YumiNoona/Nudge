@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.sqlite.db.SupportSQLiteDatabase
-import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [
@@ -35,16 +33,13 @@ abstract class NudgeDatabase : RoomDatabase() {
     companion object {
         private var INSTANCE: NudgeDatabase? = null
 
-        fun getInstance(context: Context, passphrase: ByteArray): NudgeDatabase {
+        fun getInstance(context: Context): NudgeDatabase {
             return INSTANCE ?: synchronized(this) {
-                val factory = SupportFactory(passphrase)
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     NudgeDatabase::class.java,
                     "nudge.db"
-                )
-                    .openHelperFactory(factory)
-                    .build()
+                ).build()
                 INSTANCE = instance
                 instance
             }

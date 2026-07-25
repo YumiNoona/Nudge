@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -65,9 +67,10 @@ fun DonutChart(
             Canvas(modifier = Modifier.size(size)) {
                 val strokeWidth = size.toPx() * 0.18f
                 val halfStroke = strokeWidth / 2f
+                val canvasSize = this.size
                 val arcSize = Size(
-                    size.width - halfStroke * 2,
-                    size.height - halfStroke * 2
+                    canvasSize.width - halfStroke * 2,
+                    canvasSize.height - halfStroke * 2
                 )
                 val topLeft = Offset(halfStroke, halfStroke)
 

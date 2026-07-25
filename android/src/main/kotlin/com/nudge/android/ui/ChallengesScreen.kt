@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.strikethrough
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -402,7 +401,7 @@ private fun ChallengeCard(challenge: ChallengeData) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     LinearProgressIndicator(
-                        progress = { animatedProgress },
+                        progress = animatedProgress,
                         modifier = Modifier
                             .weight(1f)
                             .height(6.dp)

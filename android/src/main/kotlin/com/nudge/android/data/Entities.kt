@@ -18,8 +18,8 @@ data class AccountEntity(
 data class CategoryEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "name") val name: String,
-    @ColumnInfo(name = "icon") val icon: String?,
-    @ColumnInfo(name = "color") val color: String?,
+    @ColumnInfo(name = "icon") val icon: String? = null,
+    @ColumnInfo(name = "color") val color: String? = null,
     @ColumnInfo(name = "type") val type: String, // CategoryType name
     @ColumnInfo(name = "is_default") val isDefault: Boolean = false,
     @ColumnInfo(name = "is_archived") val isArchived: Boolean = false,

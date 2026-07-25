@@ -99,10 +99,10 @@ fun NudgeTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            WindowCompat.getInsetsController(
-                view.context.window!!,  // Safe: only called when window exists
-                view
-            ).isAppearanceLightStatusBars = !isDark
+            val window = (view.context as? android.app.Activity)?.window
+            window?.let {
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = !isDark
+            }
         }
     }
 

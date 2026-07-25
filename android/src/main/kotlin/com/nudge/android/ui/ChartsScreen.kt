@@ -1,5 +1,6 @@
 package com.nudge.android.ui
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -343,7 +344,7 @@ private fun DailySpendChart(
                     val p2 = points[i + 1]
                     val midX = (p1.x + p2.x) / 2f
                     val midY = (p1.y + p2.y) / 2f
-                    quadraticTo(p1.x, p1.y, midX, midY)
+                    quadraticBezierTo(p1.x, p1.y, midX, midY)
                 }
                 lineTo(points.last().x, points.last().y)
             }

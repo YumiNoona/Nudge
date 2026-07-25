@@ -68,15 +68,60 @@ object NudgeColors {
 
     // Category icon palette — the 8 saturated chip foreground colors
     val CategoryColors = listOf(
-        CatBlue,
-        CatPink,
-        CatTeal,
-        CatOrange,
-        CatViolet,
-        CatRose,
-        CatCyan,
-        CatLime
+        CatBlue, CatPink, CatTeal, CatOrange,
+        CatViolet, CatRose, CatCyan, CatLime
     )
+
+    // ── Backward-compatible aliases (old API → new values) ──
+    // These keep the hundreds of existing screen references working.
+
+    @Deprecated("Use LavenderBg", ReplaceWith("LavenderBg"))
+    val SurfaceBase get() = LavenderBg
+
+    @Deprecated("Use Surface", ReplaceWith("Surface"))
+    val SurfaceRaised get() = Surface
+
+    @Deprecated("Use Surface.copy(alpha=0.5f)", ReplaceWith("Surface.copy(alpha = 0.5f)"))
+    val SurfaceOverlay get() = Color(0x80000000)
+
+    @Deprecated("Use Ink", ReplaceWith("Ink"))
+    val ContentPrimary get() = Ink
+
+    @Deprecated("Use InkSoft", ReplaceWith("InkSoft"))
+    val ContentSecondary get() = InkSoft
+
+    @Deprecated("Use InkMute", ReplaceWith("InkMute"))
+    val ContentTertiary get() = InkMute
+
+    @Deprecated("Use Purple", ReplaceWith("Purple"))
+    val AccentPrimary get() = Purple
+
+    @Deprecated("Use PurpleDeep", ReplaceWith("PurpleDeep"))
+    val AccentSecondary get() = PurpleDeep
+
+    @Deprecated("Use Green", ReplaceWith("Green"))
+    val Positive get() = Green
+
+    @Deprecated("Use Coral", ReplaceWith("Coral"))
+    val Negative get() = Coral
+
+    @Deprecated("Use Amber", ReplaceWith("Amber"))
+    val Warning get() = Amber
+
+    @Deprecated("Use DarkBg", ReplaceWith("DarkBg"))
+    val DarkSurfaceBase get() = DarkBg
+
+    @Deprecated("Use SurfaceDark", ReplaceWith("SurfaceDark"))
+    val DarkSurfaceRaised get() = SurfaceDark
+
+    @Deprecated("Use InkDark", ReplaceWith("InkDark"))
+    val DarkContentPrimary get() = InkDark
+
+    @Deprecated("Use InkSoftDark", ReplaceWith("InkSoftDark"))
+    val DarkContentSecondary get() = InkSoftDark
+
+    @Deprecated("Use InkMuteDark", ReplaceWith("InkMuteDark"))
+    val DarkContentTertiary get() = InkMuteDark
 }
 
 data class NudgeColorScheme(

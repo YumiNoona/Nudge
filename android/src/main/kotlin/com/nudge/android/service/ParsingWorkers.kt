@@ -25,15 +25,11 @@ class SmsParsingWorker(
         val senderId = inputData.getString("sender_id") ?: return@withContext Result.failure()
         val body = inputData.getString("message_body") ?: return@withContext Result.failure()
 
-        val app = applicationContext as NudgeApp
-        val passphrase = app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
-            ?: return@withContext Result.failure()
-
         // Use the full parsing pipeline
         val parser = DefaultSmsParserEngine()
         val parsed = parser.parse(body, senderId) ?: return@withContext Result.failure()
 
-        val db = NudgeDatabase.getInstance(applicationContext, passphrase.toByteArray())
+        val db = NudgeDatabase.getInstance(applicationContext)
 
         // Deduplication
         val existing = db.transactionDao().getAll()
@@ -81,13 +77,11 @@ class NotificationParsingWorker(
         val text = inputData.getString("notification_text") ?: return@withContext Result.failure()
 
         val app = applicationContext as NudgeApp
-        val passphrase = app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null)
-            ?: return@withContext Result.failure()
 
         val parser = DefaultSmsParserEngine()
         val parsed = parser.parse(text, packageName) ?: return@withContext Result.failure()
 
-        val db = NudgeDatabase.getInstance(applicationContext, passphrase.toByteArray())
+        val db = NudgeDatabase.getInstance(applicationContext)
 
         val normMerchant = parsed.merchantNormalized ?: text.take(50)
         val categorization = parser.autoCategorize(normMerchant, parsed.amount)

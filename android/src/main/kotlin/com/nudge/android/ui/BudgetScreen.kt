@@ -179,7 +179,7 @@ private fun BudgetCard(
                 modifier = Modifier.size(72.dp)
             ) {
                 CircularProgressIndicator(
-                    progress = { progress.coerceAtMost(1f) },
+                    progress = progress.coerceAtMost(1f),
                     modifier = Modifier.fillMaxSize(),
                     color = when {
                         progress > 1f -> NudgeColors.Negative

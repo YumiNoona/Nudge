@@ -102,10 +102,12 @@ object BudgetMath {
             }
             BudgetPeriod.MONTHLY -> {
                 val start = LocalDate(today.year, today.monthNumber, 1)
-                val end = LocalDate(today.year, today.monthNumber, start.daysInMonth)
+                val isLeap = (today.year % 4 == 0 && today.year % 100 != 0) || today.year % 400 == 0
+                val daysInMonth = today.month.length(isLeap)
+                val end = LocalDate(today.year, today.monthNumber, daysInMonth)
                 Pair(
                     start.atStartOfDayIn(TimeZone.currentSystemDefault()),
-                    end.plus(1, DateTimeUnit.DAY, TimeZone.currentSystemDefault())
+                    end.plus(1, DateTimeUnit.DAY).atStartOfDayIn(TimeZone.currentSystemDefault())
                 )
             }
             BudgetPeriod.CUSTOM -> {
