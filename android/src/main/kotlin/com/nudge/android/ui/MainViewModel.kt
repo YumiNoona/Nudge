@@ -28,7 +28,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val app = application as NudgeApp
-        // Generate and store a secure passphrase (used by sync encryption, not by Room anymore)
         if (app.encryptedPrefs.getString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, null) == null) {
             val keyBytes = ByteArray(32)
             SecureRandom().nextBytes(keyBytes)
@@ -36,6 +35,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             app.encryptedPrefs.edit().putString(NudgeApp.PREFS_KEY_DB_PASSPHRASE, encoded).apply()
         }
         db = NudgeDatabase.getInstance(application)
+
+        // Seed defaults on first run
+        viewModelScope.launch { DefaultsSeeder.seedIfEmpty(db) }
 
         transactions = db.transactionDao().getAll()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

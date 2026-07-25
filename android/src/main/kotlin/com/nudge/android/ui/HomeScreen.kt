@@ -42,9 +42,8 @@ fun HomeScreen(
     val gamification by viewModel.gamificationProfile.collectAsState()
 
     var showAddSheet by remember { mutableStateOf(false) }
-    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
 
-    // Month calculations
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
     val cal = remember { Calendar.getInstance() }
     val thisMonth = cal.get(Calendar.MONTH)
     val thisYear = cal.get(Calendar.YEAR)
@@ -64,17 +63,7 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.background(bg),
-        containerColor = bg,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddSheet = true },
-                shape = CircleShape,
-                containerColor = NudgeColors.Emerald,
-                contentColor = if (isDark) NudgeColors.InkDark else NudgeColors.Surface
-            ) {
-                Lucide.Plus(size = 22.dp, strokeWidth = 2.dp)
-            }
-        }
+        containerColor = bg
     ) { padding ->
         LazyColumn(
             modifier = Modifier

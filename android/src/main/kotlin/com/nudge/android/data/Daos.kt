@@ -8,6 +8,9 @@ interface CategoryDao {
     @Query("SELECT * FROM categories WHERE is_archived = 0 ORDER BY sort_order ASC, name ASC")
     fun getAll(): Flow<List<CategoryEntity>>
 
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun count(): Int
+
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getById(id: String): CategoryEntity?
 
@@ -34,6 +37,9 @@ interface CategoryDao {
 interface AccountDao {
     @Query("SELECT * FROM accounts WHERE is_active = 1 ORDER BY name ASC")
     fun getAll(): Flow<List<AccountEntity>>
+
+    @Query("SELECT COUNT(*) FROM accounts")
+    suspend fun count(): Int
 
     @Query("SELECT * FROM accounts WHERE id = :id")
     suspend fun getById(id: String): AccountEntity?

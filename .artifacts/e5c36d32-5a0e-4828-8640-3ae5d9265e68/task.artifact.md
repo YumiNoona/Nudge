@@ -1,0 +1,3 @@
+- [x] Fix missing imports in `MainActivity.kt`
+- [x] Update `BudgetScreen` usage in `MainActivity.kt`
+- [x] Verify build with `./gradlew :android:compileDebugKotlin`
