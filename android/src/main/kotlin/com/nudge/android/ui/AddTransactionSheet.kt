@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.CategoryEntity
+import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.model.TransactionType
 
@@ -50,256 +51,144 @@ fun AddTransactionSheet(
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var selectedAccountId by remember { mutableStateOf<String?>(null) }
 
-    val amountInCents = amountStr.filter { it.isDigit() }.toLongOrNull()?.times(100L)
-    val isValid = amountInCents != null && amountInCents > 0 && merchant.isNotBlank() && selectedAccountId != null
+    val amountCents = amountStr.filter { it.isDigit() }.toLongOrNull()?.times(100L) ?: 0L
+    val isValid = amountCents > 0 && merchant.isNotBlank() && selectedAccountId != null
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(NudgeColors.SurfaceBase, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .background(NudgeColors.Surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             .padding(24.dp)
     ) {
         // Handle bar
         Box(
             modifier = Modifier
-                .width(36.dp)
-                .height(4.dp)
+                .width(36.dp).height(4.dp)
                 .clip(RoundedCornerShape(2.dp))
-                .background(NudgeColors.ContentTertiary)
+                .background(NudgeColors.InkMute)
                 .align(Alignment.CenterHorizontally)
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            "Add Transaction",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = NudgeColors.ContentPrimary
-        )
-
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Amount field (big, amount-first)
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("₹", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.AccentPrimary)
+        Text("Add Transaction", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Amount
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("₹", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Emerald)
             Spacer(modifier = Modifier.width(8.dp))
             BasicTextField(
                 value = amountStr,
                 onValueChange = { amountStr = it },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                textStyle = TextStyle(
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NudgeColors.ContentPrimary,
-                    fontFamily = FontFamily.Monospace
-                ),
-                cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+                textStyle = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink, fontFamily = FontFamily.Monospace),
+                cursorBrush = SolidColor(NudgeColors.Emerald),
                 modifier = Modifier.weight(1f),
-                decorationBox = { innerTextField ->
-                    if (amountStr.isEmpty()) {
-                        Text(
-                            "0",
-                            fontSize = 28.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NudgeColors.ContentTertiary,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                    innerTextField()
+                decorationBox = { inner ->
+                    if (amountStr.isEmpty()) Text("0", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.InkMute, fontFamily = FontFamily.Monospace)
+                    inner()
                 },
                 singleLine = true
             )
         }
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Transaction type toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            TransactionType.entries.forEach { type ->
-                val isSelected = selectedType == type
-                val label = when (type) {
-                    TransactionType.DEBIT -> "Expense"
-                    TransactionType.CREDIT -> "Income"
-                    TransactionType.REFUND -> "Refund"
-                    TransactionType.TRANSFER -> "Transfer"
-                }
+        // Type
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TransactionType.entries.forEach { t ->
+                val isSel = selectedType == t
                 FilterChip(
-                    selected = isSelected,
-                    onClick = { selectedType = type },
-                    label = {
-                        Text(label, fontSize = 12.sp)
-                    },
+                    selected = isSel, onClick = { selectedType = t },
+                    label = { Text(when(t) { TransactionType.DEBIT -> "Expense"; TransactionType.CREDIT -> "Income"; else -> t.name }, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NudgeColors.AccentPrimary.copy(alpha = 0.15f),
-                        selectedLabelColor = NudgeColors.AccentPrimary
+                        selectedContainerColor = NudgeColors.EmeraldBg,
+                        selectedLabelColor = NudgeColors.Emerald
                     )
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Merchant field
+        // Merchant
         BasicTextField(
-            value = merchant,
-            onValueChange = { merchant = it },
-            textStyle = TextStyle(
-                fontSize = 16.sp,
-                color = NudgeColors.ContentPrimary
-            ),
-            cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+            value = merchant, onValueChange = { merchant = it },
+            textStyle = TextStyle(fontSize = 15.sp, color = NudgeColors.Ink),
+            cursorBrush = SolidColor(NudgeColors.Emerald),
             singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(NudgeColors.SurfaceRaised)
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(NudgeColors.Bone)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
-            decorationBox = { innerTextField ->
-                if (merchant.isEmpty()) {
-                    Text("What was this for?", fontSize = 16.sp, color = NudgeColors.ContentTertiary)
-                }
-                innerTextField()
-            }
+            decorationBox = { inner -> if (merchant.isEmpty()) Text("What was this for?", fontSize = 15.sp, color = NudgeColors.InkMute); inner() }
         )
-
         Spacer(modifier = Modifier.height(12.dp))
 
         // Category grid
-        Text(
-            "Category",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = NudgeColors.ContentSecondary
-        )
+        Text("Category", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
         Spacer(modifier = Modifier.height(8.dp))
 
-        val expenseCategories = categories.filter { it.type == "expense" }
-        if (expenseCategories.isNotEmpty()) {
+        val expenseCats = categories.filter { it.type == "expense" }
+        if (expenseCats.isNotEmpty()) {
             LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier.height(100.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                columns = GridCells.Fixed(4), modifier = Modifier.height(90.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(expenseCategories) { category ->
-                    val isSelected = selectedCategoryId == category.id
+                items(expenseCats) { cat ->
+                    val isSel = selectedCategoryId == cat.id
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isSelected) NudgeColors.AccentPrimary.copy(alpha = 0.12f)
-                                else NudgeColors.SurfaceRaised
-                            )
-                            .then(
-                                if (isSelected) Modifier.border(1.5.dp, NudgeColors.AccentPrimary, RoundedCornerShape(12.dp))
-                                else Modifier.border(1.dp, NudgeColors.ContentTertiary.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                            )
-                            .clickable { selectedCategoryId = category.id }
+                            .background(if (isSel) NudgeColors.EmeraldBg else NudgeColors.Bone)
+                            .then(if (isSel) Modifier.border(1.5.dp, NudgeColors.Emerald, RoundedCornerShape(12.dp)) else Modifier)
+                            .clickable { selectedCategoryId = cat.id }
                             .padding(8.dp)
                     ) {
-                        Text(
-                            category.icon ?: "📁",
-                            fontSize = 18.sp
-                        )
-                        Text(
-                            category.name,
-                            fontSize = 10.sp,
-                            color = if (isSelected) NudgeColors.AccentPrimary else NudgeColors.ContentSecondary,
-                            maxLines = 1,
-                            textAlign = TextAlign.Center
-                        )
+                        Text(cat.icon ?: "📁", fontSize = 16.sp)
+                        Text(cat.name, fontSize = 9.sp, color = if (isSel) NudgeColors.Emerald else NudgeColors.InkSoft, maxLines = 1, textAlign = TextAlign.Center)
                     }
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Account selector
-        Text(
-            "Account",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = NudgeColors.ContentSecondary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-
+        // Account
+        Text("Account", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
+        Spacer(modifier = Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            accounts.take(4).forEach { account ->
-                val isSelected = selectedAccountId == account.id
+            accounts.take(4).forEach { a ->
+                val isSel = selectedAccountId == a.id
                 FilterChip(
-                    selected = isSelected,
-                    onClick = { selectedAccountId = account.id },
-                    label = { Text(account.name, fontSize = 12.sp) },
+                    selected = isSel, onClick = { selectedAccountId = a.id },
+                    label = { Text(a.name, fontSize = 12.sp) },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = NudgeColors.AccentPrimary.copy(alpha = 0.15f),
-                        selectedLabelColor = NudgeColors.AccentPrimary
+                        selectedContainerColor = NudgeColors.EmeraldBg,
+                        selectedLabelColor = NudgeColors.Emerald
                     )
                 )
             }
         }
-
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Note field
+        // Note
         BasicTextField(
-            value = note,
-            onValueChange = { note = it },
-            textStyle = TextStyle(
-                fontSize = 14.sp,
-                color = NudgeColors.ContentPrimary
-            ),
-            cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+            value = note, onValueChange = { note = it },
+            textStyle = TextStyle(fontSize = 13.sp, color = NudgeColors.Ink),
+            cursorBrush = SolidColor(NudgeColors.Emerald),
             singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(NudgeColors.SurfaceRaised)
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(NudgeColors.Bone)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
-            decorationBox = { innerTextField ->
-                if (note.isEmpty()) {
-                    Text("Add a note (optional)", fontSize = 14.sp, color = NudgeColors.ContentTertiary)
-                }
-                innerTextField()
-            }
+            decorationBox = { inner -> if (note.isEmpty()) Text("Add a note (optional)", fontSize = 13.sp, color = NudgeColors.InkMute); inner() }
         )
-
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Add button
+        // Submit
         Button(
-            onClick = {
-                onAdd(
-                    amountInCents ?: return@Button,
-                    selectedType,
-                    merchant,
-                    selectedAccountId ?: return@Button,
-                    selectedCategoryId,
-                    note.ifBlank { null }
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp),
+            onClick = { onAdd(amountCents, selectedType, merchant, selectedAccountId!!, selectedCategoryId, note.ifBlank { null }) },
+            modifier = Modifier.fillMaxWidth().height(50.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = NudgeColors.AccentPrimary,
-                disabledContainerColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f)
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald),
             enabled = isValid
         ) {
-            Text(
-                "Add ${if (selectedType == TransactionType.DEBIT) "Expense" else "Income"}",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text("Add ${if (selectedType == TransactionType.DEBIT) "Expense" else "Income"}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

@@ -1,13 +1,10 @@
 package com.nudge.android.ui
 
-import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -15,18 +12,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
+import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeColors
-import com.nudge.android.ui.theme.NudgeRadius
-import com.nudge.engine.GamificationMath
 import java.text.NumberFormat
-import java.util.Locale
-import kotlin.math.absoluteValue
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +31,8 @@ fun HomeScreen(
     viewModel: MainViewModel,
     isDark: Boolean,
     onToggleTheme: () -> Unit,
-    onNavigateToReview: () -> Unit = {}
+    onNavigateToReview: () -> Unit = {},
+    onNavigateToMore: () -> Unit = {}
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val needsReviewCount by viewModel.needsReviewCount.collectAsState()
@@ -44,83 +42,255 @@ fun HomeScreen(
     val gamification by viewModel.gamificationProfile.collectAsState()
 
     var showAddSheet by remember { mutableStateOf(false) }
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
+
+    // Month calculations
+    val cal = remember { Calendar.getInstance() }
+    val thisMonth = cal.get(Calendar.MONTH)
+    val thisYear = cal.get(Calendar.YEAR)
+    val monthTxns = remember(transactions) {
+        transactions.filter {
+            val d = Calendar.getInstance().apply { timeInMillis = it.timestampEpoch }
+            d.get(Calendar.MONTH) == thisMonth && d.get(Calendar.YEAR) == thisYear
+        }
+    }
+    val spend = remember(monthTxns) { monthTxns.filter { it.type == "debit" }.sumOf { it.amountCents } }
+    val income = remember(monthTxns) { monthTxns.filter { it.type == "credit" }.sumOf { it.amountCents } }
+    val leftToSpend = 0L // placeholder — budget math would go here
+
+    val surface = if (isDark) NudgeColors.SurfaceDark else NudgeColors.Surface
+    val bg = if (isDark) NudgeColors.Dark else NudgeColors.Bone
+    val ink = if (isDark) NudgeColors.InkDark else NudgeColors.Ink
 
     Scaffold(
+        modifier = Modifier.background(bg),
+        containerColor = bg,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddSheet = true },
                 shape = CircleShape,
-                containerColor = NudgeColors.AccentPrimary,
-                contentColor = NudgeColors.SurfaceRaised
+                containerColor = NudgeColors.Emerald,
+                contentColor = if (isDark) NudgeColors.InkDark else NudgeColors.Surface
             ) {
-                Text("+", fontSize = 28.sp, fontWeight = FontWeight.Light)
+                Lucide.Plus(size = 22.dp, strokeWidth = 2.dp)
             }
         }
     ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(
-                    if (isDark) NudgeColors.DarkSurfaceBase
-                    else NudgeColors.SurfaceBase
-                ),
+                .padding(padding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Greeting + Level Badge
+            // ── 1. Greeting + streak strip ──
             item {
-                GreetingHeader(gamification)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Hello 👋",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = NudgeColors.InkSoft
+                        )
+                        Text(
+                            "Your money",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = ink
+                        )
+                    }
+                    val g = gamification
+                    if (g != null) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = NudgeColors.EmeraldBg
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Lucide.Flame(size = 16.dp, strokeWidth = 1.8.dp)
+                                Text(
+                                    "${g.currentStreakDays}d",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NudgeColors.Emerald
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            // 2. Big "This Month" spend number
+            // ── 2. Hero card — spent this month ──
             item {
-                MonthSpendCard(
-                    transactions = transactions,
-                    isDark = isDark
-                )
+                Card(
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(containerColor = NudgeColors.Emerald)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp)
+                    ) {
+                        Text(
+                            "Spent this month",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White.copy(alpha = 0.75f),
+                            letterSpacing = 1.sp
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "₹${fmt.format(spend / 100)}",
+                            fontSize = 36.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        // quick-action pills
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.2f),
+                                onClick = onNavigateToReview
+                            ) {
+                                Text(
+                                    "${needsReviewCount} to review →",
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = Color.White.copy(alpha = 0.2f),
+                                onClick = { showAddSheet = true }
+                            ) {
+                                Text(
+                                    "+ Add",
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            // 3. Budget rings (horizontally scrollable)
+            // ── 3. Quick-stat row ──
             item {
-                BudgetRingsRow(
-                    budgets = budgets,
-                    transactions = transactions,
-                    categories = categories
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Income",
+                        value = "₹${fmt.format(income / 100)}",
+                        icon = { Lucide.TrendingUp(size = 16.dp, strokeWidth = 1.8.dp) },
+                        tint = NudgeColors.Emerald,
+                        surface = surface
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Spent",
+                        value = "₹${fmt.format(spend / 100)}",
+                        icon = { Lucide.ShoppingCart(size = 16.dp, strokeWidth = 1.8.dp) },
+                        tint = NudgeColors.Coral,
+                        surface = surface
+                    )
+                    StatCard(
+                        modifier = Modifier.weight(1f),
+                        label = "Left",
+                        value = "—",
+                        icon = { Lucide.Wallet(size = 16.dp, strokeWidth = 1.8.dp) },
+                        tint = NudgeColors.InkMute,
+                        surface = surface
+                    )
+                }
             }
 
-            // 4. Streak flame + XP bar
-            item {
-                StreakXpStrip(gamification)
+            // ── 4. Review callout (if pending) ──
+            if (needsReviewCount > 0) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = NudgeColors.AmberBg),
+                        onClick = onNavigateToReview
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "${needsReviewCount} transaction${if (needsReviewCount > 1) "s" else ""} need review",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = NudgeColors.Amber
+                                )
+                                Text(
+                                    "Swipe to categorize",
+                                    fontSize = 11.sp,
+                                    color = NudgeColors.InkMute
+                                )
+                            }
+                            Lucide.ArrowLeft(size = 16.dp, strokeWidth = 2.dp)
+                        }
+                    }
+                }
             }
 
-            // 5. Needs Review teaser
-            item {
-                NeedsReviewTeaser(
-                    count = needsReviewCount,
-                    onClick = onNavigateToReview
-                )
-            }
-
-            // 6. Recent transactions
+            // ── 5. Recent Activity ──
             item {
                 Text(
-                    "Recent Transactions",
-                    fontSize = 16.sp,
+                    "Recent Activity",
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
+                    color = NudgeColors.InkSoft,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
             if (transactions.isEmpty()) {
                 item {
-                    EmptyState()
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = surface)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Lucide.Wallet(size = 32.dp, strokeWidth = 1.5.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No transactions yet", fontSize = 14.sp, color = NudgeColors.InkSoft)
+                            Text("Tap + to add your first entry", fontSize = 12.sp, color = NudgeColors.InkMute)
+                        }
+                    }
                 }
             } else {
                 items(transactions.take(20), key = { it.id }) { txn ->
+                    val cat = categories.find { it.id == txn.categoryId }
                     TransactionRow(
                         transaction = txn,
+                        category = cat,
                         isDark = isDark,
                         onDelete = { viewModel.deleteTransaction(txn.id) }
                     )
@@ -143,240 +313,35 @@ fun HomeScreen(
 }
 
 @Composable
-fun GreetingHeader(gamification: com.nudge.android.data.GamificationProfileEntity?) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                "Hello,",
-                fontSize = 14.sp,
-                color = NudgeColors.ContentSecondary
-            )
-            Text(
-                "Your Money",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
-            )
-        }
-        if (gamification != null) {
-            Surface(
-                shape = RoundedCornerShape(NudgeRadius.LG),
-                color = NudgeColors.AccentPrimary.copy(alpha = 0.15f)
-            ) {
-                Text(
-                    GamificationMath.levelTitle(gamification.level),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.AccentPrimary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MonthSpendCard(transactions: List<TransactionEntity>, isDark: Boolean) {
-    val thisMonthSpend = remember(transactions) {
-        transactions
-            .filter { it.type == "debit" }
-            .sumOf { it.amountCents }
-    }
-    val formatted = NumberFormat.getNumberInstance(Locale.getDefault()).format(thisMonthSpend / 100.0)
-
+private fun StatCard(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String,
+    icon: @Composable () -> Unit,
+    tint: androidx.compose.ui.graphics.Color,
+    surface: androidx.compose.ui.graphics.Color
+) {
     Card(
-        shape = RoundedCornerShape(NudgeRadius.XL),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
-        )
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = surface)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(14.dp)
         ) {
-            Text(
-                "This Month",
-                fontSize = 13.sp,
-                color = NudgeColors.ContentSecondary
-            )
-            Text(
-                "₹$formatted",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                icon()
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = NudgeColors.InkMute)
+            }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "spent so far",
-                fontSize = 12.sp,
-                color = NudgeColors.ContentTertiary
+                value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = tint
             )
-        }
-    }
-}
-
-@Composable
-fun BudgetRingsRow(
-    budgets: List<com.nudge.android.data.BudgetEntity>,
-    transactions: List<TransactionEntity>,
-    categories: List<com.nudge.android.data.CategoryEntity>
-) {
-    if (budgets.isEmpty()) return
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        budgets.forEach { budget ->
-            val category = categories.find { it.id == budget.categoryId }
-            val spent = transactions
-                .filter { it.categoryId == budget.categoryId && it.type == "debit" }
-                .sumOf { it.amountCents }
-            val progress = (spent.toFloat() / budget.amountCents.toFloat()).coerceIn(0f, 1.5f)
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(72.dp)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier.size(56.dp)
-                ) {
-                    CircularProgressIndicator(
-                        progress = progress.coerceAtMost(1f),
-                        modifier = Modifier.fillMaxSize(),
-                        color = when {
-                            progress > 1f -> NudgeColors.Negative
-                            progress > 0.8f -> NudgeColors.Warning
-                            else -> NudgeColors.AccentPrimary
-                        },
-                        strokeWidth = 4.dp,
-                        trackColor = NudgeColors.ContentTertiary.copy(alpha = 0.2f)
-                    )
-                    Text(
-                        "${(progress * 100).toInt()}%",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentSecondary
-                    )
-                }
-                Text(
-                    category?.name ?: "All",
-                    fontSize = 11.sp,
-                    color = NudgeColors.ContentSecondary,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun StreakXpStrip(gamification: com.nudge.android.data.GamificationProfileEntity?) {
-    if (gamification == null) return
-
-    val levelProgress = GamificationMath.levelProgress(gamification.xpTotal)
-
-    Card(
-        shape = RoundedCornerShape(NudgeRadius.LG),
-        colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.08f)
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Streak flame
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "🔥",
-                    fontSize = 20.sp
-                )
-                Text(
-                    "${gamification.currentStreakDays}d",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NudgeColors.ContentPrimary
-                )
-                Text(
-                    "streak",
-                    fontSize = 10.sp,
-                    color = NudgeColors.ContentTertiary
-                )
-            }
-
-            // XP bar
-            Column(
-                modifier = Modifier.weight(1f).padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "Level ${gamification.level}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.AccentPrimary
-                    )
-                    Text(
-                        "${gamification.xpTotal} XP",
-                        fontSize = 12.sp,
-                        color = NudgeColors.ContentSecondary
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = levelProgress,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp)),
-                    color = NudgeColors.AccentPrimary,
-                    trackColor = NudgeColors.AccentPrimary.copy(alpha = 0.2f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun NeedsReviewTeaser(count: Int, onClick: () -> Unit) {
-    if (count == 0) return
-
-    Card(
-        shape = RoundedCornerShape(NudgeRadius.LG),
-        colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.Warning.copy(alpha = 0.1f)
-        ),
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "$count transaction${if (count > 1) "s" else ""} need review",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = NudgeColors.Warning
-            )
-            Text("→", fontSize = 18.sp, color = NudgeColors.Warning)
         }
     }
 }
@@ -384,84 +349,60 @@ fun NeedsReviewTeaser(count: Int, onClick: () -> Unit) {
 @Composable
 fun TransactionRow(
     transaction: TransactionEntity,
+    category: CategoryEntity?,
     isDark: Boolean,
     onDelete: () -> Unit
 ) {
     val isDebit = transaction.type == "debit"
-    val formattedAmount = NumberFormat.getNumberInstance(Locale.getDefault())
-        .format(transaction.amountCents / 100.0)
+    val surface = if (isDark) NudgeColors.SurfaceDark else NudgeColors.Surface
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
 
     Card(
-        shape = RoundedCornerShape(NudgeRadius.MD),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
-        )
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = surface)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    transaction.merchantRaw,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                )
-                if (transaction.note != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NudgeColors.parse(category?.color, NudgeColors.InkMute).copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(category?.icon ?: "💳", fontSize = 16.sp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
                     Text(
-                        transaction.note,
-                        fontSize = 12.sp,
-                        color = NudgeColors.ContentTertiary
+                        transaction.merchantRaw,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (isDark) NudgeColors.InkDark else NudgeColors.Ink
+                    )
+                    Text(
+                        "${category?.name ?: "Uncategorized"} · ${java.text.SimpleDateFormat("MMM dd", Locale.getDefault()).format(Date(transaction.timestampEpoch))}",
+                        fontSize = 11.sp,
+                        color = NudgeColors.InkMute
                     )
                 }
             }
             Text(
-                "${if (isDebit) "-" else "+"}₹$formattedAmount",
-                fontSize = 16.sp,
+                "${if (isDebit) "−" else "+"}₹${fmt.format(transaction.amountCents / 100)}",
+                fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = FontFamily.Monospace,
-                color = if (isDebit) NudgeColors.Negative else NudgeColors.Positive
+                color = if (isDebit) NudgeColors.Coral else NudgeColors.Emerald
             )
         }
     }
 }
-
-@Composable
-fun EmptyState() {
-    Card(
-        shape = RoundedCornerShape(NudgeRadius.XL),
-        colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "💰",
-                fontSize = 40.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                "No transactions yet",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.ContentSecondary
-            )
-            Text(
-                "Tap + to add your first entry",
-                fontSize = 13.sp,
-                color = NudgeColors.ContentTertiary
-            )
-        }
-    }
-}
-
-// Shared radius values matching the design system

@@ -135,6 +135,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { db.categoryDao().insert(cat) }
     }
 
+    fun saveBudget(id: String?, categoryId: String?, amountCents: Long, period: String, rolloverEnabled: Boolean, startDateEpoch: Long) {
+        viewModelScope.launch {
+            val budget = com.nudge.android.data.BudgetEntity(
+                id = id ?: java.util.UUID.randomUUID().toString(),
+                categoryId = categoryId ?: "",
+                amountCents = amountCents,
+                period = period,
+                rolloverEnabled = rolloverEnabled,
+                startDateEpoch = startDateEpoch
+            )
+            db.budgetDao().insert(budget)
+        }
+    }
+
+    fun deleteBudget(id: String) {
+        viewModelScope.launch {
+            val budget = budgets.value.find { it.id == id }
+            if (budget != null) db.budgetDao().delete(budget)
+        }
+    }
+
     fun deleteAllData() {
         viewModelScope.launch {
             db.transactionDao().let { dao ->

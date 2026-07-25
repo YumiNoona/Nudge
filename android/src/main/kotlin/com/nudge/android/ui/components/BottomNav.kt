@@ -1,33 +1,27 @@
 package com.nudge.android.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.NudgeColors
@@ -47,137 +41,145 @@ fun BottomNav(
     onFabClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val hasCenterFab = items.size % 2 != 0 && onFabClick != null
-    val centerIndex = items.size / 2
+    val density = LocalDensity.current
+
+    // Calculate the active indicator offset using spring animation
+    val activeIndex = items.indexOfFirst { it.id == activeId }.coerceAtLeast(0)
+    val itemWidth = 64.dp // approximate width per item slot
+    val indicatorOffset by animateDpAsState(
+        targetValue = itemWidth * activeIndex,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "navIndicator"
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .systemBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(50),
-            color = NudgeColors.Surface,
-            shadowElevation = 8.dp
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                items.forEachIndexed { index, item ->
-                    val isActive = item.id == activeId
-                    val isCenterSlot = hasCenterFab && index == centerIndex
-
-                    if (isCenterSlot) {
-                        Spacer(modifier = Modifier.width(56.dp))
-                    } else {
-                        NavSlot(
-                            item = item,
-                            isActive = isActive,
-                            onClick = { onSelect(item.id) }
-                        )
-                    }
-                }
-            }
-        }
-
-        if (hasCenterFab) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-20).dp)
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(NudgeColors.Purple, NudgeColors.PurpleDeep),
-                            start = Offset(0f, 0f),
-                            end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+        // Glass background using Haze
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(12.dp, RoundedCornerShape(50), ambientColor = Color.Black.copy(alpha = 0.06f))
+                .clip(RoundedCornerShape(50))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            (NudgeColors.Surface).copy(alpha = 0.85f),
+                            (NudgeColors.Surface).copy(alpha = 0.70f)
                         )
                     )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onFabClick?.invoke() }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "+",
-                    color = NudgeColors.Surface,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Light
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavSlot(
-    item: BottomNavItem,
-    isActive: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .then(
-                if (isActive) {
-                    Modifier.background(NudgeColors.Purple.copy(alpha = 0.12f))
-                } else {
-                    Modifier
-                }
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .padding(vertical = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(1.dp)
+                .padding(horizontal = 4.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box {
-                item.icon()
+            items.forEachIndexed { index, item ->
+                val isActive = item.id == activeId
+                val iconColor by animateColorAsState(
+                    targetValue = if (isActive) Color.White else NudgeColors.InkSoft,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "navIconColor"
+                )
+                val labelColor by animateColorAsState(
+                    targetValue = if (isActive) NudgeColors.Emerald else NudgeColors.InkMute,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    ),
+                    label = "navLabelColor"
+                )
 
-                if (item.badgeCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 6.dp, y = (-4).dp)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(NudgeColors.Coral),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (item.badgeCount > 99) "99+" else item.badgeCount.toString(),
-                            color = NudgeColors.Surface,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                val isCenterFab = (onFabClick != null) && (index == items.size / 2)
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    // Active emerald pill indicator — slides between items
+                    if (isActive && !isCenterFab) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = indicatorOffset)
+                                .size(48.dp, 36.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(NudgeColors.Emerald)
                         )
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                if (isCenterFab) onFabClick?.invoke()
+                                else onSelect(item.id)
+                            }
+                            .then(
+                                if (isCenterFab) Modifier
+                                    .offset(y = (-16).dp)
+                                    .size(52.dp)
+                                    .shadow(10.dp, CircleShape, ambientColor = NudgeColors.Emerald.copy(alpha = 0.3f))
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(NudgeColors.Emerald, NudgeColors.EmeraldDeep)
+                                        )
+                                    )
+                                    .padding(12.dp)
+                                else Modifier
+                            )
+                    ) {
+                        if (!isCenterFab) {
+                            item.icon()
+                            if (isActive) {
+                                Text(
+                                    item.label,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = labelColor,
+                                    maxLines = 1
+                                )
+                            }
+                        } else {
+                            item.icon()
+                        }
+
+                        // Badge
+                        if (item.badgeCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .offset(x = 4.dp, y = (-4).dp)
+                                    .size(16.dp)
+                                    .clip(CircleShape)
+                                    .background(NudgeColors.Coral),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "${item.badgeCount}",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
                     }
                 }
             }
-
-            Text(
-                text = item.label,
-                color = if (isActive) NudgeColors.Purple else NudgeColors.InkMute,
-                fontSize = 10.sp,
-                fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                textAlign = TextAlign.Center
-            )
         }
     }
 }

@@ -5,13 +5,8 @@ plugins {
 }
 
 kotlin {
-    androidTarget {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "17"
-            }
-        }
-    }
+    jvmToolchain(17)
+    androidTarget()
 
     sourceSets {
         val commonMain by getting {
@@ -32,7 +27,7 @@ kotlin {
 
 android {
     namespace = "com.nudge.shared"
-    compileSdk = 34
+    compileSdk = 36
     defaultConfig {
         minSdk = 26
     }

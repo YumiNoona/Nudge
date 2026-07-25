@@ -1,50 +1,40 @@
 package com.nudge.android.ui
 
-import android.util.Log
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlin.math.absoluteValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
+import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.NudgeHaptics
 import java.text.NumberFormat
-import java.util.Locale
-import kotlin.math.absoluteValue
+import java.util.*
 
-/**
- * Tinder-style swipe card deck for reviewing uncategorized transactions.
- * §4.3 spec: "satisfying swipe-to-categorize card UI rather than a boring list"
- *
- * - Card follows finger 1:1 with slight rotation on drag
- * - Background tints green (right swipe = categorize) or coral (left swipe = skip/dismiss)
- * - Spring-back if released in dead-zone
- * - Haptic tick at decision threshold crossing
- */
 @Composable
 fun NeedsReviewSwipeScreen(
     transactions: List<TransactionEntity>,
@@ -57,300 +47,163 @@ fun NeedsReviewSwipeScreen(
     val haptics = remember { NudgeHaptics(context) }
 
     if (transactions.isEmpty()) {
-        // Empty state — all caught up
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🎉", fontSize = 48.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "All caught up!",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NudgeColors.ContentPrimary
-                )
-                Text(
-                    "No transactions need review right now",
-                    fontSize = 14.sp,
-                    color = NudgeColors.ContentSecondary
-                )
+                Text("All caught up!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+                Text("No transactions need review right now", fontSize = 14.sp, color = NudgeColors.InkSoft)
                 Spacer(modifier = Modifier.height(16.dp))
-                TextButton(onClick = onBack) { Text("Back to home") }
+                TextButton(onClick = onBack) { Text("Back") }
             }
         }
         return
     }
 
-    // We work with the top card only
     var currentIndex by remember { mutableIntStateOf(0) }
     val currentTxn = transactions.getOrNull(currentIndex)
 
     if (currentTxn == null) {
-        // All done
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("✅", fontSize = 48.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("All reviewed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.ContentPrimary)
+                Text("All reviewed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
                 TextButton(onClick = onBack) { Text("Done") }
             }
         }
         return
     }
 
-    // Swipe state
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
-    var isAnimating by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
-    var swipedRight by remember { mutableStateOf(false) }
 
-    val screenWidth = 300.dp.value // approximate card width in px
-    val swipeThreshold = 120f // px to trigger action
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
+    val swipeThreshold = 120f
+    val rotation = (offsetX / 300f * 12f).coerceIn(-12f, 12f)
+    val bgAlpha = (offsetX.absoluteValue / swipeThreshold).coerceIn(0f, 0.15f)
+    val bgColor = if (offsetX > 0) NudgeColors.Emerald.copy(alpha = bgAlpha)
+                  else if (offsetX < 0) NudgeColors.Coral.copy(alpha = bgAlpha)
+                  else Color.Transparent
 
-    // Rotation based on drag
-    val rotation = (offsetX / screenWidth * 15f).coerceIn(-15f, 15f)
-
-    // Scale for "pressing down" feel
-    val scale = 1f - (offsetX.absoluteValue / screenWidth * 0.05f).coerceIn(0f, 0.1f)
-
-    // Background color tint based on swipe direction
-    val bgAlpha = (offsetX.absoluteValue / swipeThreshold).coerceIn(0f, 0.3f)
-    val bgColor = if (offsetX > 0) {
-        NudgeColors.Positive.copy(alpha = bgAlpha)
-    } else if (offsetX < 0) {
-        NudgeColors.Negative.copy(alpha = bgAlpha)
-    } else {
-        Color.Transparent
-    }
-
-    // Swipe hints
-    val leftHintAlpha = if (offsetX < -30f) (offsetX.absoluteValue / 80f).coerceIn(0f, 1f) else 0f
-    val rightHintAlpha = if (offsetX > 30f) (offsetX / 80f).coerceIn(0f, 1f) else 0f
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(bgColor)
-            .padding(16.dp)
-    ) {
-        // Back button
-        TextButton(
-            onClick = onBack,
-            modifier = Modifier.align(Alignment.TopStart)
-        ) {
-            Text("← Back", color = NudgeColors.ContentSecondary)
+    Box(modifier = Modifier.fillMaxSize()) {
+        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
+            Lucide.ChevronLeft(size = 18.dp, strokeWidth = 2.dp)
+            Text("Back", color = NudgeColors.InkSoft)
         }
 
-        // Progress indicator
         Text(
             "${currentIndex + 1} / ${transactions.size}",
-            modifier = Modifier.align(Alignment.TopCenter),
-            fontSize = 14.sp,
-            color = NudgeColors.ContentSecondary
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+            fontSize = 13.sp,
+            color = NudgeColors.InkMute
         )
 
         // Hints
-        if (leftHintAlpha > 0.1f) {
-            Text(
-                "← Skip",
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 24.dp),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.Negative.copy(alpha = leftHintAlpha)
-            )
-        }
-        if (rightHintAlpha > 0.1f) {
-            Text(
-                "Categorize →",
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 24.dp),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.Positive.copy(alpha = rightHintAlpha)
-            )
+        if (offsetX < -40f) Text("Skip ←", modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp).alpha(offsetX.absoluteValue / 80f), color = NudgeColors.Coral, fontWeight = FontWeight.SemiBold)
+        if (offsetX > 40f) Text("Categorize →", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).alpha(offsetX / 80f), color = NudgeColors.Emerald, fontWeight = FontWeight.SemiBold)
+
+        // Peek cards
+        if (currentIndex + 1 < transactions.size) {
+            Card(modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.7f).offset(y = 16.dp).alpha(0.3f), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)) {
+                Box(modifier = Modifier.height(140.dp))
+            }
         }
 
-        // The swipeable card
+        // Main swipe card
         Card(
             modifier = Modifier
                 .align(Alignment.Center)
-                .fillMaxWidth(0.85f)
+                .fillMaxWidth(0.82f)
                 .offset(x = offsetX.dp, y = offsetY.dp)
                 .rotate(rotation)
-                .scale(scale)
                 .pointerInput(currentTxn.id) {
                     detectHorizontalDragGestures(
-                        onDragStart = { },
                         onDragEnd = {
                             if (offsetX > swipeThreshold) {
-                                // Right swipe — show category picker
-                                swipedRight = true
                                 haptics.confirm()
                                 showCategoryPicker = true
                             } else if (offsetX < -swipeThreshold) {
-                                // Left swipe — skip/dismiss
                                 haptics.warning()
-                                isAnimating = true
                                 onDismiss(currentTxn.id)
                                 currentIndex++
-                                offsetX = 0f
-                                offsetY = 0f
-                                isAnimating = false
+                                offsetX = 0f; offsetY = 0f
                             } else {
-                                // Spring back
-                                offsetX = 0f
-                                offsetY = 0f
+                                offsetX = 0f; offsetY = 0f
                             }
                         },
-                        onDragCancel = {
-                            offsetX = 0f
-                            offsetY = 0f
-                        },
-                        onHorizontalDrag = { _, dragAmount ->
-                            if (!isAnimating && !showCategoryPicker) {
-                                offsetX += dragAmount
-                                offsetY = (dragAmount * -0.05f).coerceIn(-30f, 30f)
-                            }
+                        onDragCancel = { offsetX = 0f; offsetY = 0f },
+                        onHorizontalDrag = { _, drag ->
+                            offsetX += drag
+                            offsetY = (drag * -0.05f).coerceIn(-30f, 30f)
                         }
                     )
                 },
             shape = RoundedCornerShape(28.dp),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = (8 - (offsetX.absoluteValue / screenWidth * 4)).coerceAtLeast(2f).dp
-            ),
-            colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp)
+                modifier = Modifier.padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Amount — big and prominent
                 val amount = currentTxn.amountCents / 100.0
-                val formatted = NumberFormat.getNumberInstance(Locale.getDefault()).format(amount)
-
                 Text(
-                    "₹$formatted",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Bold,
+                    "₹${fmt.format(amount)}",
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.ExtraBold,
                     fontFamily = FontFamily.Monospace,
-                    color = if (currentTxn.type == "debit") NudgeColors.Negative else NudgeColors.Positive
+                    color = if (currentTxn.type == "debit") NudgeColors.Coral else NudgeColors.Emerald
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Merchant
-                Text(
-                    currentTxn.merchantRaw,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.ContentPrimary
-                )
-
-                // Source hint
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(currentTxn.merchantRaw, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
                 if (currentTxn.sourceRawText != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         "\"${currentTxn.sourceRawText}\"",
-                        fontSize = 13.sp,
-                        color = NudgeColors.ContentTertiary,
-                        maxLines = 3
+                        fontSize = 12.sp,
+                        color = NudgeColors.InkMute,
+                        maxLines = 3,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Confidence badge
                 if (currentTxn.confidenceScore < 0.7f) {
+                    Surface(shape = RoundedCornerShape(8.dp), color = NudgeColors.AmberBg, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Low confidence (${(currentTxn.confidenceScore * 100).toInt()}%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp, color = NudgeColors.Amber)
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                    // Skip
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = NudgeColors.Warning.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            "Low confidence (${(currentTxn.confidenceScore * 100).toInt()}%)",
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            fontSize = 11.sp,
-                            color = NudgeColors.Warning
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Quick-decision buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    // Skip button
-                    OutlinedButton(
-                        onClick = {
-                            haptics.warning()
-                            onDismiss(currentTxn.id)
-                            currentIndex++
+                        modifier = Modifier.size(52.dp).clickable {
+                            haptics.warning(); onDismiss(currentTxn.id); currentIndex++; offsetX = 0f; offsetY = 0f
                         },
-                        shape = RoundedCornerShape(16.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.Negative)
+                        shape = CircleShape,
+                        color = NudgeColors.CoralBg
                     ) {
-                        Text("Skip", color = NudgeColors.Negative)
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Lucide.X(size = 22.dp, strokeWidth = 2.dp)
+                        }
                     }
-
-                    // Categorize button
-                    Button(
-                        onClick = {
-                            haptics.confirm()
-                            showCategoryPicker = true
+                    // Categorize
+                    Surface(
+                        modifier = Modifier.size(52.dp).clickable {
+                            haptics.confirm(); showCategoryPicker = true
                         },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.AccentPrimary)
+                        shape = CircleShape,
+                        color = NudgeColors.Emerald
                     ) {
-                        Text("Categorize")
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                            Lucide.Check(size = 22.dp, strokeWidth = 2.5.dp)
+                        }
                     }
-                }
-            }
-        }
-
-        // Stack peek effect — show next cards behind
-        if (currentIndex + 1 < transactions.size) {
-            // Second card (behind)
-            Card(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.75f)
-                    .offset(y = 12.dp),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised.copy(alpha = 0.6f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Box(modifier = Modifier.height(180.dp))
-            }
-
-            // Third card (behind)
-            if (currentIndex + 2 < transactions.size) {
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .fillMaxWidth(0.65f)
-                        .offset(y = 24.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised.copy(alpha = 0.3f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                ) {
-                    Box(modifier = Modifier.height(120.dp))
                 }
             }
         }
     }
 
-    // Category picker dialog
-    if (showCategoryPicker) {
+    if (showCategoryPicker && currentTxn != null) {
         CategoryPickerDialog(
             currentTxn = currentTxn,
             categories = categories,
@@ -358,14 +211,9 @@ fun NeedsReviewSwipeScreen(
                 onCategorize(currentTxn.id, categoryId)
                 showCategoryPicker = false
                 currentIndex++
-                offsetX = 0f
-                offsetY = 0f
+                offsetX = 0f; offsetY = 0f
             },
-            onDismiss = {
-                showCategoryPicker = false
-                offsetX = 0f
-                offsetY = 0f
-            }
+            onDismiss = { showCategoryPicker = false; offsetX = 0f; offsetY = 0f }
         )
     }
 }
@@ -377,59 +225,38 @@ fun CategoryPickerDialog(
     onSelect: (categoryId: String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val expenseCategories = categories.filter { it.type == "expense" }
-    val incomeCategories = categories.filter { it.type == "income" }
-
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            val amount = currentTxn.amountCents / 100.0
             Text(
-                "Categorize ₹${NumberFormat.getNumberInstance(Locale.getDefault()).format(amount)}",
+                "Categorize ₹${fmt.format(currentTxn.amountCents / 100)}",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = NudgeColors.Ink
             )
         },
         text = {
             Column {
-                Text(
-                    currentTxn.merchantRaw,
-                    fontSize = 15.sp,
-                    color = NudgeColors.ContentSecondary
-                )
+                Text(currentTxn.merchantRaw, fontSize = 14.sp, color = NudgeColors.InkSoft)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "Select category:",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = NudgeColors.ContentSecondary
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
-                    modifier = Modifier.height(200.dp),
+                    modifier = Modifier.height(180.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val cats = expenseCategories + incomeCategories
-                    items(cats) { category ->
+                    items(categories.filter { it.type == "expense" }) { cat ->
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(NudgeColors.SurfaceBase)
-                                .clickable { onSelect(category.id) }
+                                .background(NudgeColors.Bone)
+                                .clickable { onSelect(cat.id) }
                                 .padding(8.dp)
                         ) {
-                            Text(category.icon ?: "📁", fontSize = 18.sp)
-                            Text(
-                                category.name,
-                                fontSize = 10.sp,
-                                color = NudgeColors.ContentSecondary,
-                                maxLines = 1,
-                                textAlign = TextAlign.Center
-                            )
+                            Text(cat.icon ?: "📁", fontSize = 18.sp)
+                            Text(cat.name, fontSize = 10.sp, color = NudgeColors.InkSoft, maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
                 }
@@ -437,11 +264,11 @@ fun CategoryPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = NudgeColors.ContentSecondary)
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = NudgeColors.InkSoft) }
         },
-        containerColor = NudgeColors.SurfaceRaised,
-        shape = RoundedCornerShape(28.dp)
+        containerColor = NudgeColors.Surface,
+        shape = RoundedCornerShape(24.dp)
     )
 }
+
+private fun Modifier.alpha(a: Float): Modifier = this.then(Modifier.graphicsLayer { alpha = a })
