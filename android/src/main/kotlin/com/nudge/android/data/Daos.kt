@@ -35,8 +35,14 @@ interface CategoryDao {
 
 @Dao
 interface AccountDao {
-    @Query("SELECT * FROM accounts WHERE is_active = 1 ORDER BY name ASC")
+    @Query("SELECT * FROM accounts WHERE is_active = 1 ORDER BY is_default DESC, name ASC")
     fun getAll(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE is_archived = 0 ORDER BY is_default DESC, name ASC")
+    fun getActive(): Flow<List<AccountEntity>>
+
+    @Query("SELECT * FROM accounts WHERE is_archived = 1 ORDER BY name ASC")
+    fun getArchived(): Flow<List<AccountEntity>>
 
     @Query("SELECT COUNT(*) FROM accounts")
     suspend fun count(): Int
@@ -55,6 +61,18 @@ interface AccountDao {
 
     @Delete
     suspend fun delete(account: AccountEntity)
+
+    @Query("UPDATE accounts SET is_default = 0")
+    suspend fun clearDefault()
+
+    @Query("UPDATE accounts SET is_default = 1 WHERE id = :id")
+    suspend fun setDefault(id: String)
+
+    @Query("UPDATE accounts SET is_archived = 1 WHERE id = :id")
+    suspend fun archive(id: String)
+
+    @Query("UPDATE accounts SET is_archived = 0 WHERE id = :id")
+    suspend fun restore(id: String)
 }
 
 @Dao

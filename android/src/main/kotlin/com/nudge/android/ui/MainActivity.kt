@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,8 +28,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nudge.android.service.NudgeNotificationListener
-import com.nudge.android.ui.components.BottomNav
-import com.nudge.android.ui.components.BottomNavItem
+import com.nudge.android.ui.components.BottomDock
+import com.nudge.android.ui.components.BNavItem
 import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.NudgeTheme
@@ -48,10 +49,23 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainNavHost(viewModel, isDark) { new ->
-                        isDark = new
-                        applicationContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-                            .edit().putBoolean("dark_mode", new).apply()
+                    val onboardingDone = applicationContext
+                        .getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
+                        .getBoolean("onboarding_complete", false)
+
+                    if (!onboardingDone) {
+                        OnboardingScreen(onDone = {
+                            applicationContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
+                                .edit().putBoolean("onboarding_complete", true).apply()
+                            // Force recomposition — setContent will re-render with onboardingDone=true
+                            recreate()
+                        })
+                    } else {
+                        MainNavHost(viewModel, isDark) { new ->
+                            isDark = new
+                            applicationContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
+                                .edit().putBoolean("dark_mode", new).apply()
+                        }
                     }
                 }
             }
@@ -59,7 +73,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class NavScreen { Home, Review, More, Achievements, Challenges, Goals, Subscriptions, Charts, Budget, Envelope, Backup, Sync, Permissions }
+enum class NavScreen { Home, Review, More, Achievements, Challenges, Goals, Subscriptions, Charts, Budget, Envelope, Backup, Sync, Permissions, Accounts }
 
 @Composable
 fun MainNavHost(
@@ -127,12 +141,21 @@ fun MainNavHost(
                     smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED,
                     onBack = { current = NavScreen.Home },
                     onNavigate = { current = it },
+                    onNavigateToAccounts = { current = NavScreen.Accounts },
                     onRequestSms = {
                         smsPermissionLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
                     },
                     onOpenNotificationSettings = {
                         context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                     }
+                )
+                NavScreen.Accounts -> ManageAccountsScreen(
+                    accounts = accounts,
+                    transactions = transactions,
+                    onAdd = { viewModel.addAccount(it.name, com.nudge.model.AccountType.valueOf(it.accountType.uppercase()), it.bankName, it.last4Digits) },
+                    onUpdate = { /* update logic */ },
+                    onDelete = { /* delete logic */ },
+                    onBack = { current = NavScreen.More }
                 )
                 NavScreen.Achievements -> AchievementsScreen(
                     gamificationProfile = viewModel.gamificationProfile.value,
@@ -193,12 +216,12 @@ fun MainNavHost(
 
         // Bottom nav dock
         if (showBottomNav) {
-            BottomNav(
+            BottomDock(
                 items = listOf(
-                    BottomNavItem("home", { Lucide.Home(size = 20.dp, strokeWidth = 2.dp) }, "Home"),
-                    BottomNavItem("add",  { Lucide.Plus(size = 20.dp, strokeWidth = 2.5.dp) }, ""),
-                    BottomNavItem("review", { Lucide.ListTodo(size = 20.dp, strokeWidth = 2.dp) }, "Review", needsReviewCount),
-                    BottomNavItem("more", { Lucide.Menu(size = 20.dp, strokeWidth = 2.dp) }, "More"),
+                    BNavItem("home", { c -> Lucide.Home(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "Home"),
+                    BNavItem("add",  { c -> Lucide.Plus(size = 22.dp, strokeWidth = 2.5.dp, color = c) }, ""),
+                    BNavItem("review", { c -> Lucide.ListTodo(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "Review", needsReviewCount),
+                    BNavItem("more", { c -> Lucide.Menu(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "More"),
                 ),
                 activeId = when (current) {
                     NavScreen.Home -> "home"
@@ -207,11 +230,10 @@ fun MainNavHost(
                     else -> "home"
                 },
                 onSelect = { id ->
-                    current = when (id) {
-                        "home" -> NavScreen.Home
-                        "review" -> NavScreen.Review
-                        "more" -> NavScreen.More
-                        else -> return@BottomNav
+                    when (id) {
+                        "home" -> current = NavScreen.Home
+                        "review" -> current = NavScreen.Review
+                        "more" -> current = NavScreen.More
                     }
                 },
                 onFabClick = { showAddSheet = true },
@@ -221,7 +243,14 @@ fun MainNavHost(
     }
 
     // Add transaction modal sheet — available from anywhere via bottom nav FAB
-    if (showAddSheet) {
+    AnimatedVisibility(
+        visible = showAddSheet,
+        enter = slideInVertically(
+            initialOffsetY = { it },
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
+        ) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+    ) {
         AddTransactionSheet(
             categories = categories,
             accounts = accounts,

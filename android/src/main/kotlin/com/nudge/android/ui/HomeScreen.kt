@@ -1,10 +1,13 @@
 package com.nudge.android.ui
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -12,16 +15,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
+import com.nudge.android.data.GamificationProfileEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.engine.GamificationMath
 import java.text.NumberFormat
 import java.util.*
 
@@ -210,6 +220,19 @@ fun HomeScreen(
                 }
             }
 
+            // ── Widgets row ──
+            item {
+                HomeWidgetsRow(
+                    streakDays = gamification?.currentStreakDays ?: 0,
+                    spend = spend,
+                    income = income,
+                    categories = categories,
+                    transactions = monthTxns,
+                    gamification = gamification,
+                    surface = surface
+                )
+            }
+
             // ── 4. Review callout (if pending) ──
             if (needsReviewCount > 0) {
                 item {
@@ -331,6 +354,112 @@ private fun StatCard(
                 fontFamily = FontFamily.Monospace,
                 color = tint
             )
+        }
+    }
+}
+
+// ─── Home Widgets Row ─────────────────────────────────────────
+
+@Composable
+private fun HomeWidgetsRow(
+    streakDays: Int,
+    spend: Long,
+    income: Long,
+    categories: List<CategoryEntity>,
+    transactions: List<TransactionEntity>,
+    gamification: GamificationProfileEntity?,
+    surface: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Streak widget
+        WidgetCard(surface) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Lucide.Flame(size = 22.dp, strokeWidth = 1.8.dp, color = NudgeColors.Coral)
+                Column {
+                    Text("${streakDays}d", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = NudgeColors.Ink)
+                    Text("streak", fontSize = 10.sp, color = NudgeColors.InkMute)
+                }
+            }
+        }
+
+        // Monthly ring widget
+        WidgetCard(surface) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val totalBudget = 0L // placeholder
+                val progress = if (totalBudget > 0) (spend.toFloat() / totalBudget).coerceIn(0f, 1f) else 0.5f
+                AnimatedRing(progress, NudgeColors.Emerald)
+                Text("${(progress * 100).toInt()}%", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+                Text("of budget", fontSize = 10.sp, color = NudgeColors.InkMute)
+            }
+        }
+
+        // Category leaderboard
+        WidgetCard(surface) {
+            val topCats = transactions
+                .filter { it.type == "debit" }
+                .groupBy { it.categoryId }
+                .mapValues { (_, txns) -> txns.sumOf { it.amountCents } }
+                .entries
+                .sortedByDescending { it.value }
+                .take(3)
+            Column {
+                Text("Top categories", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Ink)
+                Spacer(Modifier.height(6.dp))
+                topCats.forEach { (catId, spent) ->
+                    val cat = categories.find { it.id == catId }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(NudgeColors.CatBlue))
+                        Text(cat?.name ?: "Other", fontSize = 10.sp, color = NudgeColors.InkSoft, modifier = Modifier.width(60.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text("₹${NumberFormat.getNumberInstance(Locale.getDefault()).format(spent / 100)}", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, fontFamily = FontFamily.Monospace, color = NudgeColors.Ink)
+                    }
+                }
+            }
+        }
+
+        // XP widget
+        if (gamification != null) {
+            WidgetCard(surface) {
+                Column {
+                    Text("Level ${gamification.level}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Ink)
+                    Spacer(Modifier.height(4.dp))
+                    val xpProgress = GamificationMath.levelProgress(gamification.xpTotal)
+                    Box(Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(NudgeColors.EmeraldBg)) {
+                        Box(Modifier.fillMaxWidth(xpProgress).fillMaxHeight().background(NudgeColors.Emerald))
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("${gamification.xpTotal} XP", fontSize = 12.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = NudgeColors.Emerald)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WidgetCard(surface: Color, content: @Composable () -> Unit) {
+    Card(
+        modifier = Modifier.width(140.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = surface)
+    ) {
+        Box(Modifier.padding(14.dp)) { content() }
+    }
+}
+
+@Composable
+private fun AnimatedRing(progress: Float, color: Color) {
+    val animProgress by animateFloatAsState(progress, tween(600), label = "ring")
+    Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val stroke = 5.dp.toPx()
+            val topLeft = Offset(stroke / 2, stroke / 2)
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(Color.LightGray.copy(alpha = 0.2f), 0f, 360f, false, topLeft = topLeft, size = arcSize, style = Stroke(width = stroke, cap = StrokeCap.Round))
+            drawArc(color, -90f, animProgress * 360f, false, topLeft = topLeft, size = arcSize, style = Stroke(width = stroke, cap = StrokeCap.Round))
         }
     }
 }

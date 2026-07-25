@@ -17,12 +17,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
@@ -147,7 +149,7 @@ fun AddTransactionSheet(
                             .clickable { selectedCategoryId = cat.id }
                             .padding(8.dp)
                     ) {
-                        Text(cat.icon ?: "📁", fontSize = 16.sp)
+                        CategoryIcon(cat.name, if (isSel) NudgeColors.Emerald else NudgeColors.InkSoft, 16.dp)
                         Text(cat.name, fontSize = 9.sp, color = if (isSel) NudgeColors.Emerald else NudgeColors.InkSoft, maxLines = 1, textAlign = TextAlign.Center)
                     }
                 }
@@ -163,7 +165,13 @@ fun AddTransactionSheet(
                 val isSel = selectedAccountId == a.id
                 FilterChip(
                     selected = isSel, onClick = { selectedAccountId = a.id },
-                    label = { Text(a.name, fontSize = 12.sp) },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AccountTypeIcon(a.accountType, if (isSel) NudgeColors.Emerald else NudgeColors.InkSoft, 12.dp)
+                            Spacer(Modifier.width(4.dp))
+                            Text(a.name, fontSize = 12.sp)
+                        }
+                    },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = NudgeColors.EmeraldBg,
                         selectedLabelColor = NudgeColors.Emerald
@@ -196,4 +204,43 @@ fun AddTransactionSheet(
             Text("Add ${if (selectedType == TransactionType.DEBIT) "Expense" else "Income"}", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
+}
+
+@Composable
+private fun CategoryIcon(name: String, tint: Color, size: Dp = 18.dp) {
+    val icon = when {
+        name.contains("Food", true) || name.contains("Dining", true) -> { @Composable { Lucide.ShoppingCart(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Transport", true) -> { @Composable { Lucide.ChevronRight(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Groceries", true) -> { @Composable { Lucide.ShoppingCart(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Shopping", true) -> { @Composable { Lucide.ShoppingCart(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Entertainment", true) -> { @Composable { Lucide.Sparkles(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Utilities", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Rent", true) || name.contains("Housing", true) -> { @Composable { Lucide.Home(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Health", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Education", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Subscription", true) -> { @Composable { Lucide.Bell(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Travel", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Personal", true) -> { @Composable { Lucide.User(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Gift", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Invest", true) -> { @Composable { Lucide.TrendingUp(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Salary", true) || name.contains("Income", true) -> { @Composable { Lucide.Wallet(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Freelance", true) -> { @Composable { Lucide.User(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Interest", true) -> { @Composable { Lucide.TrendingUp(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        name.contains("Refund", true) -> { @Composable { Lucide.RefreshCw(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        else -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+    }
+    icon()
+}
+
+@Composable
+private fun AccountTypeIcon(accountType: String, tint: Color, size: Dp = 14.dp) {
+    val icon = when {
+        accountType.contains("cash", true) -> { @Composable { Lucide.Wallet(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        accountType.contains("savings", true) -> { @Composable { Lucide.Home(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        accountType.contains("credit_card", true) || accountType.contains("debit_card", true) || accountType.contains("card", true) -> { @Composable { Lucide.CreditCard(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        accountType.contains("upi", true) -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        accountType.contains("wallet", true) -> { @Composable { Lucide.Wallet(size = size, strokeWidth = 1.6.dp, color = tint) } }
+        else -> { @Composable { Lucide.Tag(size = size, strokeWidth = 1.6.dp, color = tint) } }
+    }
+    icon()
 }

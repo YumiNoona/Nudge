@@ -100,6 +100,14 @@ dependencies {
     // Haze — backdrop blur
     implementation("dev.chrisbanes.haze:haze:1.7.2")
 
+    // ML Kit — on-device text recognition (receipt scanning)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
+
+    // CameraX — receipt capture
+    implementation("androidx.camera:camera-camera2:1.3.4")
+    implementation("androidx.camera:camera-lifecycle:1.3.4")
+    implementation("androidx.camera:camera-view:1.3.4")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

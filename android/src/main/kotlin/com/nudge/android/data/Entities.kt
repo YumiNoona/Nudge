@@ -7,11 +7,14 @@ data class AccountEntity(
     @PrimaryKey val id: String,
     @ColumnInfo(name = "name") val name: String,
     @ColumnInfo(name = "bank_name") val bankName: String?,
-    @ColumnInfo(name = "account_type") val accountType: String, // AccountType name
+    @ColumnInfo(name = "account_type") val accountType: String,
     @ColumnInfo(name = "last4_digits") val last4Digits: String?,
     @ColumnInfo(name = "color") val color: String?,
-    @ColumnInfo(name = "icon") val icon: String?,
-    @ColumnInfo(name = "is_active") val isActive: Boolean = true
+    @ColumnInfo(name = "icon") val icon: String? = null,
+    @ColumnInfo(name = "is_active") val isActive: Boolean = true,
+    @ColumnInfo(name = "is_default") val isDefault: Boolean = false,
+    @ColumnInfo(name = "is_archived") val isArchived: Boolean = false,
+    @ColumnInfo(name = "balance_cents") val balanceCents: Long? = null
 )
 
 @Entity(tableName = "categories")

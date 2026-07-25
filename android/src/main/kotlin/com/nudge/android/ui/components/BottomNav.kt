@@ -3,7 +3,6 @@ package com.nudge.android.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,154 +16,119 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.NudgeColors
 
-data class BottomNavItem(
+data class BNavItem(
     val id: String,
-    val icon: @Composable () -> Unit,
+    val icon: @Composable (Color) -> Unit,
     val label: String,
     val badgeCount: Int = 0
 )
 
 @Composable
-fun BottomNav(
-    items: List<BottomNavItem>,
+fun BottomDock(
+    items: List<BNavItem>,
     activeId: String,
     onSelect: (String) -> Unit,
     onFabClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val density = LocalDensity.current
-
-    // Calculate the active indicator offset using spring animation
     val activeIndex = items.indexOfFirst { it.id == activeId }.coerceAtLeast(0)
-    val itemWidth = 64.dp // approximate width per item slot
-    val indicatorOffset by animateDpAsState(
-        targetValue = itemWidth * activeIndex,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium
-        ),
-        label = "navIndicator"
+    val slotWidth = 64.dp
+
+    val indicatorX by animateDpAsState(
+        targetValue = slotWidth * activeIndex,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "navSlide"
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        // Glass background using Haze
+    Box(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
+        // Track — frosted pill
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(12.dp, RoundedCornerShape(50), ambientColor = Color.Black.copy(alpha = 0.06f))
+                .height(56.dp)
+                .shadow(16.dp, RoundedCornerShape(50), spotColor = Color.Black.copy(alpha = 0.08f))
                 .clip(RoundedCornerShape(50))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            (NudgeColors.Surface).copy(alpha = 0.85f),
-                            (NudgeColors.Surface).copy(alpha = 0.70f)
-                        )
-                    )
-                )
-                .padding(horizontal = 4.dp, vertical = 6.dp),
+                .background(Color.White.copy(alpha = 0.88f))
+                .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            items.forEachIndexed { index, item ->
-                val isActive = item.id == activeId
-                val iconColor by animateColorAsState(
-                    targetValue = if (isActive) Color.White else NudgeColors.InkSoft,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "navIconColor"
-                )
-                val labelColor by animateColorAsState(
-                    targetValue = if (isActive) NudgeColors.Emerald else NudgeColors.InkMute,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessMedium
-                    ),
-                    label = "navLabelColor"
+            items.forEachIndexed { i, item ->
+                val isFab = onFabClick != null && i == items.size / 2
+                val active = item.id == activeId
+
+                val tint by animateColorAsState(
+                    if (active && !isFab) NudgeColors.Emerald
+                    else if (isFab) Color.White
+                    else Color(0xFF444444),
+                    label = "navTint"
                 )
 
-                val isCenterFab = (onFabClick != null) && (index == items.size / 2)
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Active emerald pill indicator — slides between items
-                    if (isActive && !isCenterFab) {
-                        Box(
-                            modifier = Modifier
-                                .offset(x = indicatorOffset)
-                                .size(48.dp, 36.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(NudgeColors.Emerald)
-                        )
+                if (isFab) {
+                    // Raised center FAB
+                    Box(
+                        modifier = Modifier
+                            .offset(y = (-14).dp)
+                            .size(48.dp)
+                            .shadow(10.dp, CircleShape, spotColor = NudgeColors.Emerald.copy(alpha = 0.35f))
+                            .clip(CircleShape)
+                            .background(NudgeColors.Emerald)
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onFabClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        item.icon(tint)
                     }
-
+                } else {
+                    // Normal slot
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier
+                            .weight(1f)
                             .clickable(
                                 indication = null,
                                 interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                if (isCenterFab) onFabClick?.invoke()
-                                else onSelect(item.id)
-                            }
-                            .then(
-                                if (isCenterFab) Modifier
-                                    .offset(y = (-16).dp)
-                                    .size(52.dp)
-                                    .shadow(10.dp, CircleShape, ambientColor = NudgeColors.Emerald.copy(alpha = 0.3f))
-                                    .clip(CircleShape)
-                                    .background(
-                                        Brush.linearGradient(
-                                            colors = listOf(NudgeColors.Emerald, NudgeColors.EmeraldDeep)
-                                        )
-                                    )
-                                    .padding(12.dp)
-                                else Modifier
-                            )
+                            ) { onSelect(item.id) }
                     ) {
-                        if (!isCenterFab) {
-                            item.icon()
-                            if (isActive) {
-                                Text(
-                                    item.label,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = labelColor,
-                                    maxLines = 1
-                                )
-                            }
-                        } else {
-                            item.icon()
+                        // Active pill behind icon
+                        if (active) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = indicatorX - slotWidth * i)
+                                    .size(48.dp, 32.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(NudgeColors.Emerald.copy(alpha = 0.15f))
+                            )
                         }
+
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                            item.icon(tint)
+                        }
+
+                        // Label
+                        Text(
+                            item.label,
+                            fontSize = 9.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                            color = if (active) NudgeColors.Emerald else Color(0xFF666666),
+                            maxLines = 1
+                        )
 
                         // Badge
                         if (item.badgeCount > 0) {
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.End)
-                                    .offset(x = 4.dp, y = (-4).dp)
                                     .size(16.dp)
+                                    .offset(x = 10.dp, y = (-28).dp)
                                     .clip(CircleShape)
                                     .background(NudgeColors.Coral),
                                 contentAlignment = Alignment.Center
