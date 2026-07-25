@@ -14,14 +14,20 @@ import ChallengesScreen from './components/ChallengesScreen';
 import SavingsGoalsScreen from './components/SavingsGoalsScreen';
 import CSVImportScreen from './components/CSVImportScreen';
 import BackupScreen from './components/BackupScreen';
+import SyncSettingsScreen from './components/SyncSettingsScreen';
+import Onboarding from './components/Onboarding';
+import ProfileScreen from './components/ProfileScreen';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   IconLayoutDashboard, IconChecklist, IconChartBar, IconTrophy, IconTarget,
   IconPigMoney, IconFileImport, IconDatabase, IconTag, IconPlus,
-  IconSun, IconMoon, IconFlame, IconWallet,
+  IconSun, IconMoon, IconFlame, IconWallet, IconUser,
 } from './lib/icons';
+import { GradientHeroCard } from './components/ui/GradientHeroCard';
+import { RingStatCard } from './components/ui/RingStatCard';
+import { TransactionRow } from './components/ui/TransactionRow';
 
-type Tab = 'dashboard' | 'review' | 'analytics' | 'achievements' | 'challenges' | 'goals' | 'csv' | 'backup' | 'merchants';
+type Tab = 'dashboard' | 'review' | 'analytics' | 'profile' | 'achievements' | 'challenges' | 'goals' | 'csv' | 'backup' | 'merchants' | 'sync';
 
 const NAV_ITEMS: { id: Tab; label: string; icon: typeof IconLayoutDashboard; section?: string }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IconLayoutDashboard, section: 'Main' },
@@ -40,8 +46,18 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [tab, setTab] = useState<Tab>('dashboard');
   const [mobileNav, setMobileNav] = useState(false);
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem('nudge_onboarded') === '1');
+  const [profileName, setProfileName] = useState(() => localStorage.getItem('nudge_profile_name') || 'Friend');
 
   useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
+
+  useEffect(() => {
+    const navigate = (event: Event) => setTab((event as CustomEvent<Tab>).detail);
+    window.addEventListener('nudge-nav', navigate);
+    return () => window.removeEventListener('nudge-nav', navigate);
+  }, []);
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [tab, onboarded]);
 
   useEffect(() => {
     initSecureStorage().then(() => {
@@ -84,6 +100,16 @@ export default function App() {
     await db.merchantAliases.add({ id: generateId(), rawPattern, normalizedName, suggestedCategoryId: null, createdAt: Date.now() });
   };
   const handleDeleteAlias = async (id: string) => { await db.merchantAliases.delete(id); };
+
+  const completeOnboarding = ({ name, theme }: { name: string; currency: string; theme: 'system' | 'light' | 'dark' }) => {
+    localStorage.setItem('nudge_onboarded', '1');
+    localStorage.setItem('nudge_profile_name', name);
+    setProfileName(name);
+    if (theme !== 'system') setDark(theme === 'dark');
+    setOnboarded(true);
+  };
+
+  if (!onboarded) return <Onboarding onComplete={completeOnboarding} />;
 
   // --- Sidebar ---
   const sidebar = (
@@ -162,9 +188,9 @@ export default function App() {
   const screenProps = { transactions, categories, accounts, budgets, merchantAliases, gamification, needsReviewCount };
 
   return (
-    <div className="min-h-screen bg-surface-base flex">
+    <div className="min-h-screen app-canvas flex">
       {/* Desktop sidebar */}
-      <div className="hidden lg:block">{sidebar}</div>
+      <div className="hidden">{sidebar}</div>
 
       {/* Mobile overlay */}
       <AnimatePresence>
@@ -185,23 +211,18 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-screen pb-28">
         {/* Mobile header */}
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-content-tertiary/10 bg-surface-base/90 backdrop-blur-sm sticky top-0 z-30">
-          <button onClick={() => setMobileNav(true)} className="p-1.5 -ml-1.5 rounded-lg hover:bg-surface-raised text-content-secondary">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-          </button>
+        <header className="app-header flex items-center justify-between px-5 py-4 sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-[#FF6B5B] flex items-center justify-center"><IconWallet size={14} className="text-white" /></div>
-            <span className="font-semibold text-content-primary">Nudge</span>
+            <span className="font-bold text-content-primary tracking-tight">Nudge</span>
           </div>
-          <button onClick={() => setDark(!dark)} className="p-1.5 rounded-lg hover:bg-surface-raised text-content-secondary">
-            {dark ? <IconSun size={18} /> : <IconMoon size={18} />}
-          </button>
+          <button onClick={() => setTab('profile')} className="header-avatar" aria-label="Open profile">{profileName.slice(0, 1).toUpperCase()}</button>
         </header>
 
         {/* Screen content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1">
           {tab !== 'dashboard' && (
             <div className="p-4 lg:p-6">
               {tab === 'review' && <NeedsReviewScreen onBack={() => setTab('dashboard')} />}
@@ -215,13 +236,41 @@ export default function App() {
               }} />}
               {tab === 'backup' && <BackupScreen onBack={() => setTab('dashboard')} />}
               {tab === 'merchants' && <MerchantAliasScreen aliases={merchantAliases} onAdd={handleAddAlias} onDelete={handleDeleteAlias} onBack={() => setTab('dashboard')} />}
+              {tab === 'sync' && <SyncSettingsScreen onBack={() => setTab('profile')} />}
+              {tab === 'profile' && <ProfileScreen name={profileName} dark={dark} level={gamification?.level ?? 1} xp={gamification?.xpTotal ?? 0} onToggleTheme={() => setDark(!dark)} onNavigate={setTab} onResetOnboarding={() => { localStorage.removeItem('nudge_onboarded'); setOnboarded(false); }} />}
             </div>
           )}
 
           {tab === 'dashboard' && <DashboardView {...screenProps} onAddTransaction={handleAddTransaction} showAddModal={showAddModal} setShowAddModal={setShowAddModal} />}
         </div>
       </div>
+      <FloatingDock tab={tab} reviewCount={needsReviewCount} onNavigate={setTab} onAdd={() => { setTab('dashboard'); setShowAddModal(true); }} />
     </div>
+  );
+}
+
+function FloatingDock({ tab, reviewCount, onNavigate, onAdd }: { tab: Tab; reviewCount: number; onNavigate: (tab: Tab) => void; onAdd: () => void }) {
+  const items = [
+    ['dashboard', 'Home', IconLayoutDashboard],
+    ['review', 'Review', IconChecklist],
+    ['add', 'Add', IconPlus],
+    ['analytics', 'Insights', IconChartBar],
+    ['profile', 'Profile', IconUser],
+  ] as const;
+  return (
+    <nav className="floating-dock" aria-label="Primary navigation">
+      {items.map(([id, label, Icon]) => {
+        const active = id !== 'add' && tab === id;
+        if (id === 'add') return <button key={id} onClick={onAdd} className="dock-add" aria-label="Add transaction"><Icon size={23} stroke={2.2} /><span>{label}</span></button>;
+        return (
+          <button key={id} onClick={() => onNavigate(id)} className={active ? 'active' : ''}>
+            {active && <motion.span layoutId="dock-active" className="dock-active-bg" transition={{ type: 'spring', stiffness: 420, damping: 32 }} />}
+            <Icon size={20} stroke={active ? 2.1 : 1.6} /><span>{label}</span>
+            {id === 'review' && reviewCount > 0 && <b className="dock-badge">{reviewCount}</b>}
+          </button>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -233,149 +282,137 @@ function DashboardView(props: {
   onAddTransaction: (a: number, t: TransactionType, m: string, ac: string, c: string | null, n: string | null) => void;
   showAddModal: boolean; setShowAddModal: (v: boolean) => void;
 }) {
-  const { transactions, categories, gamification, needsReviewCount, showAddModal, setShowAddModal, onAddTransaction, accounts } = props;
-  const thisMonth = new Date().getMonth();
-  const thisYear = new Date().getFullYear();
+  const { transactions, categories, gamification, needsReviewCount, showAddModal, setShowAddModal, onAddTransaction, accounts, budgets } = props;
+
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const username = gamification ? `Lv.${gamification.level} · ${levelTitle(gamification.level)}` : '';
+
   const monthTxns = transactions.filter(t => {
     const d = new Date(t.timestampEpoch);
     return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
   });
   const spend = monthTxns.filter(t => t.type === 'debit').reduce((s, t) => s + t.amountCents, 0);
-  const income = monthTxns.filter(t => t.type === 'credit').reduce((s, t) => s + t.amountCents, 0);
 
-  // Weekly breakdown for mini chart
-  const weekLabels = ['W1', 'W2', 'W3', 'W4'];
-  const weekData = [0, 1, 2, 3].map(w => {
-    const start = new Date(thisYear, thisMonth, w * 7 + 1).getTime();
-    const end = new Date(thisYear, thisMonth, (w + 1) * 7 + 1).getTime();
-    return monthTxns.filter(t => t.type === 'debit' && t.timestampEpoch >= start && t.timestampEpoch < end).reduce((s, t) => s + t.amountCents, 0);
+  const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const lastYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+  const lastMonthTxns = transactions.filter(t => {
+    const d = new Date(t.timestampEpoch);
+    return d.getMonth() === lastMonth && d.getFullYear() === lastYear;
   });
-  const maxWeek = Math.max(...weekData, 1);
+  const lastMonthSpend = lastMonthTxns.filter(t => t.type === 'debit').reduce((s, t) => s + t.amountCents, 0);
+
+  let delta: string | undefined;
+  let deltaDown = false;
+  if (lastMonthSpend > 0) {
+    const pct = Math.abs(Math.round(((spend - lastMonthSpend) / lastMonthSpend) * 100));
+    if (spend < lastMonthSpend) {
+      delta = `${pct}%`;
+      deltaDown = false;
+    } else if (spend > lastMonthSpend) {
+      delta = `${pct}%`;
+      deltaDown = true;
+    }
+  }
+
+  const expenseCategories = categories.filter(c => c.type === 'expense').slice(0, 5);
+
+  const expenseCategoryStats = expenseCategories.map(cat => {
+    const spentInCategory = monthTxns.filter(t => t.type === 'debit' && t.categoryId === cat.id).reduce((s, t) => s + t.amountCents, 0);
+    const budget = budgets.find((b: any) => b.categoryId === cat.id);
+    const budgetAmt = budget?.amountCents || cat.monthlyBudgetCents || 0;
+    const progress = budgetAmt > 0 ? Math.min(100, Math.max(0, Math.round((spentInCategory / budgetAmt) * 100))) : 0;
+    const color: 'green' | 'amber' | 'coral' = progress < 50 ? 'green' : progress < 80 ? 'amber' : 'coral';
+    return { cat, spentInCategory, budgetAmt, progress, color };
+  });
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 max-w-4xl mx-auto">
-      {/* Greeting + quick stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <p className="text-sm text-content-secondary">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}</p>
-          <h2 className="text-2xl font-bold text-content-primary">Your wallet</h2>
-        </div>
+    <div className="p-4 lg:p-8 space-y-5 max-w-4xl mx-auto">
+      {/* 1. Greeting row */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-ink-mute">Good {greeting}</p>
         {gamification && (
-          <div className="flex items-center gap-3 px-4 py-2.5 bg-surface-raised rounded-xl border border-content-tertiary/10">
-            <div className="w-9 h-9 rounded-lg bg-[#FFE8E4] flex items-center justify-center">
-              <IconFlame size={18} className="text-[#FF6B5B]" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-content-primary">{gamification.currentStreakDays}d streak</div>
-              <div className="text-xs text-content-secondary">Level {gamification.level} · {levelTitle(gamification.level)}</div>
-            </div>
-          </div>
+          <p className="text-sm text-ink-1">{username}</p>
         )}
       </div>
 
-      {/* Big spend + income cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2 bg-surface-raised rounded-2xl p-6 border border-content-tertiary/5" style={{ boxShadow: 'var(--shadow-md)' }}>
-          <p className="text-xs font-semibold text-content-tertiary uppercase tracking-wider mb-1">Spent this month</p>
-          <motion.p
-            key={spend}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl font-bold font-mono tabular-nums text-content-primary"
-          >
-            ₹{formatAmount(spend)}
-          </motion.p>
-          <div className="flex items-end gap-1 mt-4 h-16">
-            {weekData.map((v, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <motion.div
-                  initial={{ height: 0 }}
-                  animate={{ height: `${(v / maxWeek) * 48}px` }}
-                  transition={{ duration: 0.6, delay: i * 0.1 }}
-                  className="w-full max-w-[32px] bg-[#FF6B5B] rounded-md opacity-80"
-                />
-                <span className="text-micro text-content-tertiary">{weekLabels[i]}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="bg-surface-raised rounded-2xl p-6 border border-content-tertiary/5 flex flex-col justify-center" style={{ boxShadow: 'var(--shadow-md)' }}>
-          <p className="text-xs font-semibold text-content-tertiary uppercase tracking-wider mb-1">Income</p>
-          <p className="text-3xl font-bold font-mono tabular-nums text-[#7CB69E]">₹{formatAmount(income)}</p>
-          <p className="text-xs text-content-tertiary mt-2">
-            {spend > income ? `−${formatAmount(spend - income)} net` : `+${formatAmount(income - spend)} net`}
-          </p>
-        </div>
-      </div>
+      {/* 2. GradientHeroCard */}
+      <GradientHeroCard
+        value={`₹${formatAmount(spend)}`}
+        label="Spent this month"
+        delta={delta}
+        deltaDown={delta ? deltaDown : undefined}
+        pills={[
+          { label: 'Add income', onClick: () => setShowAddModal(true) },
+          { label: 'View budget', onClick: () => {} },
+        ]}
+      />
 
-      {/* Needs review callout */}
+      {/* 3. RingStatCard row */}
+      {expenseCategoryStats.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+          {expenseCategoryStats.map(({ cat, spentInCategory, budgetAmt, progress, color }) => (
+            <RingStatCard
+              key={cat.id}
+              progress={progress}
+              label={cat.name}
+              subtext={budgetAmt > 0 ? `₹${formatAmount(spentInCategory)} / ₹${formatAmount(budgetAmt)}` : `₹${formatAmount(spentInCategory)}`}
+              icon={cat.icon || undefined}
+              color={color}
+              size="sm"
+            />
+          ))}
+        </div>
+      )}
+
+      {/* 4. Needs review callout */}
       {needsReviewCount > 0 && (
         <motion.button
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
-          onClick={() => {
-            const ev = new CustomEvent('nudge-nav', { detail: 'review' });
-            window.dispatchEvent(ev);
-          }}
-          className="w-full flex items-center gap-4 p-4 bg-[#FFF3E4] rounded-2xl border border-[#F4A261]/20 text-left"
+          onClick={() => window.dispatchEvent(new CustomEvent('nudge-nav', { detail: 'review' }))}
+          className="w-full flex items-center gap-3 p-4 rounded-card bg-amber-bg text-left"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#F4A261]/20 flex items-center justify-center flex-shrink-0">
-            <IconChecklist size={20} className="text-[#F4A261]" />
-          </div>
+          <IconChecklist size={20} className="text-amber-1" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-[#A66B2A]">{needsReviewCount} transaction{needsReviewCount > 1 ? 's' : ''} need review</p>
-            <p className="text-xs text-[#C49050]">Swipe to categorize and earn XP</p>
+            <p className="text-sm font-semibold text-amber-1">{needsReviewCount} transaction{needsReviewCount > 1 ? 's' : ''} need review</p>
+            <p className="text-xs text-amber-1/70">Swipe to categorize and earn XP →</p>
           </div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A66B2A" strokeWidth="2" strokeLinecap="round"><path d="M5 12h14M13 18l6-6M13 6l6 6"/></svg>
         </motion.button>
       )}
 
-      {/* Recent transactions */}
-      <div className="bg-surface-raised rounded-2xl border border-content-tertiary/5 overflow-hidden" style={{ boxShadow: 'var(--shadow-sm)' }}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-content-tertiary/5">
-          <h3 className="text-sm font-semibold text-content-primary">Recent transactions</h3>
-          <span className="text-xs text-content-tertiary">{transactions.length} total</span>
-        </div>
+      {/* 5. Recent activity */}
+      <div>
+        <h3 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-3">Recent activity</h3>
         {transactions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-surface-base flex items-center justify-center">
-              <IconWallet size={26} className="text-content-tertiary" />
-            </div>
-            <p className="text-sm font-medium text-content-secondary">No transactions yet</p>
-            <p className="text-xs text-content-tertiary">Tap + to add your first entry</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-card bg-[var(--surface)] shadow-card">
+            <IconWallet size={32} className="text-ink-mute" />
+            <p className="text-sm text-ink-soft">No transactions yet</p>
+            <p className="text-xs text-ink-mute">Tap + to add your first entry</p>
           </div>
         ) : (
-          <div className="divide-y divide-content-tertiary/5">
+          <div className="rounded-card bg-[var(--surface)] shadow-card px-4">
             {transactions.slice(0, 15).map(txn => {
               const cat = categories.find(c => c.id === txn.categoryId);
+              const catIndex = cat ? categories.indexOf(cat) : -1;
               return (
-                <div key={txn.id} className="flex items-center gap-4 px-6 py-3.5 hover:bg-surface-base/50 transition-colors">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: (cat?.color || categoryColor(categories.indexOf(cat!))) + '18' }}>
-                    <span className="text-base">{cat?.icon || '💳'}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-content-primary truncate">{txn.merchantRaw}</p>
-                    <p className="text-xs text-content-tertiary">
-                      {cat?.name || 'Uncategorized'} · {new Date(txn.timestampEpoch).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                    </p>
-                  </div>
-                  <span className={`text-sm font-semibold font-mono tabular-nums ${txn.type === 'debit' ? 'text-[#FF6B5B]' : 'text-[#7CB69E]'}`}>
-                    {txn.type === 'debit' ? '−' : '+'}₹{formatAmount(txn.amountCents)}
-                  </span>
-                </div>
+                <TransactionRow
+                  key={txn.id}
+                  icon={cat?.icon || '💳'}
+                  merchant={txn.merchantRaw}
+                  subtext={`${cat?.name || 'Uncategorized'} · ${new Date(txn.timestampEpoch).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                  amount={`${txn.type === 'debit' ? '−' : '+'}₹${formatAmount(txn.amountCents)}`}
+                  isExpense={txn.type === 'debit'}
+                  categoryColor={cat?.color || categoryColor(catIndex >= 0 ? catIndex : 0)}
+                />
               );
             })}
           </div>
         )}
       </div>
-
-      {/* FAB */}
-      <button
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[#FF6B5B] text-white rounded-2xl shadow-lg shadow-[#FF6B5B]/25 hover:shadow-xl hover:shadow-[#FF6B5B]/30 hover:scale-105 active:scale-95 transition-all duration-200 z-40 flex items-center justify-center"
-      >
-        <IconPlus size={24} stroke={2.5} />
-      </button>
 
       {/* Add modal */}
       <AnimatePresence>
@@ -413,7 +450,7 @@ function AddModal({ categories, accounts, onClose, onAdd }: {
       <motion.div
         initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="bg-surface-base w-full max-w-md rounded-t-3xl lg:rounded-3xl p-6 max-h-[85vh] overflow-y-auto border border-content-tertiary/5"
+        className="bg-[var(--surface)] w-full max-w-md rounded-t-3xl lg:rounded-3xl p-6 max-h-[85vh] overflow-y-auto border border-content-tertiary/5"
         onClick={e => e.stopPropagation()}
         style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.12)' }}
       >

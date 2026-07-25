@@ -277,17 +277,16 @@ export default function BackupScreen({ onBack }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-surface-base">
+    <div className="min-h-screen bg-lavender-bg">
       <div className="max-w-2xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary hover:text-content-primary text-body"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-bold text-content-primary">Backup & Restore</h1>
+          <h1 className="text-sm font-bold text-ink-soft uppercase tracking-wide">Backup & Restore</h1>
           <div className="w-14" />
         </div>
 
@@ -301,10 +300,10 @@ export default function BackupScreen({ onBack }: Props) {
               className="fixed top-4 left-1/2 -translate-x-1/2 z-50"
             >
               <div
-                className={`px-6 py-3 rounded-xl text-caption font-medium shadow-lg ${
+                className={`px-6 py-3 rounded-card text-[11px] font-medium shadow-card ${
                   toast.type === 'success'
-                    ? 'bg-positive text-white'
-                    : 'bg-negative text-white'
+                    ? 'bg-green-bg text-green-1'
+                    : 'bg-coral-bg text-coral-1'
                 }`}
               >
                 {toast.message}
@@ -319,52 +318,39 @@ export default function BackupScreen({ onBack }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            className="p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
+            className="p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
-            <h2 className="text-heading font-bold text-content-primary mb-1">Export Your Data</h2>
-            <p className="text-caption text-content-secondary mb-6">
+            <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-1">Export Your Data</h2>
+            <p className="text-[11px] text-ink-mute mb-6">
               Download a complete backup of all your transactions, categories, budgets, and settings. Your data, your control.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Standard Export */}
-              <div
-                className="p-5 rounded-xl border transition-colors hover:border-accent-primary/30"
-                style={{
-                  borderColor: 'var(--color-content-tertiary)',
-                  backgroundColor: 'var(--color-surface-base)',
-                }}
-              >
-                <h3 className="text-body font-semibold text-content-primary mb-1">Standard Export</h3>
-                <p className="text-caption text-content-secondary mb-4">
+              <div className="p-5 rounded-card bg-purple-bg/40">
+                <h3 className="text-[13px] font-semibold text-ink-1 mb-1">Standard Export</h3>
+                <p className="text-[11px] text-ink-mute mb-4">
                   Plain JSON file. All your data in a human-readable format.
                 </p>
                 <button
                   onClick={handleStandardExport}
                   disabled={exporting}
-                  className="w-full py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                 >
                   {exporting ? 'Exporting...' : 'Export as JSON'}
                 </button>
               </div>
 
               {/* Encrypted Export */}
-              <div
-                className="p-5 rounded-xl border transition-colors hover:border-accent-primary/30"
-                style={{
-                  borderColor: 'var(--color-content-tertiary)',
-                  backgroundColor: 'var(--color-surface-base)',
-                }}
-              >
-                <h3 className="text-body font-semibold text-content-primary mb-1">Encrypted Export</h3>
-                <p className="text-caption text-content-secondary mb-4">
+              <div className="p-5 rounded-card bg-purple-bg/40">
+                <h3 className="text-[13px] font-semibold text-ink-1 mb-1">Encrypted Export</h3>
+                <p className="text-[11px] text-ink-mute mb-4">
                   AES-GCM encrypted backup. Requires a passphrase to restore.
                 </p>
                 {!showExportEncrypted ? (
                   <button
                     onClick={() => setShowExportEncrypted(true)}
-                    className="w-full py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 transition-colors"
+                    className="w-full py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold transition-opacity"
                   >
                     Export Encrypted
                   </button>
@@ -379,16 +365,16 @@ export default function BackupScreen({ onBack }: Props) {
                       placeholder="Enter passphrase"
                       value={exportPassphrase}
                       onChange={(e) => setExportPassphrase(e.target.value)}
-                      className="w-full p-2.5 bg-surface-base rounded-md outline-none text-caption text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20"
+                      className="w-full p-2.5 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                     />
                     <input
                       type="password"
                       placeholder="Confirm passphrase"
                       value={exportConfirmPassphrase}
                       onChange={(e) => setExportConfirmPassphrase(e.target.value)}
-                      className="w-full p-2.5 bg-surface-base rounded-md outline-none text-caption text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20"
+                      className="w-full p-2.5 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                     />
-                    <p className="text-micro text-warning">
+                    <p className="text-[10px] text-coral-1">
                       Keep your passphrase safe — without it, this backup cannot be restored
                     </p>
                     <div className="flex gap-2">
@@ -398,7 +384,7 @@ export default function BackupScreen({ onBack }: Props) {
                           setExportPassphrase('');
                           setExportConfirmPassphrase('');
                         }}
-                        className="px-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+                        className="px-4 py-2 text-[13px] text-ink-soft hover:text-ink-1"
                       >
                         Cancel
                       </button>
@@ -409,7 +395,7 @@ export default function BackupScreen({ onBack }: Props) {
                           !exportPassphrase ||
                           exportPassphrase !== exportConfirmPassphrase
                         }
-                        className="flex-1 py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                        className="flex-1 py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                       >
                         {exporting ? 'Exporting...' : 'Export Encrypted'}
                       </button>
@@ -425,32 +411,30 @@ export default function BackupScreen({ onBack }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
+            className="p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
-            <h2 className="text-heading font-bold text-content-primary mb-1">Import Data</h2>
-            <p className="text-caption text-content-secondary mb-6">
+            <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-1">Import Data</h2>
+            <p className="text-[11px] text-ink-mute mb-6">
               Restore from a previous backup. This will MERGE with your existing data.
             </p>
 
             {/* File input */}
             <div
               onClick={() => importFileRef.current?.click()}
-              className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors hover:border-accent-primary/40 mb-4"
-              style={{ borderColor: 'var(--color-content-tertiary)' }}
+              className="border-2 border-dashed border-ink-mute/30 rounded-card bg-purple-bg/30 p-8 text-center cursor-pointer transition-colors hover:border-purple-1/50 mb-4"
             >
               {importFile ? (
                 <div>
-                  <p className="text-body font-medium text-content-primary">{importFile.name}</p>
-                  <p className="text-micro text-content-tertiary mt-1">
+                  <p className="text-[13px] font-medium text-ink-1">{importFile.name}</p>
+                  <p className="text-[11px] text-ink-mute mt-1">
                     {(importFile.size / 1024).toFixed(1)} KB
                   </p>
                 </div>
               ) : (
                 <div>
-                  <span className="text-3xl block mb-2">📂</span>
-                  <p className="text-caption text-content-secondary">Click to select a backup file</p>
-                  <p className="text-micro text-content-tertiary mt-1">Accepts .json and .enc files</p>
+                  <span className="text-3xl block mb-2 opacity-60">📂</span>
+                  <p className="text-[13px] text-ink-soft">Click to select a backup file</p>
+                  <p className="text-[11px] text-ink-mute mt-1">Accepts .json and .enc files</p>
                 </div>
               )}
               <input
@@ -471,7 +455,7 @@ export default function BackupScreen({ onBack }: Props) {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-3 mb-4"
                 >
-                  <p className="text-caption text-content-secondary">
+                  <p className="text-[11px] text-ink-mute">
                     This backup is encrypted. Enter your passphrase to decrypt.
                   </p>
                   <input
@@ -479,7 +463,7 @@ export default function BackupScreen({ onBack }: Props) {
                     placeholder="Enter passphrase"
                     value={importPassphrase}
                     onChange={(e) => setImportPassphrase(e.target.value)}
-                    className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20"
+                    className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleImportDecrypt();
                     }}
@@ -487,7 +471,7 @@ export default function BackupScreen({ onBack }: Props) {
                   <button
                     onClick={handleImportDecrypt}
                     disabled={importing || !importPassphrase}
-                    className="w-full py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                    className="w-full py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                   >
                     {importing ? 'Decrypting...' : 'Decrypt & Preview'}
                   </button>
@@ -503,40 +487,40 @@ export default function BackupScreen({ onBack }: Props) {
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="p-4 bg-surface-base rounded-lg">
-                    <p className="text-caption font-semibold text-content-primary mb-2">
+                  <div className="p-4 rounded-card bg-purple-bg/40">
+                    <p className="text-[13px] font-semibold text-ink-1 mb-2">
                       Preview — the following will be imported:
                     </p>
-                    <div className="grid grid-cols-2 gap-2 text-caption">
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
                       {importPreview.transactions.length > 0 && (
-                        <span className="text-content-secondary">
+                        <span className="text-ink-soft">
                           {importPreview.transactions.length} transactions
                         </span>
                       )}
                       {importPreview.accounts.length > 0 && (
-                        <span className="text-content-secondary">
+                        <span className="text-ink-soft">
                           {importPreview.accounts.length} accounts
                         </span>
                       )}
                       {importPreview.categories.length > 0 && (
-                        <span className="text-content-secondary">
+                        <span className="text-ink-soft">
                           {importPreview.categories.length} categories
                         </span>
                       )}
                       {importPreview.budgets.length > 0 && (
-                        <span className="text-content-secondary">
+                        <span className="text-ink-soft">
                           {importPreview.budgets.length} budgets
                         </span>
                       )}
                       {importPreview.merchantAliases.length > 0 && (
-                        <span className="text-content-secondary">
+                        <span className="text-ink-soft">
                           {importPreview.merchantAliases.length} merchant aliases
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <p className="text-micro text-warning">
+                  <p className="text-[10px] text-coral-1">
                     Existing data will not be deleted. Duplicates may occur if importing the same data twice.
                   </p>
 
@@ -547,14 +531,14 @@ export default function BackupScreen({ onBack }: Props) {
                         setImportPreview(null);
                         if (importFileRef.current) importFileRef.current.value = '';
                       }}
-                      className="px-6 py-3 text-caption text-content-secondary hover:text-content-primary"
+                      className="px-6 py-3 text-[13px] text-ink-soft hover:text-ink-1"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleImportExecute}
                       disabled={importing}
-                      className="flex-1 py-3 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                     >
                       {importing ? 'Importing...' : 'Import'}
                     </button>
@@ -569,31 +553,19 @@ export default function BackupScreen({ onBack }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="p-6 rounded-xl border-2"
-            style={{
-              borderColor: 'var(--color-negative)',
-              backgroundColor: 'var(--color-surface-raised)',
-              boxShadow: 'var(--shadow-sm)',
-            }}
+            className="p-6 rounded-card bg-coral-bg border-2 border-coral-1/30"
           >
-            <h2
-              className="text-heading font-bold mb-1"
-              style={{ color: 'var(--color-negative)' }}
-            >
+            <h2 className="text-sm font-bold text-coral-1 uppercase tracking-wide mb-1">
               Delete All Data
             </h2>
-            <p className="text-caption text-content-secondary mb-4">
+            <p className="text-[11px] text-ink-mute mb-4">
               This will permanently delete ALL your data including transactions, categories, accounts, budgets, and settings.
             </p>
 
             {!showResetConfirm ? (
               <button
                 onClick={() => setShowResetConfirm(true)}
-                className="px-6 py-2.5 text-caption font-semibold rounded-pill transition-colors"
-                style={{
-                  backgroundColor: 'var(--color-negative)',
-                  color: 'white',
-                }}
+                className="px-6 py-2.5 text-[13px] font-semibold rounded-pill bg-coral-1 text-white transition-opacity hover:opacity-90"
               >
                 Delete Everything
               </button>
@@ -603,7 +575,7 @@ export default function BackupScreen({ onBack }: Props) {
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-3"
               >
-                <p className="text-caption font-semibold" style={{ color: 'var(--color-negative)' }}>
+                <p className="text-[13px] font-semibold text-coral-1">
                   This cannot be undone. Type DELETE to confirm.
                 </p>
                 <input
@@ -611,8 +583,7 @@ export default function BackupScreen({ onBack }: Props) {
                   placeholder='Type "DELETE"'
                   value={resetInput}
                   onChange={(e) => setResetInput(e.target.value)}
-                  className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary border"
-                  style={{ borderColor: 'var(--color-negative)' }}
+                  className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute border border-coral-1/30"
                 />
                 <div className="flex gap-2">
                   <button
@@ -620,21 +591,18 @@ export default function BackupScreen({ onBack }: Props) {
                       setShowResetConfirm(false);
                       setResetInput('');
                     }}
-                    className="px-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+                    className="px-4 py-2 text-[13px] text-ink-soft hover:text-ink-1"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleReset}
                     disabled={resetInput !== 'DELETE' || resetting}
-                    className="px-6 py-2 rounded-pill text-caption font-semibold transition-colors disabled:opacity-50"
-                    style={{
-                      backgroundColor:
-                        resetInput === 'DELETE'
-                          ? 'var(--color-negative)'
-                          : 'var(--color-content-tertiary)',
-                      color: 'white',
-                    }}
+                    className={`px-6 py-2 rounded-pill text-[13px] font-semibold transition-opacity disabled:opacity-50 ${
+                      resetInput === 'DELETE'
+                        ? 'bg-coral-1 text-white hover:opacity-90'
+                        : 'bg-ink-mute/20 text-ink-mute cursor-not-allowed'
+                    }`}
                   >
                     {resetting ? 'Deleting...' : 'Permanently Delete All Data'}
                   </button>

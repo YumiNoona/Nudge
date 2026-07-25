@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { GamificationProfile } from '../lib/db';
-import { levelTitle, levelProgress, XP_REVIEW_TRANSACTION } from '../lib/engine';
+import { levelTitle, levelProgress } from '../lib/engine';
+import { BadgeTile } from './ui/BadgeTile';
 
 interface BadgeData {
   id: string;
@@ -394,18 +395,18 @@ export default function AchievementsScreen({ gamificationProfile, onBack }: Prop
 
   if (!gamificationProfile) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <div className="min-h-screen bg-lavender-bg flex items-center justify-center">
         <div className="text-center p-4">
           <span className="text-5xl block mb-4">🏆</span>
-          <h2 className="text-title font-bold text-content-primary mb-2">
+          <h2 className="text-lg font-bold text-ink-1 mb-2">
             No Gamification Profile
           </h2>
-          <p className="text-caption text-content-secondary mb-6">
+          <p className="text-[11px] text-ink-mute mb-6">
             Start using Nudge to unlock achievements and earn XP
           </p>
           <button
             onClick={onBack}
-            className="px-6 py-2 bg-accent-primary text-white rounded-pill text-body font-medium hover:bg-accent-primary/90 transition-colors"
+            className="px-6 py-2 bg-gradient-to-br from-purple-1 to-purple-2 text-ink-inv rounded-pill text-[13px] font-medium"
           >
             Go Back
           </button>
@@ -416,7 +417,7 @@ export default function AchievementsScreen({ gamificationProfile, onBack }: Prop
 
   return (
     <motion.div
-      className="min-h-screen bg-surface-base"
+      className="min-h-screen bg-lavender-bg"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -426,47 +427,35 @@ export default function AchievementsScreen({ gamificationProfile, onBack }: Prop
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={onBack}
-            className="text-content-secondary text-body hover:text-content-primary transition-colors"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-display font-bold text-content-primary">
-            Achievements
+          <h1 className="text-lg font-bold text-ink-1">
+            Badges
           </h1>
-          <div className="w-16" />
+          <p className="text-[13px] text-ink-mute font-mono tabular-nums">
+            {earnedCount} / {BADGES.length} unlocked
+          </p>
         </div>
 
         {/* Level & XP */}
-        <div className="p-4 bg-surface-raised rounded-xl mb-6" style={{ boxShadow: 'var(--shadow-md)' }}>
+        <div className="rounded-card shadow-card bg-[var(--surface)] p-4 mb-6">
           <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-caption text-content-secondary">
-                Level {level} · {levelTitle(level)}
-              </p>
-              <p className="text-display font-display font-bold text-accent-primary mt-1">
-                {earnedCount} <span className="text-title text-content-tertiary">/ 42</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-micro text-content-tertiary">{xp.toLocaleString('en-IN')} XP</p>
-              <p className="text-caption text-content-secondary mt-1">
-                +{XP_REVIEW_TRANSACTION} XP per review
-              </p>
-            </div>
+            <p className="text-[11px] text-ink-mute">
+              Level {level} · {levelTitle(level)}
+            </p>
+            <p className="text-[11px] text-ink-mute font-mono tabular-nums">
+              {xp.toLocaleString('en-IN')} XP
+            </p>
           </div>
-          {/* XP progress bar */}
-          <div className="h-2 bg-surface-base rounded-full overflow-hidden">
+          <div className="h-2 bg-[var(--lavender-bg)] rounded-full overflow-hidden">
             <div
-              className="h-full bg-accent-primary rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-purple-1 to-purple-2 rounded-full transition-all duration-500"
               style={{ width: `${progress * 100}%` }}
             />
           </div>
         </div>
-
-        {/* Badge count */}
-        <p className="text-caption text-content-secondary mb-4">
-          {earnedCount} of {BADGES.length} badges unlocked
-        </p>
 
         {/* Badge grid */}
         <motion.div
@@ -477,54 +466,14 @@ export default function AchievementsScreen({ gamificationProfile, onBack }: Prop
         >
           {BADGES.map((badge) => {
             const isEarned = badgesEarned.has(badge.id);
-
-            if (!isEarned && badge.isSecret) {
-              return (
-                <motion.div
-                  key={badge.id}
-                  variants={itemVariants}
-                  className="flex flex-col items-center p-3 bg-surface-raised rounded-xl border border-content-tertiary/20 opacity-40"
-                  style={{ boxShadow: 'var(--shadow-sm)' }}
-                >
-                  <span className="text-3xl mb-1">❓</span>
-                  <span className="text-micro text-content-tertiary text-center leading-tight">
-                    ???
-                  </span>
-                </motion.div>
-              );
-            }
-
             return (
-              <motion.div
-                key={badge.id}
-                variants={itemVariants}
-                className={`flex flex-col items-center p-3 rounded-xl transition-colors ${
-                  isEarned
-                    ? 'bg-surface-raised ring-2 ring-accent-primary'
-                    : 'bg-surface-raised opacity-40'
-                }`}
-                style={{ boxShadow: 'var(--shadow-sm)' }}
-              >
-                <div className="relative">
-                  <span className={`text-3xl ${!isEarned ? 'grayscale' : ''}`}>
-                    {badge.icon}
-                  </span>
-                  {!isEarned && (
-                    <span className="absolute -bottom-1 -right-1 text-xs">🔒</span>
-                  )}
-                </div>
-                <span
-                  className={`text-micro text-center leading-tight mt-1 font-medium ${
-                    isEarned ? 'text-content-primary' : 'text-content-tertiary'
-                  }`}
-                >
-                  {isEarned ? badge.name : '???'}
-                </span>
-                {isEarned && (
-                  <span className="text-micro text-content-tertiary text-center leading-tight mt-0.5 line-clamp-2">
-                    {badge.description}
-                  </span>
-                )}
+              <motion.div key={badge.id} variants={itemVariants}>
+                <BadgeTile
+                  icon={badge.icon}
+                  label={badge.name}
+                  unlocked={isEarned}
+                  isSecret={badge.isSecret}
+                />
               </motion.div>
             );
           })}

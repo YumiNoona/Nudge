@@ -4,65 +4,84 @@ import androidx.compose.ui.graphics.Color
 
 /**
  * Semantic design token color implementation for Android/Compose.
- * Electric indigo as accent — not generic fintech blue.
+ * Purple gradient as accent — confident, not generic fintech blue.
  * Negative is warm coral — not alarming red.
  */
 object NudgeColors {
-    // Light theme
-    val SurfaceBase = Color(0xFFFAFAFA)
-    val SurfaceRaised = Color(0xFFFFFFFF)
-    val SurfaceOverlay = Color(0x80000000)
+    // Primary gradient pair
+    val Purple = Color(0xFF7C6FF0)
+    val PurpleDeep = Color(0xFF5B4FD1)
 
-    val ContentPrimary = Color(0xFF1A1A2E)
-    val ContentSecondary = Color(0xFF6B7280)
-    val ContentTertiary = Color(0xFF9CA3AF)
+    // Page backgrounds
+    val LavenderBg = Color(0xFFF3F2FA)
+    val DarkBg = Color(0xFF0F0E17)
 
-    val AccentPrimary = Color(0xFF6366F1)    // electric indigo
-    val AccentSecondary = Color(0xFF818CF8)
+    // Surfaces
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceDark = Color(0xFF1A1925)
+    val SurfaceHover = Color(0xFFF8F7FF)
 
-    // Note: negative is warm coral, NOT alarming red
-    val Positive = Color(0xFF10B981)         // emerald green
-    val Negative = Color(0xFFF472B6)         // warm coral pink
-    val Warning = Color(0xFFF59E0B)          // amber
+    // Ink (light theme)
+    val Ink = Color(0xFF1E1B2E)
+    val InkSoft = Color(0xFF6E6A85)
+    val InkMute = Color(0xFFA6A2B8)
 
-    // Dark theme (OLED-friendly near-black surfaces)
-    val DarkSurfaceBase = Color(0xFF0A0A0F)
-    val DarkSurfaceRaised = Color(0xFF16161F)
-    val DarkSurfaceOverlay = Color(0x80FFFFFF)
+    // Ink (dark theme)
+    val InkDark = Color(0xFFEBE9F5)
+    val InkSoftDark = Color(0xFF9A96B5)
+    val InkMuteDark = Color(0xFF5E5A78)
 
-    val DarkContentPrimary = Color(0xFFF1F5F9)
-    val DarkContentSecondary = Color(0xFF94A3B8)
-    val DarkContentTertiary = Color(0xFF64748B)
+    // Semantic
+    val Green = Color(0xFF1FAE6A)
+    val GreenBg = Color(0xFFE6F8EE)
+    val GreenBgDark = Color(0xFF0D3320)
 
-    // Accent same in both modes
-    val DarkAccentPrimary = Color(0xFF818CF8)
-    val DarkAccentSecondary = Color(0xFFA5B4FC)
+    val Coral = Color(0xFFF0574B)
+    val CoralBg = Color(0xFFFDECEA)
+    val CoralBgDark = Color(0xFF331515)
 
-    // Category palette
+    val Amber = Color(0xFFF5A524)
+    val AmberBg = Color(0xFFFEF3E0)
+    val AmberBgDark = Color(0xFF33280D)
+
+    // Category chip palette (saturated icon + pastel background)
+    val CatBlue = Color(0xFF5B8DEF)
+    val CatBlueBg = Color(0xFFE8EFFD)
+    val CatPink = Color(0xFFEF5DA8)
+    val CatPinkBg = Color(0xFFFDE9F3)
+    val CatTeal = Color(0xFF20C6B0)
+    val CatTealBg = Color(0xFFE3FAF6)
+    val CatOrange = Color(0xFFF59E4B)
+    val CatOrangeBg = Color(0xFFFFF1E3)
+    val CatViolet = Color(0xFF8B5CF6)
+    val CatVioletBg = Color(0xFFF0EBFF)
+    val CatRose = Color(0xFFF43F5E)
+    val CatRoseBg = Color(0xFFFFE4E8)
+    val CatCyan = Color(0xFF06B6D4)
+    val CatCyanBg = Color(0xFFE0F9FD)
+    val CatLime = Color(0xFF84CC16)
+    val CatLimeBg = Color(0xFFF4FDE4)
+
+    // Purple shadows (tinted, soft)
+    val PurpleShadow = Color(0x595B4FD1)
+    val PurpleShadowHeavy = Color(0x735B4FD1)
+
+    // Category icon palette — the 8 saturated chip foreground colors
     val CategoryColors = listOf(
-        Color(0xFF6366F1), // indigo
-        Color(0xFF10B981), // emerald
-        Color(0xFFF59E0B), // amber
-        Color(0xFFEF4444), // red
-        Color(0xFF8B5CF6), // violet
-        Color(0xFFEC4899), // pink
-        Color(0xFF06B6D4), // cyan
-        Color(0xFFF97316), // orange
-        Color(0xFF84CC16), // lime
-        Color(0xFF14B8A6), // teal
-        Color(0xFFE11D48), // rose
-        Color(0xFF7C3AED), // purple
-        Color(0xFF0EA5E9), // sky
-        Color(0xFFD946EF), // fuchsia
-        Color(0xFF22D3EE), // cyan-light
-        Color(0xFFA855F7)  // purple-light
+        CatBlue,
+        CatPink,
+        CatTeal,
+        CatOrange,
+        CatViolet,
+        CatRose,
+        CatCyan,
+        CatLime
     )
 }
 
 data class NudgeColorScheme(
     val surfaceBase: Color,
     val surfaceRaised: Color,
-    val surfaceOverlay: Color,
     val contentPrimary: Color,
     val contentSecondary: Color,
     val contentTertiary: Color,
@@ -74,29 +93,27 @@ data class NudgeColorScheme(
 )
 
 fun lightColorScheme() = NudgeColorScheme(
-    surfaceBase = NudgeColors.SurfaceBase,
-    surfaceRaised = NudgeColors.SurfaceRaised,
-    surfaceOverlay = NudgeColors.SurfaceOverlay,
-    contentPrimary = NudgeColors.ContentPrimary,
-    contentSecondary = NudgeColors.ContentSecondary,
-    contentTertiary = NudgeColors.ContentTertiary,
-    accentPrimary = NudgeColors.AccentPrimary,
-    accentSecondary = NudgeColors.AccentSecondary,
-    positive = NudgeColors.Positive,
-    negative = NudgeColors.Negative,
-    warning = NudgeColors.Warning
+    surfaceBase = NudgeColors.LavenderBg,
+    surfaceRaised = NudgeColors.Surface,
+    contentPrimary = NudgeColors.Ink,
+    contentSecondary = NudgeColors.InkSoft,
+    contentTertiary = NudgeColors.InkMute,
+    accentPrimary = NudgeColors.Purple,
+    accentSecondary = NudgeColors.PurpleDeep,
+    positive = NudgeColors.Green,
+    negative = NudgeColors.Coral,
+    warning = NudgeColors.Amber
 )
 
 fun darkColorScheme() = NudgeColorScheme(
-    surfaceBase = NudgeColors.DarkSurfaceBase,
-    surfaceRaised = NudgeColors.DarkSurfaceRaised,
-    surfaceOverlay = NudgeColors.DarkSurfaceOverlay,
-    contentPrimary = NudgeColors.DarkContentPrimary,
-    contentSecondary = NudgeColors.DarkContentSecondary,
-    contentTertiary = NudgeColors.DarkContentTertiary,
-    accentPrimary = NudgeColors.DarkAccentPrimary,
-    accentSecondary = NudgeColors.DarkAccentSecondary,
-    positive = NudgeColors.Positive,
-    negative = NudgeColors.Negative,
-    warning = NudgeColors.Warning
+    surfaceBase = NudgeColors.DarkBg,
+    surfaceRaised = NudgeColors.SurfaceDark,
+    contentPrimary = NudgeColors.InkDark,
+    contentSecondary = NudgeColors.InkSoftDark,
+    contentTertiary = NudgeColors.InkMuteDark,
+    accentPrimary = NudgeColors.Purple,
+    accentSecondary = NudgeColors.PurpleDeep,
+    positive = NudgeColors.Green,
+    negative = NudgeColors.Coral,
+    warning = NudgeColors.Amber
 )

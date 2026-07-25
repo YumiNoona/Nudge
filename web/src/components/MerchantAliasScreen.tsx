@@ -29,23 +29,22 @@ export default function MerchantAliasScreen({ aliases, onAdd, onDelete, onBack }
   };
 
   return (
-    <div className="min-h-screen bg-surface-base">
+    <div className="min-h-screen bg-lavender-bg">
       <div className="max-w-2xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <button onClick={onBack} className="text-content-secondary hover:text-content-primary">
+          <button onClick={onBack} className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors">
             ← Back
           </button>
-          <h1 className="text-title font-bold text-content-primary">Merchant Aliases</h1>
+          <h1 className="text-sm font-bold text-ink-soft uppercase tracking-wide">Merchant Aliases</h1>
           <button
             onClick={() => setShowForm(true)}
-            className="px-4 py-2 bg-accent-primary text-white rounded-pill text-caption font-medium hover:bg-accent-primary/90"
+            className="px-4 py-2 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-medium"
           >
             + Add
           </button>
         </div>
 
-        <p className="text-caption text-content-secondary mb-6">
+        <p className="text-[11px] text-ink-mute mb-6">
           Map messy bank names to clean merchant names. E.g., "AMAZON PAY IN*ORDR8827" → "Amazon"
         </p>
 
@@ -58,36 +57,36 @@ export default function MerchantAliasScreen({ aliases, onAdd, onDelete, onBack }
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden mb-4"
             >
-              <div className="p-4 bg-surface-raised rounded-xl space-y-3" style={{ boxShadow: 'var(--shadow-sm)' }}>
+              <div className="p-4 rounded-card shadow-card bg-[var(--surface)] space-y-3">
                 <input
                   type="text"
                   placeholder="Raw pattern (e.g. AMAZON PAY IN)"
                   value={rawPattern}
                   onChange={(e) => setRawPattern(e.target.value)}
-                  className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                  className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                 />
                 <input
                   type="text"
                   placeholder="Normalized name (e.g. Amazon)"
                   value={normalizedName}
                   onChange={(e) => setNormalizedName(e.target.value)}
-                  className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                  className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleSubmit}
                     disabled={!rawPattern.trim() || !normalizedName.trim()}
-                    className={`flex-1 py-2 rounded-lg text-caption font-medium ${
+                    className={`flex-1 py-2 rounded-pill text-[13px] font-medium ${
                       rawPattern.trim() && normalizedName.trim()
-                        ? 'bg-accent-primary text-white'
-                        : 'bg-content-tertiary/20 text-content-tertiary cursor-not-allowed'
+                        ? 'bg-gradient-to-r from-purple-1 to-purple-2 text-white'
+                        : 'bg-ink-mute/20 text-ink-mute cursor-not-allowed'
                     }`}
                   >
                     Save
                   </button>
                   <button
                     onClick={() => setShowForm(false)}
-                    className="px-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+                    className="px-4 py-2 text-[13px] text-ink-soft hover:text-ink-1"
                   >
                     Cancel
                   </button>
@@ -99,10 +98,10 @@ export default function MerchantAliasScreen({ aliases, onAdd, onDelete, onBack }
 
         {/* Alias list */}
         {aliases.length === 0 ? (
-          <div className="text-center py-16">
-            <span className="text-4xl block mb-2">🏷️</span>
-            <p className="text-body text-content-secondary">No merchant aliases yet</p>
-            <p className="text-caption text-content-tertiary">Add your first alias to teach the app to recognize merchants</p>
+          <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-card bg-[var(--surface)] shadow-card">
+            <span className="text-4xl opacity-50">🏷️</span>
+            <p className="text-sm text-ink-soft">No merchant aliases yet</p>
+            <p className="text-[11px] text-ink-mute">Add your first alias to teach the app to recognize merchants</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -112,16 +111,15 @@ export default function MerchantAliasScreen({ aliases, onAdd, onDelete, onBack }
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center justify-between p-3 bg-surface-raised rounded-lg"
-                style={{ boxShadow: 'var(--shadow-sm)' }}
+                className="flex items-center justify-between p-3 rounded-card shadow-card bg-[var(--surface)]"
               >
                 <div>
-                  <p className="text-caption text-content-tertiary font-mono">{alias.rawPattern}</p>
-                  <p className="text-body text-content-primary font-medium">→ {alias.normalizedName}</p>
+                  <p className="font-mono text-xs text-ink-mute">{alias.rawPattern}</p>
+                  <p className="text-sm text-ink-1 font-medium">→ {alias.normalizedName}</p>
                 </div>
                 <button
                   onClick={() => onDelete(alias.id)}
-                  className="p-2 text-content-tertiary hover:text-negative transition-colors text-sm"
+                  className="p-2 text-ink-mute hover:text-coral-1 transition-colors text-sm"
                 >
                   ✕
                 </button>

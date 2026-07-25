@@ -19,61 +19,61 @@ import androidx.core.view.WindowCompat
  * via the dynamicColorScheme parameter.
  */
 private val LightColorScheme = lightColorScheme(
-    primary = NudgeColors.AccentPrimary,
+    primary = NudgeColors.Purple,
     onPrimary = Color.White,
-    primaryContainer = NudgeColors.AccentPrimary.copy(alpha = 0.15f),
-    onPrimaryContainer = NudgeColors.AccentPrimary,
-    secondary = NudgeColors.AccentSecondary,
+    primaryContainer = NudgeColors.Purple.copy(alpha = 0.15f),
+    onPrimaryContainer = NudgeColors.Purple,
+    secondary = NudgeColors.PurpleDeep,
     onSecondary = Color.White,
-    background = NudgeColors.SurfaceBase,
-    onBackground = NudgeColors.ContentPrimary,
-    surface = NudgeColors.SurfaceRaised,
-    onSurface = NudgeColors.ContentPrimary,
-    surfaceVariant = NudgeColors.SurfaceBase,
-    onSurfaceVariant = NudgeColors.ContentSecondary,
-    error = NudgeColors.Negative,
+    background = NudgeColors.LavenderBg,
+    onBackground = NudgeColors.Ink,
+    surface = NudgeColors.Surface,
+    onSurface = NudgeColors.Ink,
+    surfaceVariant = NudgeColors.LavenderBg,
+    onSurfaceVariant = NudgeColors.InkSoft,
+    error = NudgeColors.Coral,
     onError = Color.White,
-    outline = NudgeColors.ContentTertiary.copy(alpha = 0.3f)
+    outline = NudgeColors.InkMute.copy(alpha = 0.3f)
 )
 
 // True OLED dark — near-black surfaces, not just dark gray
 private val OLEDDarkColorScheme = darkColorScheme(
-    primary = NudgeColors.DarkAccentPrimary,
+    primary = NudgeColors.Purple,
     onPrimary = Color.Black,
-    primaryContainer = NudgeColors.AccentPrimary.copy(alpha = 0.2f),
-    onPrimaryContainer = NudgeColors.DarkAccentPrimary,
-    secondary = NudgeColors.DarkAccentSecondary,
+    primaryContainer = NudgeColors.Purple.copy(alpha = 0.2f),
+    onPrimaryContainer = NudgeColors.Purple,
+    secondary = NudgeColors.PurpleDeep,
     onSecondary = Color.Black,
-    background = NudgeColors.DarkSurfaceBase, // #0A0A0F — OLED-friendly
-    onBackground = NudgeColors.DarkContentPrimary,
-    surface = NudgeColors.DarkSurfaceRaised,  // #16161F
-    onSurface = NudgeColors.DarkContentPrimary,
-    surfaceVariant = NudgeColors.DarkSurfaceRaised.copy(alpha = 0.5f),
-    onSurfaceVariant = NudgeColors.DarkContentSecondary,
-    error = NudgeColors.Negative,
+    background = NudgeColors.DarkBg,         // #0F0E17 — OLED-friendly
+    onBackground = NudgeColors.InkDark,
+    surface = NudgeColors.SurfaceDark,        // #1A1925
+    onSurface = NudgeColors.InkDark,
+    surfaceVariant = NudgeColors.SurfaceDark.copy(alpha = 0.5f),
+    onSurfaceVariant = NudgeColors.InkSoftDark,
+    error = NudgeColors.Coral,
     onError = Color.Black,
-    outline = NudgeColors.DarkContentTertiary.copy(alpha = 0.3f)
+    outline = NudgeColors.InkMuteDark.copy(alpha = 0.3f)
 )
 
 /**
  * Standard dark (slightly lighter than OLED — for users who prefer it)
  */
 private val StandardDarkColorScheme = darkColorScheme(
-    primary = NudgeColors.DarkAccentPrimary,
+    primary = NudgeColors.Purple,
     onPrimary = Color.Black,
-    primaryContainer = NudgeColors.AccentPrimary.copy(alpha = 0.2f),
-    onPrimaryContainer = NudgeColors.DarkAccentPrimary,
-    secondary = NudgeColors.DarkAccentSecondary,
+    primaryContainer = NudgeColors.Purple.copy(alpha = 0.2f),
+    onPrimaryContainer = NudgeColors.Purple,
+    secondary = NudgeColors.PurpleDeep,
     onSecondary = Color.Black,
     background = Color(0xFF12121A),
-    onBackground = NudgeColors.DarkContentPrimary,
+    onBackground = NudgeColors.InkDark,
     surface = Color(0xFF1E1E2A),
-    onSurface = NudgeColors.DarkContentPrimary,
+    onSurface = NudgeColors.InkDark,
     surfaceVariant = Color(0xFF1E1E2A).copy(alpha = 0.5f),
-    onSurfaceVariant = NudgeColors.DarkContentSecondary,
-    error = NudgeColors.Negative,
+    onSurfaceVariant = NudgeColors.InkSoftDark,
+    error = NudgeColors.Coral,
     onError = Color.Black,
-    outline = NudgeColors.DarkContentTertiary.copy(alpha = 0.3f)
+    outline = NudgeColors.InkMuteDark.copy(alpha = 0.3f)
 )
 
 /**

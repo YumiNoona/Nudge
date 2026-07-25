@@ -238,8 +238,8 @@ export default function SyncSettingsScreen({ onBack }: Props) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
-        <p className="text-caption text-content-tertiary">Loading...</p>
+      <div className="min-h-screen bg-lavender-bg flex items-center justify-center">
+        <p className="text-[11px] text-ink-mute">Loading...</p>
       </div>
     );
   }
@@ -248,16 +248,16 @@ export default function SyncSettingsScreen({ onBack }: Props) {
   const lastSyncText = config?.lastSyncAt ? formatRelativeTime(config.lastSyncAt) : 'Never';
 
   return (
-    <div className="min-h-screen bg-surface-base">
+    <div className="min-h-screen bg-lavender-bg">
       <div className="max-w-2xl mx-auto p-4">
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary hover:text-content-primary text-body"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-bold text-content-primary">Sync Settings</h1>
+          <h1 className="text-sm font-bold text-ink-soft uppercase tracking-wide">Sync Settings</h1>
           <div className="w-14" />
         </div>
 
@@ -270,10 +270,10 @@ export default function SyncSettingsScreen({ onBack }: Props) {
               className="fixed top-4 left-1/2 -translate-x-1/2 z-50"
             >
               <div
-                className={`px-6 py-3 rounded-xl text-caption font-medium shadow-lg ${
+                className={`px-6 py-3 rounded-card text-[11px] font-medium shadow-card ${
                   toast.type === 'success'
-                    ? 'bg-positive text-white'
-                    : 'bg-negative text-white'
+                    ? 'bg-green-bg text-green-1'
+                    : 'bg-coral-bg text-coral-1'
                 }`}
               >
                 {toast.message}
@@ -287,23 +287,22 @@ export default function SyncSettingsScreen({ onBack }: Props) {
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
+            className="p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
             <div className="flex items-center gap-3 mb-2">
               <span
                 className="w-3 h-3 rounded-full"
                 style={{
                   backgroundColor: isConfigured
-                    ? 'var(--color-positive)'
-                    : 'var(--color-content-tertiary)',
+                    ? 'var(--green)'
+                    : 'var(--ink-mute)',
                 }}
               />
-              <span className="text-heading font-bold text-content-primary">
+              <span className="text-sm font-bold text-ink-1">
                 {isConfigured ? 'Sync is active' : 'Sync not configured'}
               </span>
             </div>
-            <p className="text-caption text-content-secondary">
+            <p className="text-[11px] text-ink-mute">
               Last synced: {lastSyncText}
             </p>
           </motion.section>
@@ -314,12 +313,11 @@ export default function SyncSettingsScreen({ onBack }: Props) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="p-6 bg-surface-raised rounded-xl"
-              style={{ boxShadow: 'var(--shadow-sm)' }}
+              className="p-6 rounded-card shadow-card bg-[var(--surface)]"
             >
-              <h2 className="text-heading font-bold text-content-primary mb-4">Setup Sync</h2>
+              <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-4">Setup Sync</h2>
 
-              <label className="block text-caption font-medium text-content-secondary mb-1.5">
+              <label className="block text-[11px] font-medium text-ink-mute mb-1.5">
                 Server URL
               </label>
               <input
@@ -327,21 +325,15 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                 placeholder="https://sync.nudge.app"
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
-                className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20 mb-4"
+                className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute mb-4"
               />
 
               {/* Register */}
-              <div
-                className="p-5 rounded-xl border mb-4"
-                style={{
-                  borderColor: 'var(--color-content-tertiary)',
-                  backgroundColor: 'var(--color-surface-base)',
-                }}
-              >
-                <h3 className="text-body font-semibold text-content-primary mb-1">
+              <div className="p-5 rounded-card bg-purple-bg/40 mb-4">
+                <h3 className="text-[13px] font-semibold text-ink-1 mb-1">
                   Register New Device
                 </h3>
-                <p className="text-caption text-content-secondary mb-4">
+                <p className="text-[11px] text-ink-mute mb-4">
                   Create a new sync identity and get a pairing code to share with other devices.
                 </p>
                 <input
@@ -349,32 +341,26 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                   placeholder="Device name (e.g. Chrome Desktop)"
                   value={deviceName}
                   onChange={(e) => setDeviceName(e.target.value)}
-                  className="w-full p-2.5 bg-surface-base rounded-md outline-none text-caption text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20 mb-3"
+                  className="w-full p-2.5 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute mb-3"
                 />
                 <button
                   onClick={handleRegister}
                   disabled={registering || !serverUrl.trim() || !deviceName.trim()}
-                  className="w-full py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                 >
                   {registering ? 'Registering...' : 'Register New Device'}
                 </button>
               </div>
 
               {/* Pair */}
-              <div
-                className="p-5 rounded-xl border"
-                style={{
-                  borderColor: 'var(--color-content-tertiary)',
-                  backgroundColor: 'var(--color-surface-base)',
-                }}
-              >
-                <h3 className="text-body font-semibold text-content-primary mb-1">
+              <div className="p-5 rounded-card bg-purple-bg/40">
+                <h3 className="text-[13px] font-semibold text-ink-1 mb-1">
                   Pair with Existing Device
                 </h3>
-                <p className="text-caption text-content-secondary mb-4">
+                <p className="text-[11px] text-ink-mute mb-4">
                   Enter the pairing code from another device to link them.
                 </p>
-                <label className="block text-micro font-medium text-content-secondary mb-1">
+                <label className="block text-[10px] font-medium text-ink-mute mb-1">
                   Pairing Code
                 </label>
                 <input
@@ -383,9 +369,9 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                   value={formatPairingCode(pairingInput)}
                   onChange={handlePairingCodeChange}
                   maxLength={7}
-                  className="w-full p-2.5 bg-surface-base rounded-md outline-none text-caption tracking-[0.3em] font-mono text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20 mb-3 text-center"
+                  className="w-full p-2.5 bg-lavender-bg rounded-chip outline-none text-[13px] tracking-[0.3em] font-mono text-ink-1 placeholder:text-ink-mute mb-3 text-center"
                 />
-                <label className="block text-micro font-medium text-content-secondary mb-1">
+                <label className="block text-[10px] font-medium text-ink-mute mb-1">
                   Device Name
                 </label>
                 <input
@@ -393,7 +379,7 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                   placeholder="My Phone"
                   value={pairDeviceName}
                   onChange={(e) => setPairDeviceName(e.target.value)}
-                  className="w-full p-2.5 bg-surface-base rounded-md outline-none text-caption text-content-primary placeholder:text-content-tertiary border border-content-tertiary/20 mb-3"
+                  className="w-full p-2.5 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute mb-3"
                 />
                 <button
                   onClick={handlePair}
@@ -403,7 +389,7 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                     pairingInput.replace(/[^a-zA-Z0-9]/g, '').length !== 6 ||
                     !pairDeviceName.trim()
                   }
-                  className="w-full py-2.5 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full py-2.5 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                 >
                   {pairing ? 'Pairing...' : 'Pair'}
                 </button>
@@ -417,17 +403,16 @@ export default function SyncSettingsScreen({ onBack }: Props) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.05 }}
-              className="p-6 bg-surface-raised rounded-xl"
-              style={{ boxShadow: 'var(--shadow-sm)' }}
+              className="p-6 rounded-card shadow-card bg-[var(--surface)]"
             >
-              <h2 className="text-heading font-bold text-content-primary mb-4">
+              <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-4">
                 Connection Details
               </h2>
 
               <div className="space-y-4">
                 {/* Server URL */}
                 <div>
-                  <label className="text-micro font-medium text-content-tertiary block mb-1">
+                  <label className="text-[10px] font-medium text-ink-mute block mb-1">
                     Server URL
                   </label>
                   {editingServerUrl ? (
@@ -436,26 +421,26 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                         type="text"
                         value={editedServerUrl}
                         onChange={(e) => setEditedServerUrl(e.target.value)}
-                        className="flex-1 p-2 bg-surface-base rounded-md outline-none text-caption text-content-primary border border-content-tertiary/20"
+                        className="flex-1 p-2 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleSaveServer();
                         }}
                       />
                       <button
                         onClick={handleSaveServer}
-                        className="px-3 py-2 bg-accent-primary text-white rounded-md text-caption font-semibold hover:bg-accent-primary/90 transition-colors"
+                        className="px-3 py-2 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-chip text-[13px] font-semibold"
                       >
                         Save
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center justify-between">
-                      <span className="text-caption text-content-primary font-mono">
+                      <span className="text-[13px] text-ink-1 font-mono">
                         {config.serverUrl}
                       </span>
                       <button
                         onClick={handleEditServer}
-                        className="text-caption text-accent-primary hover:text-accent-primary/80"
+                        className="text-[11px] text-purple-1 hover:text-purple-2"
                       >
                         Edit
                       </button>
@@ -465,11 +450,11 @@ export default function SyncSettingsScreen({ onBack }: Props) {
 
                 {/* Device ID */}
                 <div>
-                  <label className="text-micro font-medium text-content-tertiary block mb-1">
+                  <label className="text-[10px] font-medium text-ink-mute block mb-1">
                     Device ID
                   </label>
                   <div className="flex items-center justify-between">
-                    <span className="text-caption text-content-primary font-mono" style={{ fontSize: '11px' }}>
+                    <span className="text-[11px] text-ink-1 font-mono">
                       {config.deviceId.slice(0, 16)}...
                     </span>
                     <button
@@ -479,7 +464,7 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                           showToast('Device ID copied', 'success');
                         });
                       }}
-                      className="text-caption text-accent-primary hover:text-accent-primary/80"
+                      className="text-[11px] text-purple-1 hover:text-purple-2"
                     >
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -488,11 +473,11 @@ export default function SyncSettingsScreen({ onBack }: Props) {
 
                 {/* Pairing Code */}
                 <div>
-                  <label className="text-micro font-medium text-content-tertiary block mb-1">
+                  <label className="text-[10px] font-medium text-ink-mute block mb-1">
                     Pairing Code
                   </label>
                   <div className="flex items-center justify-between">
-                    <span className="text-heading font-bold text-content-primary font-mono tracking-[0.3em]">
+                    <span className="text-sm font-bold text-ink-1 font-mono tracking-[0.3em]">
                       {formatPairingCode(config.pairingCode)}
                     </span>
                     <button
@@ -502,7 +487,7 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                           showToast('Pairing code copied', 'success');
                         });
                       }}
-                      className="text-caption text-accent-primary hover:text-accent-primary/80"
+                      className="text-[11px] text-purple-1 hover:text-purple-2"
                     >
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
@@ -511,30 +496,29 @@ export default function SyncSettingsScreen({ onBack }: Props) {
 
                 {/* Paired Devices */}
                 <div>
-                  <label className="text-micro font-medium text-content-tertiary block mb-2">
+                  <label className="text-[10px] font-medium text-ink-mute block mb-2">
                     Paired Devices
                   </label>
                   {statusLoading && (
-                    <p className="text-caption text-content-tertiary">Loading...</p>
+                    <p className="text-[11px] text-ink-mute">Loading...</p>
                   )}
                   {!statusLoading && statusInfo?.devices && statusInfo.devices.length > 0 ? (
                     <div className="space-y-2">
                       {statusInfo.devices.map((device) => (
                         <div
                           key={device.device_id}
-                          className="flex items-center justify-between p-3 rounded-lg"
-                          style={{ backgroundColor: 'var(--color-surface-base)' }}
+                          className="flex items-center justify-between p-3 rounded-card bg-purple-bg/40"
                         >
                           <div>
-                            <p className="text-caption font-medium text-content-primary">
+                            <p className="text-[13px] font-medium text-ink-1">
                               {device.device_name || 'Unknown Device'}
                               {device.device_id === config.deviceId && (
-                                <span className="ml-2 text-micro text-accent-primary">
+                                <span className="ml-2 text-[10px] text-purple-1">
                                   (this device)
                                 </span>
                               )}
                             </p>
-                            <p className="text-micro text-content-tertiary">
+                            <p className="text-[10px] text-ink-mute">
                               Last seen: {formatRelativeTime(device.last_seen * 1000)}
                             </p>
                           </div>
@@ -543,15 +527,15 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                             style={{
                               backgroundColor:
                                 device.last_seen * 1000 > Date.now() - 300_000
-                                  ? 'var(--color-positive)'
-                                  : 'var(--color-content-tertiary)',
+                                  ? 'var(--green)'
+                                  : 'var(--ink-mute)',
                             }}
                           />
                         </div>
                       ))}
                     </div>
                   ) : !statusLoading ? (
-                    <p className="text-caption text-content-tertiary">
+                    <p className="text-[11px] text-ink-mute">
                       No paired devices found
                     </p>
                   ) : null}
@@ -566,10 +550,9 @@ export default function SyncSettingsScreen({ onBack }: Props) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="p-6 bg-surface-raised rounded-xl"
-              style={{ boxShadow: 'var(--shadow-sm)' }}
+              className="p-6 rounded-card shadow-card bg-[var(--surface)]"
             >
-              <h2 className="text-heading font-bold text-content-primary mb-4">Actions</h2>
+              <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-4">Actions</h2>
 
               <div className="space-y-4">
                 {/* Sync Now */}
@@ -577,27 +560,27 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                   <button
                     onClick={handleSyncNow}
                     disabled={syncing}
-                    className="w-full py-3 bg-accent-primary text-white rounded-pill text-caption font-semibold hover:bg-accent-primary/90 disabled:opacity-50 transition-colors"
+                    className="w-full py-3 bg-gradient-to-r from-purple-1 to-purple-2 text-white rounded-pill text-[13px] font-semibold disabled:opacity-50 transition-opacity"
                   >
                     {syncing ? 'Syncing...' : 'Sync Now'}
                   </button>
                   {syncResult && (
-                    <p className="text-center text-micro text-content-secondary mt-2">
+                    <p className="text-center text-[10px] text-ink-mute mt-2">
                       {syncResult}
                     </p>
                   )}
                 </div>
 
                 {/* Auto-sync toggle */}
-                <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--color-surface-base)' }}>
+                <div className="flex items-center justify-between p-3 rounded-card bg-purple-bg/40">
                   <div>
-                    <p className="text-caption font-medium text-content-primary">Auto-sync</p>
-                    <p className="text-micro text-content-tertiary">Sync every 30 seconds</p>
+                    <p className="text-[13px] font-medium text-ink-1">Auto-sync</p>
+                    <p className="text-[10px] text-ink-mute">Sync every 30 seconds</p>
                   </div>
                   <button
                     onClick={handleToggleAutoSync}
                     className={`relative w-12 h-7 rounded-full transition-colors ${
-                      autoSync ? 'bg-accent-primary' : 'bg-content-tertiary'
+                      autoSync ? 'bg-purple-1' : 'bg-ink-mute'
                     }`}
                   >
                     <motion.span
@@ -609,14 +592,13 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                 </div>
 
                 {/* Disconnect */}
-                <div className="pt-2">
+                <div className="p-4 rounded-card bg-coral-bg border border-coral-1/20">
+                  <p className="text-[11px] text-coral-1 mb-3">
+                    Disconnect this device from sync. You can reconnect later.
+                  </p>
                   <button
                     onClick={handleDisconnect}
-                    className="w-full py-3 rounded-pill text-caption font-semibold transition-colors hover:opacity-90"
-                    style={{
-                      backgroundColor: 'var(--color-negative)',
-                      color: 'white',
-                    }}
+                    className="w-full py-3 rounded-pill text-[13px] font-semibold bg-coral-1 text-white transition-opacity hover:opacity-90"
                   >
                     Disconnect
                   </button>
@@ -630,15 +612,14 @@ export default function SyncSettingsScreen({ onBack }: Props) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-sm)' }}
+            className="p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
             <button
               onClick={() => setShowLog(!showLog)}
               className="flex items-center justify-between w-full"
             >
-              <h2 className="text-heading font-bold text-content-primary">Sync Log</h2>
-              <span className="text-caption text-content-tertiary">
+              <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide">Sync Log</h2>
+              <span className="text-[11px] text-ink-mute">
                 {showLog ? '▼' : '▶'}
               </span>
             </button>
@@ -653,35 +634,34 @@ export default function SyncSettingsScreen({ onBack }: Props) {
                 >
                   <div className="mt-4 space-y-2">
                     {syncLog.length === 0 && (
-                      <p className="text-caption text-content-tertiary text-center py-2">
+                      <p className="text-[11px] text-ink-mute text-center py-2">
                         No sync events yet
                       </p>
                     )}
                     {syncLog.slice(0, 5).map((entry, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between p-3 rounded-lg"
-                        style={{ backgroundColor: 'var(--color-surface-base)' }}
+                        className="flex items-center justify-between p-3 rounded-card bg-purple-bg/40"
                       >
                         <div className="flex items-center gap-3">
                           <span
-                            className="text-micro font-semibold uppercase w-10"
+                            className="text-[10px] font-semibold uppercase w-10"
                             style={{
                               color:
                                 entry.type === 'push'
-                                  ? 'var(--color-accent-primary)'
+                                  ? 'var(--purple)'
                                   : entry.type === 'pull'
-                                  ? 'var(--color-positive)'
-                                  : 'var(--color-warning)',
+                                  ? 'var(--green)'
+                                  : 'var(--coral)',
                             }}
                           >
                             {entry.type}
                           </span>
-                          <span className="text-caption text-content-secondary">
+                          <span className="text-[11px] text-ink-soft">
                             {entry.recordCount} records
                           </span>
                         </div>
-                        <span className="text-micro text-content-tertiary">
+                        <span className="text-[10px] text-ink-mute">
                           {formatRelativeTime(entry.timestamp)}
                         </span>
                       </div>

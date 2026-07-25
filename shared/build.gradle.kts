@@ -13,11 +13,6 @@ kotlin {
         }
     }
 
-    js(IR) {
-        browser()
-        binaries.executable()
-    }
-
     sourceSets {
         val commonMain by getting {
             dependencies {
@@ -32,7 +27,6 @@ kotlin {
             }
         }
         val androidMain by getting
-        val jsMain by getting
     }
 }
 

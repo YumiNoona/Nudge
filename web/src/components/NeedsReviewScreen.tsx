@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, generateId, formatAmount } from '../lib/db';
 import type { Transaction, Category } from '../lib/db';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { CategoryChip } from './ui/CategoryChip';
 
 interface Props {
   onBack: () => void;
@@ -57,14 +58,14 @@ export default function NeedsReviewScreen({ onBack }: Props) {
 
   if (transactions.length === 0 || (!currentTxn && currentIndex >= transactions.length)) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <div className="min-h-screen bg-lavender-bg flex items-center justify-center">
         <div className="text-center">
           <span className="text-5xl block mb-4">🎉</span>
-          <h2 className="text-title font-bold text-content-primary mb-2">All caught up!</h2>
-          <p className="text-caption text-content-secondary mb-6">No transactions need review right now</p>
+          <h2 className="text-lg font-bold text-ink-1 mb-2">All caught up!</h2>
+          <p className="text-[11px] text-ink-soft mb-6">No transactions need review right now</p>
           <button
             onClick={onBack}
-            className="px-6 py-2 bg-accent-primary text-white rounded-pill text-body font-medium hover:bg-accent-primary/90"
+            className="px-6 py-2 bg-gradient-to-br from-purple-1 to-purple-2 text-ink-inv rounded-pill text-[13px] font-medium"
           >
             Back to Dashboard
           </button>
@@ -75,12 +76,12 @@ export default function NeedsReviewScreen({ onBack }: Props) {
 
   if (!currentTxn) {
     return (
-      <div className="min-h-screen bg-surface-base flex items-center justify-center">
+      <div className="min-h-screen bg-lavender-bg flex items-center justify-center">
         <div className="text-center">
           <span className="text-5xl block mb-4">✅</span>
-          <h2 className="text-title font-bold text-content-primary mb-2">All reviewed!</h2>
-          <p className="text-caption text-content-secondary mb-6">Great job reviewing everything</p>
-          <button onClick={onBack} className="px-6 py-2 bg-accent-primary text-white rounded-pill text-body font-medium">
+          <h2 className="text-lg font-bold text-ink-1 mb-2">All reviewed!</h2>
+          <p className="text-[11px] text-ink-soft mb-6">Great job reviewing everything</p>
+          <button onClick={onBack} className="px-6 py-2 bg-gradient-to-br from-purple-1 to-purple-2 text-ink-inv rounded-pill text-[13px] font-medium">
             Done
           </button>
         </div>
@@ -91,22 +92,25 @@ export default function NeedsReviewScreen({ onBack }: Props) {
   const progress = ((currentIndex) / transactions.length) * 100;
 
   return (
-    <div className="min-h-screen bg-surface-base flex flex-col">
+    <div className="min-h-screen bg-lavender-bg flex flex-col">
       {/* Header */}
       <div className="p-4 flex items-center justify-between">
-        <button onClick={onBack} className="text-content-secondary text-body hover:text-content-primary">
+        <button onClick={onBack} className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors">
           ← Back
         </button>
-        <span className="text-caption text-content-secondary">
-          {currentIndex + 1} / {transactions.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] font-bold text-ink-1">Review</span>
+          <span className="text-[11px] text-ink-mute font-mono tabular-nums">
+            {currentIndex + 1}/{transactions.length}
+          </span>
+        </div>
         <div className="w-16" />
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-surface-raised mx-4 rounded-full overflow-hidden">
+      <div className="h-1 bg-purple-bg mx-4 rounded-full overflow-hidden">
         <div
-          className="h-full bg-accent-primary rounded-full transition-all duration-300"
+          className="h-full bg-gradient-to-r from-purple-1 to-purple-2 rounded-full transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -120,7 +124,7 @@ export default function NeedsReviewScreen({ onBack }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: Math.min(Math.abs(exitX) / 80, 1) }}
               exit={{ opacity: 0 }}
-              className="absolute left-8 text-lg font-semibold text-negative"
+              className="absolute left-8 text-lg font-bold text-coral-1"
             >
               ← Skip
             </motion.div>
@@ -132,7 +136,7 @@ export default function NeedsReviewScreen({ onBack }: Props) {
               initial={{ opacity: 0 }}
               animate={{ opacity: Math.min(exitX / 80, 1) }}
               exit={{ opacity: 0 }}
-              className="absolute right-8 text-lg font-semibold text-positive"
+              className="absolute right-8 text-lg font-bold text-green-1"
             >
               Categorize →
             </motion.div>
@@ -150,52 +154,54 @@ export default function NeedsReviewScreen({ onBack }: Props) {
           onDrag={(_, info) => setExitX(info.offset.x)}
           onDragEnd={handleDragEnd}
           whileDrag={{ scale: 1.02 }}
-          className="w-full max-w-sm bg-surface-raised rounded-xl p-6 cursor-grab active:cursor-grabbing"
+          className="w-full max-w-sm bg-[var(--surface)] rounded-card shadow-card-md p-6 cursor-grab active:cursor-grabbing flex flex-col items-center gap-3"
           style={{
-            boxShadow: 'var(--shadow-md)',
             rotate: exitX / 25,
           }}
         >
-          {/* Amount */}
+          <CategoryChip
+            icon={currentTxn.categoryId ? (categories.find((c) => c.id === currentTxn.categoryId)?.icon || '📋') : '📋'}
+          />
+
           <p
-            className={`text-display font-bold font-mono tabular-nums ${
-              currentTxn.type === 'debit' ? 'text-negative' : 'text-positive'
+            className={`text-3xl font-extrabold font-mono tabular-nums ${
+              currentTxn.type === 'debit' ? 'text-coral-1' : 'text-green-1'
             }`}
           >
             {currentTxn.type === 'debit' ? '-' : '+'}₹{formatAmount(currentTxn.amountCents)}
           </p>
 
-          {/* Merchant */}
-          <p className="text-title font-semibold text-content-primary mt-2">{currentTxn.merchantRaw}</p>
+          <p className="text-sm font-semibold text-ink-1">{currentTxn.merchantRaw}</p>
 
-          {/* Source text preview */}
           {currentTxn.sourceRawText && (
-            <p className="text-caption text-content-tertiary mt-2 italic line-clamp-3">
-              "{currentTxn.sourceRawText}"
+            <p className="text-[11px] text-ink-mute italic line-clamp-3 max-w-full">
+              &ldquo;{currentTxn.sourceRawText}&rdquo;
             </p>
           )}
 
-          {/* Confidence badge */}
           {currentTxn.confidenceScore < 0.7 && (
-            <span className="inline-block mt-3 px-2 py-1 bg-warning/15 text-warning text-micro rounded-md">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-bg text-amber-1">
               Low confidence ({Math.round(currentTxn.confidenceScore * 100)}%)
             </span>
           )}
 
-          {/* Quick action buttons */}
-          <div className="flex gap-3 mt-6">
-            <button
+          <div className="flex gap-6 mt-2">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={handleSkip}
-              className="flex-1 py-3 rounded-lg border border-negative/30 text-negative text-body font-medium hover:bg-negative/5 transition-colors"
+              className="w-12 h-12 rounded-full bg-coral-bg text-coral-1 flex items-center justify-center text-xl font-bold shadow-sm hover:shadow-md transition-shadow"
+              aria-label="Skip"
             >
-              Skip
-            </button>
-            <button
+              ✕
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={() => setShowCategoryPicker(true)}
-              className="flex-1 py-3 rounded-lg bg-accent-primary text-white text-body font-medium hover:bg-accent-primary/90 transition-colors"
+              className="w-12 h-12 rounded-full bg-green-bg text-green-1 flex items-center justify-center text-xl font-bold shadow-sm hover:shadow-md transition-shadow"
+              aria-label="Categorize"
             >
-              Categorize
-            </button>
+              ✓
+            </motion.button>
           </div>
         </motion.div>
 
@@ -203,16 +209,16 @@ export default function NeedsReviewScreen({ onBack }: Props) {
         {currentIndex + 1 < transactions.length && (
           <div className="absolute w-full max-w-sm" style={{ zIndex: -1 }}>
             <div
-              className="w-10/12 mx-auto bg-surface-raised/60 rounded-xl"
-              style={{ height: 100, transform: 'translateY(12px)', boxShadow: 'var(--shadow-sm)' }}
+              className="w-full mx-auto rounded-card bg-[var(--surface)] shadow-card-md opacity-40"
+              style={{ height: 100, transform: 'translateY(8px)' }}
             />
           </div>
         )}
         {currentIndex + 2 < transactions.length && (
           <div className="absolute w-full max-w-sm" style={{ zIndex: -2 }}>
             <div
-              className="w-8/12 mx-auto bg-surface-raised/30 rounded-xl"
-              style={{ height: 70, transform: 'translateY(24px)' }}
+              className="w-[92%] mx-auto rounded-card bg-[var(--surface)] shadow-card opacity-40"
+              style={{ height: 70, transform: 'translateY(16px)' }}
             />
           </div>
         )}
@@ -249,41 +255,38 @@ function CategoryPickerModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-surface-overlay flex items-end lg:items-center justify-center z-50"
+      className="fixed inset-0 bg-ink-1/40 flex items-end lg:items-center justify-center z-50"
       onClick={onClose}
     >
       <motion.div
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 100, opacity: 0 }}
-        className="bg-surface-base w-full max-w-md rounded-t-xl lg:rounded-xl p-6 max-h-[70vh] overflow-y-auto"
+        className="bg-[var(--surface)] w-full max-w-md rounded-t-3xl lg:rounded-3xl p-6 max-h-[70vh] overflow-y-auto border border-ink-mute/5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-9 h-1 bg-content-tertiary rounded-full mx-auto mb-4" />
-        <h3 className="text-heading font-bold text-content-primary mb-1">Categorize</h3>
-        <p className="text-caption text-content-secondary mb-2">{transaction.merchantRaw}</p>
-        <p className="text-title font-bold font-mono tabular-nums text-content-primary mb-4">
+        <div className="w-9 h-1 bg-ink-mute rounded-full mx-auto mb-4" />
+        <h3 className="text-[14px] font-bold text-ink-1 mb-1">Categorize</h3>
+        <p className="text-[11px] text-ink-soft mb-2">{transaction.merchantRaw}</p>
+        <p className="text-lg font-bold font-mono tabular-nums text-ink-1 mb-4">
           ₹{formatAmount(transaction.amountCents)}
         </p>
 
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-3 justify-items-center">
           {categories.map((cat) => (
-            <button
+            <CategoryChip
               key={cat.id}
+              icon={cat.icon || '📁'}
+              label={cat.name}
+              size="md"
               onClick={() => onSelect(cat.id)}
-              className="flex flex-col items-center p-3 bg-surface-raised rounded-lg hover:bg-accent-primary/10 transition-colors"
-            >
-              <span className="text-xl">{cat.icon || '📁'}</span>
-              <span className="text-micro text-content-secondary mt-1 truncate w-full text-center">
-                {cat.name}
-              </span>
-            </button>
+            />
           ))}
         </div>
 
         <button
           onClick={onClose}
-          className="w-full mt-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+          className="w-full mt-4 py-2 text-[11px] text-ink-soft hover:text-ink-1 transition-colors"
         >
           Cancel
         </button>

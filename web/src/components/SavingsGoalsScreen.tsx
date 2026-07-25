@@ -226,7 +226,7 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
 
   return (
     <motion.div
-      className="min-h-screen bg-surface-base"
+      className="min-h-screen bg-lavender-bg"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -236,16 +236,16 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary text-body hover:text-content-primary transition-colors"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-display font-bold text-content-primary">
-            Savings Goals
+          <h1 className="text-lg font-bold text-ink-1">
+            Goals
           </h1>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-accent-primary text-white rounded-pill text-caption font-medium hover:bg-accent-primary/90 transition-colors"
+            className="text-[13px] font-medium text-purple-1 hover:opacity-80 transition-opacity"
           >
             + New Goal
           </button>
@@ -254,15 +254,15 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
         {goals.length === 0 ? (
           <div className="text-center py-16">
             <span className="text-5xl block mb-4">💰</span>
-            <h2 className="text-title font-bold text-content-primary mb-2">
+            <h2 className="text-lg font-bold text-ink-1 mb-2">
               No Savings Goals
             </h2>
-            <p className="text-caption text-content-secondary mb-6">
+            <p className="text-[11px] text-ink-mute mb-6">
               Create a goal to start tracking your savings progress
             </p>
             <button
               onClick={() => setShowModal(true)}
-              className="px-6 py-2 bg-accent-primary text-white rounded-pill text-body font-medium hover:bg-accent-primary/90 transition-colors"
+              className="px-6 py-2 bg-gradient-to-br from-purple-1 to-purple-2 text-ink-inv rounded-pill text-[13px] font-medium"
             >
               Create First Goal
             </button>
@@ -278,52 +278,51 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                 <motion.div
                   key={goal.id}
                   variants={itemVariants}
-                  className="p-5 bg-surface-raised rounded-xl"
-                  style={{ boxShadow: 'var(--shadow-md)' }}
+                  className="rounded-card shadow-card bg-[var(--surface)] p-5"
                 >
                   <div className="flex gap-4">
                     {/* SVG metaphor */}
-                    <div className="w-20 h-20 flex-shrink-0 rounded-lg bg-surface-base flex items-center justify-center overflow-hidden">
+                    <div className="w-20 h-20 flex-shrink-0 rounded-card bg-[var(--lavender-bg)] flex items-center justify-center overflow-hidden">
                       <MetaphorSvg metaphor={goal.metaphor} progress={progress} />
                     </div>
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-body font-semibold text-content-primary truncate">
+                      <h3 className="text-[13px] font-semibold text-ink-1 truncate">
                         {goal.name}
                       </h3>
 
                       {/* Progress bar */}
-                      <div className="mt-2 h-2.5 bg-surface-base rounded-full overflow-hidden">
+                      <div className="mt-2 h-2 bg-[var(--lavender-bg)] rounded-full overflow-hidden">
                         <motion.div
                           className="h-full rounded-full"
                           initial={{ width: 0 }}
                           animate={{ width: `${pct}%` }}
                           transition={{ duration: 0.7, ease: 'easeOut' }}
                           style={{
-                            backgroundColor:
+                            background:
                               pct >= 100
-                                ? 'var(--color-positive)'
-                                : 'var(--color-accent-primary)',
+                                ? 'var(--green)'
+                                : 'linear-gradient(to right, var(--purple), var(--purple-deep))',
                           }}
                         />
                       </div>
 
                       <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-caption font-mono tabular-nums font-semibold text-content-primary">
+                        <span className="text-[13px] font-mono tabular-nums font-semibold text-ink-1">
                           ₹{formatAmount(Math.round(goal.currentAmount * 100))}
-                          <span className="text-content-tertiary font-normal">
+                          <span className="text-ink-mute font-normal">
                             {' '}
                             / ₹{formatAmount(Math.round(goal.targetAmount * 100))}
                           </span>
                         </span>
                         <span
-                          className="text-micro font-semibold"
+                          className="text-[11px] font-semibold font-mono tabular-nums"
                           style={{
                             color:
                               pct >= 100
-                                ? 'var(--color-positive)'
-                                : 'var(--color-accent-primary)',
+                                ? 'var(--green)'
+                                : 'var(--purple)',
                           }}
                         >
                           {pct}%
@@ -333,12 +332,12 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                       {/* Meta info */}
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
                         {targetLabel && (
-                          <span className="text-micro text-content-tertiary">
+                          <span className="text-[11px] text-ink-mute">
                             Target: {targetLabel}
                           </span>
                         )}
                         {goal.monthlyContribution && (
-                          <span className="text-micro text-content-tertiary">
+                          <span className="text-[11px] text-ink-mute">
                             ₹{goal.monthlyContribution.toLocaleString('en-IN')}/mo
                           </span>
                         )}
@@ -361,24 +360,24 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-surface-overlay flex items-end lg:items-center justify-center z-50"
+            className="fixed inset-0 bg-ink-1/40 flex items-end lg:items-center justify-center z-50"
             onClick={() => setShowModal(false)}
           >
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="bg-surface-base w-full max-w-md rounded-t-xl lg:rounded-xl p-6 max-h-[80vh] overflow-y-auto"
+              className="bg-[var(--surface)] w-full max-w-md rounded-t-3xl lg:rounded-3xl p-6 max-h-[80vh] overflow-y-auto border border-ink-mute/5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-9 h-1 bg-content-tertiary rounded-full mx-auto mb-4" />
-              <h3 className="text-heading font-bold text-content-primary mb-4">
+              <div className="w-9 h-1 bg-ink-mute rounded-full mx-auto mb-4" />
+              <h3 className="text-[14px] font-bold text-ink-1 mb-4">
                 Add Savings Goal
               </h3>
 
               <div className="space-y-3 mb-4">
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Goal Name
                   </label>
                   <input
@@ -386,11 +385,11 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                     placeholder="e.g. New Bike"
                     value={modalName}
                     onChange={(e) => setModalName(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Target Amount (₹)
                   </label>
                   <input
@@ -399,13 +398,13 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                     placeholder="e.g. 50000"
                     value={modalAmount}
                     onChange={(e) => setModalAmount(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
 
                 {/* Metaphor selector */}
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Visual Metaphor
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -413,14 +412,14 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                       <button
                         key={opt.key}
                         onClick={() => setModalMetaphor(opt.key)}
-                        className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-colors ${
+                        className={`flex flex-col items-center gap-1 p-2 rounded-chip transition-colors ${
                           modalMetaphor === opt.key
-                            ? 'bg-accent-primary/15 ring-1 ring-accent-primary'
-                            : 'bg-surface-raised hover:bg-accent-primary/5'
+                            ? 'bg-purple-bg ring-2 ring-purple-1'
+                            : 'bg-[var(--lavender-bg)] hover:bg-purple-bg/50'
                         }`}
                       >
                         <span className="text-xl">{opt.emoji}</span>
-                        <span className="text-micro text-content-secondary">
+                        <span className="text-[10px] text-ink-mute">
                           {opt.label}
                         </span>
                       </button>
@@ -430,20 +429,20 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
 
                 {/* Target date */}
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Target Date (optional)
                   </label>
                   <input
                     type="date"
                     value={modalDate}
                     onChange={(e) => setModalDate(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1"
                   />
                 </div>
 
                 {/* Monthly contribution */}
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Monthly Contribution (optional)
                   </label>
                   <input
@@ -452,7 +451,7 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                     placeholder="e.g. 5000"
                     value={modalContribution}
                     onChange={(e) => setModalContribution(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
               </div>
@@ -461,17 +460,17 @@ export default function SavingsGoalsScreen({ onBack }: Props) {
                 <button
                   onClick={handleAddGoal}
                   disabled={!modalName.trim() || !modalAmount}
-                  className={`flex-1 py-2 rounded-lg text-caption font-medium ${
+                  className={`flex-1 py-2.5 rounded-chip text-[13px] font-medium ${
                     modalName.trim() && modalAmount
-                      ? 'bg-accent-primary text-white'
-                      : 'bg-content-tertiary/20 text-content-tertiary cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-purple-1 to-purple-2 text-ink-inv'
+                      : 'bg-[var(--lavender-bg)] text-ink-mute cursor-not-allowed'
                   }`}
                 >
-                  Add Goal
+                  Create
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+                  className="px-4 py-2 text-[13px] text-ink-soft hover:text-ink-1 transition-colors"
                 >
                   Cancel
                 </button>

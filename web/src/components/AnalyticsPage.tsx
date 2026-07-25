@@ -8,10 +8,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts';
+import { DonutChart } from './ui/DonutChart';
 import type { Transaction, Category, Budget } from '../lib/db';
 import { formatAmount } from '../lib/db';
 import { categoryColor } from '../lib/engine';
@@ -65,10 +63,10 @@ const itemVariants = {
 };
 
 const tabClasses = (active: boolean) =>
-  `px-4 py-1.5 rounded-pill text-caption font-medium transition-colors ${
+  `px-4 py-1.5 rounded-pill text-[11px] font-semibold transition-colors ${
     active
-      ? 'bg-accent-primary text-white'
-      : 'text-content-secondary hover:text-content-primary hover:bg-surface-base'
+      ? 'bg-gradient-to-br from-purple-1 to-purple-2 text-ink-inv'
+      : 'text-ink-soft hover:text-ink-1'
   }`;
 
 interface TooltipPayloadEntry {
@@ -81,14 +79,13 @@ function ChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div
-      className="bg-surface-raised p-3 rounded-md border border-surface-base"
-      style={{ boxShadow: 'var(--shadow-md)' }}
+      className="rounded-card bg-[var(--surface)] p-3 shadow-card-md"
     >
-      <p className="text-caption text-content-secondary mb-1">{label}</p>
+      <p className="text-[11px] text-ink-mute mb-1">{label}</p>
       {payload.map((entry: TooltipPayloadEntry, i: number) => (
         <p
           key={i}
-          className="font-mono tabular-nums text-body font-semibold"
+          className="font-mono tabular-nums text-[13px] font-semibold"
           style={{ color: entry.color }}
         >
           {entry.name}: ₹{formatAmount(Math.round(entry.value * 100))}
@@ -103,13 +100,12 @@ function PieTooltip({ active, payload }: any) {
   const entry = payload[0];
   return (
     <div
-      className="bg-surface-raised p-3 rounded-md"
-      style={{ boxShadow: 'var(--shadow-md)' }}
+      className="rounded-card bg-[var(--surface)] p-3 shadow-card-md"
     >
-      <p className="text-caption font-medium" style={{ color: entry.payload.color }}>
+      <p className="text-[11px] font-medium" style={{ color: entry.payload.color }}>
         {entry.name}
       </p>
-      <p className="font-mono tabular-nums text-body font-semibold text-content-primary">
+      <p className="font-mono tabular-nums text-[13px] font-semibold text-ink-1">
         ₹{formatAmount(Math.round(entry.value * 100))}
       </p>
     </div>
@@ -129,15 +125,15 @@ function getHeatmapStyle(level: number): React.CSSProperties {
   if (level === 0) return {};
   const opacities = [0, 0.15, 0.4, 0.7, 1];
   return {
-    backgroundColor: 'var(--color-accent-primary)',
+    backgroundColor: 'var(--purple)',
     opacity: opacities[level],
   };
 }
 
 function getBudgetColor(pct: number): string {
-  if (pct <= 0.5) return 'var(--color-accent-primary)';
-  if (pct <= 0.8) return 'var(--color-warning)';
-  return 'var(--color-negative)';
+  if (pct <= 0.5) return 'var(--purple)';
+  if (pct <= 0.8) return 'var(--amber)';
+  return 'var(--coral)';
 }
 
 export default function AnalyticsPage({
@@ -315,14 +311,14 @@ export default function AnalyticsPage({
       .sort((a, b) => b.amount - a.amount);
 
     if (unassigned > 0) {
-      result.push({ name: 'Uncategorized', amount: unassigned / 100, color: 'var(--color-content-tertiary)' });
+      result.push({ name: 'Uncategorized', amount: unassigned / 100, color: 'var(--ink-mute)' });
     }
 
     return result;
   }, [debits, currentYear, currentMonth, categoryMap]);
 
   const totalCategorySpend = useMemo(
-    () => categoryBreakdown.reduce((s, c) => s + c.amount * 100, 0),
+    () => categoryBreakdown.reduce((s, c) => s + c.amount, 0),
     [categoryBreakdown],
   );
 
@@ -465,7 +461,7 @@ export default function AnalyticsPage({
 
   return (
     <motion.div
-      className="min-h-screen bg-surface-base"
+      className="min-h-screen bg-lavender-bg"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -475,11 +471,11 @@ export default function AnalyticsPage({
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary text-body hover:text-content-primary transition-colors"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-display font-bold text-content-primary">
+          <h1 className="text-lg font-bold text-ink-1">
             Analytics
           </h1>
           <div className="w-16" />
@@ -488,14 +484,13 @@ export default function AnalyticsPage({
         {/* ── 1. Spending Trends ────────────────────────────────── */}
         <motion.div
           variants={itemVariants}
-          className="p-5 lg:p-6 bg-surface-raised rounded-xl mb-4"
-          style={{ boxShadow: 'var(--shadow-md)' }}
+          className="p-5 lg:p-6 rounded-card shadow-card bg-[var(--surface)] mb-4"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 className="text-heading font-semibold text-content-primary">
+            <h2 className="text-[14px] font-bold text-ink-soft uppercase tracking-wide">
               Spending Trends
             </h2>
-            <div className="flex gap-1 bg-surface-base rounded-pill p-1 w-fit">
+            <div className="flex gap-1 bg-purple-bg rounded-pill p-1 w-fit">
               {(['weekly', 'monthly', 'yearly'] as ViewMode[]).map((m) => (
                 <button
                   key={m}
@@ -509,7 +504,7 @@ export default function AnalyticsPage({
           </div>
 
           {trendData.length === 0 ? (
-            <div className="text-center py-16 text-content-tertiary text-body">
+            <div className="text-center py-16 text-ink-mute text-[13px]">
               No spending data for this period
             </div>
           ) : (
@@ -520,23 +515,23 @@ export default function AnalyticsPage({
               >
                 <defs>
                   <linearGradient id="accentFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-accent-primary)" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="var(--color-accent-primary)" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="var(--purple)" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="var(--purple)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="var(--color-content-tertiary)"
+                  stroke="var(--ink-mute)"
                   strokeOpacity={0.15}
                 />
                 <XAxis
                   dataKey={xKey}
-                  tick={{ fill: 'var(--color-content-tertiary)', fontSize: 12 }}
-                  axisLine={{ stroke: 'var(--color-content-tertiary)', strokeOpacity: 0.2 }}
+                  tick={{ fill: 'var(--ink-mute)', fontSize: 12 }}
+                  axisLine={{ stroke: 'var(--ink-mute)', strokeOpacity: 0.2 }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: 'var(--color-content-tertiary)', fontSize: 12 }}
+                  tick={{ fill: 'var(--ink-mute)', fontSize: 12 }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v: number) => `₹${v}`}
@@ -545,7 +540,7 @@ export default function AnalyticsPage({
                 <Area
                   type="monotone"
                   dataKey="current"
-                  stroke="var(--color-accent-primary)"
+                  stroke="var(--purple)"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#accentFill)"
@@ -555,7 +550,7 @@ export default function AnalyticsPage({
                   <Area
                     type="monotone"
                     dataKey="prev"
-                    stroke="var(--color-content-tertiary)"
+                    stroke="var(--ink-mute)"
                     strokeWidth={1.5}
                     strokeDasharray="5 5"
                     fill="none"
@@ -572,91 +567,41 @@ export default function AnalyticsPage({
           {/* Category Breakdown */}
           <motion.div
             variants={itemVariants}
-            className="p-5 lg:p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-md)' }}
+            className="p-5 lg:p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
-            <h2 className="text-heading font-semibold text-content-primary mb-4">
+            <h2 className="text-[14px] font-bold text-ink-soft uppercase tracking-wide mb-4">
               Category Breakdown
             </h2>
 
             {categoryBreakdown.length === 0 ? (
-              <div className="text-center py-16 text-content-tertiary text-body">
+              <div className="text-center py-16 text-ink-mute text-[13px]">
                 No categorized expenses this month
               </div>
             ) : (
-              <>
-                <div className="relative flex justify-center">
-                  <PieChart width={240} height={240}>
-                    <Pie
-                      data={categoryBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={65}
-                      outerRadius={100}
-                      dataKey="amount"
-                      nameKey="name"
-                      paddingAngle={2}
-                      stroke="none"
-                    >
-                      {categoryBreakdown.map((entry, i) => (
-                        <Cell key={i} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                  </PieChart>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <p className="text-micro text-content-tertiary">Total</p>
-                    <p className="text-heading font-bold font-mono tabular-nums text-content-primary">
-                      ₹{formatAmount(totalCategorySpend)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-2 max-h-48 overflow-y-auto">
-                  {categoryBreakdown.map((entry) => (
-                    <div
-                      key={entry.name}
-                      className="flex items-center justify-between text-caption"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: entry.color }}
-                        />
-                        <span className="text-content-secondary truncate max-w-[120px]">
-                          {entry.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 font-mono tabular-nums">
-                        <span className="text-content-primary font-medium">
-                          ₹{formatAmount(Math.round(entry.amount * 100))}
-                        </span>
-                        <span className="text-content-tertiary">
-                          {totalCategorySpend > 0
-                            ? ((entry.amount * 100) / totalCategorySpend * 100).toFixed(1)
-                            : '0.0'}
-                          %
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              <DonutChart
+                segments={categoryBreakdown.map((c) => ({
+                  label: c.name,
+                  value: Math.round(c.amount),
+                  color: c.color,
+                }))}
+                total={Math.round(totalCategorySpend)}
+                centerLabel="total spent"
+                size={180}
+              />
             )}
           </motion.div>
 
           {/* Merchant Leaderboard */}
           <motion.div
             variants={itemVariants}
-            className="p-5 lg:p-6 bg-surface-raised rounded-xl"
-            style={{ boxShadow: 'var(--shadow-md)' }}
+            className="p-5 lg:p-6 rounded-card shadow-card bg-[var(--surface)]"
           >
-            <h2 className="text-heading font-semibold text-content-primary mb-4">
+            <h2 className="text-[14px] font-bold text-ink-soft uppercase tracking-wide mb-4">
               Merchant Leaderboard
             </h2>
 
             {merchantLeaderboard.length === 0 ? (
-              <div className="text-center py-16 text-content-tertiary text-body">
+              <div className="text-center py-16 text-ink-mute text-[13px]">
                 No merchant data this month
               </div>
             ) : (
@@ -665,28 +610,27 @@ export default function AnalyticsPage({
                   <div key={m.name}>
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-micro font-mono text-content-tertiary w-4 text-right">
+                        <span className="text-[11px] font-mono text-ink-mute w-4 text-right">
                           {i + 1}
                         </span>
-                        <span className="text-caption text-content-primary truncate max-w-[140px]">
+                        <span className="text-[11px] text-ink-1 truncate max-w-[140px]">
                           {m.name}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-caption text-content-tertiary">
+                        <span className="text-[11px] text-ink-mute">
                           {m.count}
                         </span>
-                        <span className="font-mono tabular-nums text-caption font-medium text-content-primary">
+                        <span className="font-mono tabular-nums text-[11px] font-medium text-ink-1">
                           ₹{formatAmount(m.total)}
                         </span>
                       </div>
                     </div>
-                    <div className="h-1.5 bg-surface-base rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-purple-bg rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className="h-full rounded-full bg-gradient-to-r from-purple-1 to-purple-2 transition-all duration-500"
                         style={{
                           width: `${(m.total / maxMerchantSpend) * 100}%`,
-                          backgroundColor: 'var(--color-accent-primary)',
                           opacity: 0.2 + (m.total / maxMerchantSpend) * 0.8,
                         }}
                       />
@@ -701,26 +645,25 @@ export default function AnalyticsPage({
         {/* ── 3. Cash-Flow Calendar Heatmap ──────────────────────── */}
         <motion.div
           variants={itemVariants}
-          className="p-5 lg:p-6 bg-surface-raised rounded-xl mb-4"
-          style={{ boxShadow: 'var(--shadow-md)' }}
+          className="p-5 lg:p-6 rounded-card shadow-card bg-[var(--surface)] mb-4"
         >
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-heading font-semibold text-content-primary">
+            <h2 className="text-[14px] font-bold text-ink-soft uppercase tracking-wide">
               Cash Flow Calendar
             </h2>
             <div className="flex items-center gap-2">
               <button
                 onClick={handleHeatmapPrev}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-content-secondary hover:text-content-primary hover:bg-surface-base transition-colors text-sm"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:text-ink-1 hover:bg-purple-bg transition-colors text-sm"
               >
                 ‹
               </button>
-              <span className="text-body font-medium text-content-primary min-w-[120px] text-center">
+              <span className="text-[13px] font-medium text-ink-1 min-w-[120px] text-center">
                 {MONTH_NAMES[heatmapMonth]} {heatmapYear}
               </span>
               <button
                 onClick={handleHeatmapNext}
-                className="w-7 h-7 flex items-center justify-center rounded-md text-content-secondary hover:text-content-primary hover:bg-surface-base transition-colors text-sm"
+                className="w-7 h-7 flex items-center justify-center rounded-md text-ink-soft hover:text-ink-1 hover:bg-purple-bg transition-colors text-sm"
               >
                 ›
               </button>
@@ -733,7 +676,7 @@ export default function AnalyticsPage({
             style={{ gridTemplateColumns: `repeat(${heatmapData.columns}, 1fr)` }}
           >
             {Array.from({ length: heatmapData.columns }, (_, ci) => (
-              <div key={ci} className="text-center text-micro text-content-tertiary leading-none">
+              <div key={ci} className="text-center text-[11px] text-ink-mute leading-none">
                 &nbsp;
               </div>
             ))}
@@ -745,7 +688,7 @@ export default function AnalyticsPage({
               {DAY_NAMES_SHORT.map((d, ri) => (
                 <div
                   key={ri}
-                  className="w-4 h-3 flex items-center justify-end text-micro text-content-tertiary leading-none"
+                  className="w-4 h-3 flex items-center justify-end text-[11px] text-ink-mute leading-none"
                 >
                   {d}
                 </div>
@@ -793,7 +736,7 @@ export default function AnalyticsPage({
                     title={isEmpty ? '' : `${cell.label}: ₹${formatAmount(cell.amount)}`}
                   >
                     {showDayLabel && (
-                      <span className="absolute -top-3 -left-0.5 text-micro text-content-tertiary leading-none">
+                      <span className="absolute -top-3 -left-0.5 text-[11px] text-ink-mute leading-none">
                         {cell.day}
                       </span>
                     )}
@@ -805,32 +748,32 @@ export default function AnalyticsPage({
 
           {/* Legend */}
           <div className="flex items-center justify-end gap-1.5 mt-3">
-            <span className="text-micro text-content-tertiary">Less</span>
+            <span className="text-[11px] text-ink-mute">Less</span>
             {[0, 1, 2, 3, 4].map((level) => (
               <div
                 key={level}
                 className="w-3 h-3 rounded-sm"
                 style={
                   level === 0
-                    ? { backgroundColor: 'var(--color-surface-base)' }
+                    ? { backgroundColor: 'var(--purple-bg)' }
                     : getHeatmapStyle(level)
                 }
               />
             ))}
-            <span className="text-micro text-content-tertiary">More</span>
+            <span className="text-[11px] text-ink-mute">More</span>
           </div>
 
           {/* Tooltip */}
           {heatmapTooltip && (
             <div
-              className="fixed z-50 bg-content-primary text-surface-raised px-2.5 py-1.5 rounded-md pointer-events-none text-caption font-mono"
+              className="fixed z-50 bg-ink-1 text-white px-2.5 py-1.5 rounded-md pointer-events-none text-[11px] font-mono"
               style={{
                 left: heatmapTooltip.ix,
                 top: heatmapTooltip.iy - 36,
                 transform: 'translateX(-50%)',
               }}
             >
-              <p className="text-micro opacity-80">{heatmapTooltip.date}</p>
+              <p className="text-[11px] opacity-80">{heatmapTooltip.date}</p>
               <p className="font-semibold">₹{formatAmount(heatmapTooltip.amount)}</p>
             </div>
           )}
@@ -839,15 +782,14 @@ export default function AnalyticsPage({
         {/* ── 4. Budget vs Actual ────────────────────────────────── */}
         <motion.div
           variants={itemVariants}
-          className="p-5 lg:p-6 bg-surface-raised rounded-xl"
-          style={{ boxShadow: 'var(--shadow-md)' }}
+          className="p-5 lg:p-6 rounded-card shadow-card bg-[var(--surface)]"
         >
-          <h2 className="text-heading font-semibold text-content-primary mb-4">
+          <h2 className="text-[14px] font-bold text-ink-soft uppercase tracking-wide mb-4">
             Budget vs Actual
           </h2>
 
           {budgetActuals.length === 0 ? (
-            <div className="text-center py-12 text-content-tertiary text-body">
+            <div className="text-center py-12 text-ink-mute text-[13px]">
               No budgets set. Create budgets to track your spending limits.
             </div>
           ) : (
@@ -859,11 +801,11 @@ export default function AnalyticsPage({
                       {b.categoryIcon && (
                         <span className="text-sm">{b.categoryIcon}</span>
                       )}
-                      <span className="text-body font-medium text-content-primary">
+                      <span className="text-[13px] font-medium text-ink-1">
                         {b.categoryName}
                       </span>
                     </div>
-                    <span className="font-mono tabular-nums text-caption text-content-secondary">
+                    <span className="font-mono tabular-nums text-[11px] text-ink-soft">
                       Spent{' '}
                       <span
                         className="font-semibold"
@@ -874,7 +816,7 @@ export default function AnalyticsPage({
                       of ₹{formatAmount(b.budget)}
                     </span>
                   </div>
-                  <div className="h-2.5 bg-surface-base rounded-full overflow-hidden">
+                  <div className="h-2 bg-purple-bg rounded-full overflow-hidden">
                     <motion.div
                       className="h-full rounded-full"
                       initial={{ width: 0 }}
@@ -884,7 +826,7 @@ export default function AnalyticsPage({
                     />
                   </div>
                   {b.pct > 1 && (
-                    <p className="text-micro text-negative mt-0.5 text-right">
+                    <p className="text-[11px] text-coral-1 mt-0.5 text-right">
                       {((b.pct - 1) * 100).toFixed(0)}% over budget
                     </p>
                   )}

@@ -24,6 +24,9 @@ class MainActivity : ComponentActivity() {
             val viewModel: MainViewModel = viewModel()
             var isDark by remember { mutableStateOf(false) }
             var currentScreen by remember { mutableStateOf<Screen>(Screen.Home) }
+            var onboarded by remember {
+                mutableStateOf(getSharedPreferences("nudge_ui", MODE_PRIVATE).getBoolean("onboarded", false))
+            }
 
             val colorScheme = if (isDark) darkColorScheme() else lightColorScheme()
             MaterialTheme(colorScheme = colorScheme) {
@@ -31,10 +34,19 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    AnimatedContent(
+                    if (!onboarded) {
+                        OnboardingScreen(
+                            isDark = isDark,
+                            onComplete = {
+                                getSharedPreferences("nudge_ui", MODE_PRIVATE).edit().putBoolean("onboarded", true).apply()
+                                onboarded = true
+                            }
+                        )
+                    } else AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(200))
+                            (fadeIn(tween(280)) + slideInHorizontally { it / 12 }) togetherWith
+                                (fadeOut(tween(180)) + slideOutHorizontally { -it / 14 })
                         }
                     ) { screen ->
                         when (screen) {

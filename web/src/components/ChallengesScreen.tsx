@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Transaction, Category } from '../lib/db';
 import { formatAmount } from '../lib/db';
 import { XP_REVIEW_TRANSACTION } from '../lib/engine';
+import { CategoryChip } from './ui/CategoryChip';
 
 interface Challenge {
   id: string;
@@ -274,7 +275,7 @@ export default function ChallengesScreen({
 
   return (
     <motion.div
-      className="min-h-screen bg-surface-base"
+      className="min-h-screen bg-lavender-bg"
       initial="hidden"
       animate="visible"
       variants={containerVariants}
@@ -284,29 +285,29 @@ export default function ChallengesScreen({
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary text-body hover:text-content-primary transition-colors"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-display font-bold text-content-primary">
+          <h1 className="text-lg font-bold text-ink-1">
             Challenges
           </h1>
           <button
             onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-accent-primary text-white rounded-pill text-caption font-medium hover:bg-accent-primary/90 transition-colors"
+            className="text-[13px] font-medium text-purple-1 hover:opacity-80 transition-opacity"
           >
             + Custom
           </button>
         </div>
 
         {/* Progress summary */}
-        <div className="mb-4 p-4 bg-surface-raised rounded-xl" style={{ boxShadow: 'var(--shadow-sm)' }}>
-          <p className="text-caption text-content-secondary">
+        <div className="rounded-card shadow-card bg-[var(--surface)] p-4 mb-4">
+          <p className="text-[13px] text-ink-1">
             {completedCount} of {combinedChallenges.length} challenges completed this week
           </p>
-          <div className="h-1.5 bg-surface-base rounded-full overflow-hidden mt-2">
+          <div className="h-1.5 bg-[var(--lavender-bg)] rounded-full overflow-hidden mt-2">
             <div
-              className="h-full bg-positive rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-purple-1 to-purple-2 rounded-full transition-all duration-500"
               style={{
                 width: combinedChallenges.length > 0
                   ? `${(completedCount / combinedChallenges.length) * 100}%`
@@ -317,16 +318,16 @@ export default function ChallengesScreen({
         </div>
 
         {/* Section */}
-        <h2 className="text-heading font-semibold text-content-primary mb-3">
-          This Week's Challenges
+        <h2 className="text-sm font-bold text-ink-soft uppercase tracking-wide mb-3">
+          This week
         </h2>
 
         {/* Challenge list */}
         {combinedChallenges.length === 0 ? (
           <div className="text-center py-16">
             <span className="text-4xl block mb-2">🏅</span>
-            <p className="text-body text-content-secondary">No challenges yet</p>
-            <p className="text-caption text-content-tertiary">
+            <p className="text-[13px] text-ink-soft">No challenges yet</p>
+            <p className="text-[11px] text-ink-mute">
               Add transactions to generate challenges, or create a custom one
             </p>
           </div>
@@ -342,17 +343,14 @@ export default function ChallengesScreen({
                 <motion.div
                   key={challenge.id}
                   variants={itemVariants}
-                  className={`relative p-4 bg-surface-raised rounded-xl overflow-hidden ${
-                    challenge.completed ? 'ring-2 ring-positive/50' : ''
-                  }`}
-                  style={{ boxShadow: 'var(--shadow-sm)' }}
+                  className="relative rounded-card shadow-card bg-[var(--surface)] p-4 overflow-hidden"
                 >
                   {/* Completion overlay */}
                   {challenge.completed && (
-                    <div className="absolute inset-0 bg-positive/5 flex items-center justify-center z-10 pointer-events-none">
-                      <div className="flex items-center gap-2 bg-positive/15 px-4 py-2 rounded-pill">
+                    <div className="absolute inset-0 bg-green-bg/60 flex items-center justify-center z-10 pointer-events-none">
+                      <div className="flex items-center gap-2 bg-green-1/15 px-4 py-2 rounded-pill">
                         <span className="text-lg">✅</span>
-                        <span className="text-caption font-semibold text-positive">
+                        <span className="text-[13px] font-semibold text-green-1">
                           Completed
                         </span>
                       </div>
@@ -361,49 +359,48 @@ export default function ChallengesScreen({
 
                   <div
                     className={`transition-opacity duration-300 ${
-                      challenge.completed ? 'opacity-60' : ''
+                      challenge.completed ? 'opacity-50' : ''
                     }`}
                   >
                     {/* Top row */}
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-2xl flex-shrink-0">
-                          {challenge.emoji}
-                        </span>
+                        <CategoryChip icon={challenge.emoji} size="md" />
                         <div className="min-w-0">
                           <h3
-                            className={`text-body font-semibold truncate ${
+                            className={`text-[13px] font-semibold truncate ${
                               challenge.completed
-                                ? 'text-content-tertiary line-through'
-                                : 'text-content-primary'
+                                ? 'text-ink-mute line-through'
+                                : 'text-ink-1'
                             }`}
                           >
                             {challenge.name}
                           </h3>
-                          <p className="text-caption text-content-secondary line-clamp-2">
+                          <p className="text-[11px] text-ink-mute line-clamp-2">
                             {challenge.description}
                           </p>
                         </div>
                       </div>
                       {/* XP badge */}
-                      <span className="flex-shrink-0 px-2 py-0.5 bg-accent-primary/15 text-accent-primary text-micro font-semibold rounded-pill ml-2">
+                      <span className="flex-shrink-0 px-2 py-0.5 bg-purple-bg text-purple-1 text-[11px] font-semibold rounded-pill ml-2">
                         +{challenge.xpReward} XP
                       </span>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="h-2 bg-surface-base rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-[var(--lavender-bg)] rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all duration-500"
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          challenge.completed
+                            ? 'bg-green-1'
+                            : 'bg-gradient-to-r from-purple-1 to-purple-2'
+                        }`}
                         style={{
                           width: `${progressPct * 100}%`,
-                          backgroundColor: challenge.completed
-                            ? 'var(--color-positive)'
-                            : 'var(--color-accent-primary)',
                         }}
                       />
                     </div>
-                    <p className="text-micro text-content-tertiary mt-1 text-right">
+                    <p className="text-[11px] text-ink-mute mt-1 text-right font-mono tabular-nums">
                       {challenge.current} / {challenge.target}
                     </p>
                   </div>
@@ -423,24 +420,24 @@ export default function ChallengesScreen({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-surface-overlay flex items-end lg:items-center justify-center z-50"
+            className="fixed inset-0 bg-ink-1/40 flex items-end lg:items-center justify-center z-50"
             onClick={() => setShowModal(false)}
           >
             <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
-              className="bg-surface-base w-full max-w-md rounded-t-xl lg:rounded-xl p-6"
+              className="bg-[var(--surface)] w-full max-w-md rounded-t-3xl lg:rounded-3xl p-6 border border-ink-mute/5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-9 h-1 bg-content-tertiary rounded-full mx-auto mb-4" />
-              <h3 className="text-heading font-bold text-content-primary mb-4">
+              <div className="w-9 h-1 bg-ink-mute rounded-full mx-auto mb-4" />
+              <h3 className="text-[14px] font-bold text-ink-1 mb-4">
                 Create Custom Challenge
               </h3>
 
               <div className="space-y-3 mb-4">
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Name
                   </label>
                   <input
@@ -448,11 +445,11 @@ export default function ChallengesScreen({
                     placeholder="e.g. Walk 10,000 Steps"
                     value={modalName}
                     onChange={(e) => setModalName(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Description
                   </label>
                   <input
@@ -460,11 +457,11 @@ export default function ChallengesScreen({
                     placeholder="e.g. Walk every day this week"
                     value={modalDesc}
                     onChange={(e) => setModalDesc(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
                 <div>
-                  <label className="text-caption text-content-secondary block mb-1">
+                  <label className="text-[11px] text-ink-mute block mb-1">
                     Target Number
                   </label>
                   <input
@@ -473,7 +470,7 @@ export default function ChallengesScreen({
                     placeholder="e.g. 7"
                     value={modalTarget}
                     onChange={(e) => setModalTarget(e.target.value)}
-                    className="w-full p-3 bg-surface-raised rounded-md outline-none text-body text-content-primary placeholder:text-content-tertiary"
+                    className="w-full p-3 bg-[var(--lavender-bg)] rounded-chip outline-none text-[13px] text-ink-1 placeholder:text-ink-mute"
                   />
                 </div>
               </div>
@@ -482,17 +479,17 @@ export default function ChallengesScreen({
                 <button
                   onClick={handleAddCustom}
                   disabled={!modalName.trim() || !modalDesc.trim() || !modalTarget}
-                  className={`flex-1 py-2 rounded-lg text-caption font-medium ${
+                  className={`flex-1 py-2.5 rounded-chip text-[13px] font-medium ${
                     modalName.trim() && modalDesc.trim() && modalTarget
-                      ? 'bg-accent-primary text-white'
-                      : 'bg-content-tertiary/20 text-content-tertiary cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-purple-1 to-purple-2 text-ink-inv'
+                      : 'bg-[var(--lavender-bg)] text-ink-mute cursor-not-allowed'
                   }`}
                 >
-                  Add Challenge
+                  Create
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-caption text-content-secondary hover:text-content-primary"
+                  className="px-4 py-2 text-[13px] text-ink-soft hover:text-ink-1 transition-colors"
                 >
                   Cancel
                 </button>

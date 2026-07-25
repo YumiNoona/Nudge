@@ -335,17 +335,16 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
   const previewRows = parsedRows.slice(0, 10);
 
   return (
-    <div className="min-h-screen bg-surface-base">
+    <div className="min-h-screen bg-lavender-bg">
       <div className="max-w-3xl mx-auto p-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onBack}
-            className="text-content-secondary hover:text-content-primary text-body"
+            className="text-ink-soft text-[13px] hover:text-ink-1 transition-colors"
           >
             ← Back
           </button>
-          <h1 className="text-title font-bold text-content-primary">Import from CSV</h1>
+          <h1 className="text-sm font-bold text-ink-soft uppercase tracking-wide">Import from CSV</h1>
           <div className="w-14" />
         </div>
 
@@ -361,18 +360,11 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className="flex flex-col items-center justify-center p-16 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300"
-              style={{
-                borderColor: dragOver
-                  ? 'var(--color-accent-primary)'
-                  : 'var(--color-content-tertiary)',
-                backgroundColor: dragOver
-                  ? 'var(--color-accent-primary)'
-                  : 'transparent',
-                boxShadow: dragOver
-                  ? '0 0 24px rgba(99, 102, 241, 0.3)'
-                  : 'none',
-              }}
+              className={`flex flex-col items-center justify-center p-16 border-2 border-dashed rounded-card cursor-pointer transition-all duration-300 ${
+                dragOver
+                  ? 'border-purple-1 bg-purple-bg/60 shadow-purple'
+                  : 'border-ink-mute/30 bg-purple-bg/30'
+              }`}
             >
               <motion.div
                 animate={dragOver ? { scale: 1.1 } : { scale: 1 }}
@@ -383,7 +375,7 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                   height="64"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke={dragOver ? 'white' : 'var(--color-content-tertiary)'}
+                  stroke={dragOver ? 'var(--purple)' : 'var(--ink-mute)'}
                   strokeWidth="1.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -394,28 +386,18 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                   <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
               </motion.div>
-              <p
-                className="text-heading font-semibold mb-1 transition-colors duration-300"
-                style={{ color: dragOver ? 'white' : 'var(--color-content-primary)' }}
+              <p className="text-sm font-semibold mb-1 transition-colors duration-300"
+                style={{ color: dragOver ? 'var(--purple)' : 'var(--ink-soft)' }}
               >
                 Drop CSV file here
               </p>
-              <p
-                className="text-caption mb-4 transition-colors duration-300"
-                style={{ color: dragOver ? 'rgba(255,255,255,0.8)' : 'var(--color-content-secondary)' }}
-              >
+              <p className="text-[11px] text-ink-mute mb-4">
                 or click to browse
               </p>
-              <span
-                className="px-4 py-2 rounded-pill text-caption font-medium transition-colors duration-300"
-                style={{
-                  backgroundColor: dragOver ? 'rgba(255,255,255,0.2)' : 'var(--color-accent-primary)',
-                  color: dragOver ? 'white' : 'white',
-                }}
-              >
+              <span className="px-4 py-2 rounded-pill text-[13px] font-medium bg-gradient-to-r from-purple-1 to-purple-2 text-white">
                 Browse Files
               </span>
-              <p className="text-micro text-content-tertiary mt-4">Accepts .csv files only</p>
+              <p className="text-[11px] text-ink-mute mt-4">Accepts .csv files only</p>
             </div>
             <input
               ref={fileInputRef}
@@ -435,8 +417,8 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
             className="space-y-4"
           >
             {/* Account selector */}
-            <div className="p-4 bg-surface-raised rounded-xl" style={{ boxShadow: 'var(--shadow-sm)' }}>
-              <label className="text-caption font-medium text-content-secondary mb-2 block">
+            <div className="p-4 rounded-card shadow-card bg-[var(--surface)]">
+              <label className="text-[11px] font-medium text-ink-mute mb-2 block">
                 Import into account
               </label>
               <select
@@ -447,7 +429,7 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                     prev.map((r) => ({ ...r, accountId: e.target.value }))
                   );
                 }}
-                className="w-full p-3 bg-surface-base rounded-md outline-none text-body text-content-primary border border-content-tertiary/20"
+                className="w-full p-3 bg-lavender-bg rounded-chip outline-none text-[13px] text-ink-1"
               >
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
@@ -458,56 +440,55 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
             </div>
 
             {/* Summary */}
-            <div className="flex items-center gap-4 text-caption">
-              <span className="text-content-primary font-semibold">
+            <div className="flex items-center gap-4 text-[11px]">
+              <span className="text-ink-1 font-semibold">
                 {parsedRows.length} transactions found
               </span>
               {parseErrors > 0 && (
-                <span className="text-warning font-semibold">
+                <span className="text-coral-1 font-semibold">
                   {parseErrors} rows couldn't be parsed
                 </span>
               )}
             </div>
 
             {/* Table */}
-            <div className="bg-surface-raised rounded-xl overflow-hidden" style={{ boxShadow: 'var(--shadow-sm)' }}>
+            <div className="rounded-card shadow-card bg-[var(--surface)] overflow-hidden">
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="w-full text-left">
                   <thead>
-                    <tr className="border-b" style={{ borderColor: 'var(--color-content-tertiary)' }}>
-                      <th className="p-3 text-caption font-semibold text-content-secondary">Date</th>
-                      <th className="p-3 text-caption font-semibold text-content-secondary">Merchant</th>
-                      <th className="p-3 text-caption font-semibold text-content-secondary">Amount</th>
-                      <th className="p-3 text-caption font-semibold text-content-secondary">Category</th>
+                    <tr className="border-b border-ink-mute/15">
+                      <th className="p-3 text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Date</th>
+                      <th className="p-3 text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Merchant</th>
+                      <th className="p-3 text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Amount</th>
+                      <th className="p-3 text-[11px] font-semibold text-ink-soft uppercase tracking-wide">Category</th>
                     </tr>
                   </thead>
                   <tbody>
                     {previewRows.map((row, i) => (
                       <tr
                         key={i}
-                        className="border-b last:border-0 transition-colors hover:bg-surface-base/50"
-                        style={{ borderColor: 'var(--color-content-tertiary)' }}
+                        className="border-b border-ink-mute/10 last:border-0 transition-colors hover:bg-purple-bg/30"
                       >
-                        <td className="p-3 text-caption text-content-primary tabular-nums">
+                        <td className="p-3 text-[11px] text-ink-1 tabular-nums">
                           {formatDateShort(row.dateEpoch)}
                         </td>
-                        <td className="p-3 text-caption text-content-primary max-w-[200px] truncate">
+                        <td className="p-3 text-[11px] text-ink-1 max-w-[200px] truncate">
                           {row.merchantRaw}
                         </td>
-                        <td className="p-3 text-caption">
+                        <td className="p-3 text-[11px]">
                           <span className="flex items-center gap-2">
                             <span
-                              className={`text-caption font-mono tabular-nums font-semibold ${
-                                row.type === 'debit' ? 'text-negative' : 'text-positive'
+                              className={`font-mono tabular-nums font-semibold ${
+                                row.type === 'debit' ? 'text-coral-1' : 'text-green-1'
                               }`}
                             >
                               {row.type === 'debit' ? '-' : '+'}₹{formatAmountCents(row.amountCents)}
                             </span>
                             <span
-                              className={`px-1.5 py-0.5 rounded text-micro font-medium ${
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                 row.type === 'debit'
-                                  ? 'bg-negative/15 text-negative'
-                                  : 'bg-positive/15 text-positive'
+                                  ? 'bg-coral-bg text-coral-1'
+                                  : 'bg-green-bg text-green-1'
                               }`}
                             >
                               {row.type === 'debit' ? 'Dr' : 'Cr'}
@@ -518,7 +499,7 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                           <select
                             value={categoryMap[i] ?? '__none'}
                             onChange={(e) => handleCategoryChange(i, e.target.value)}
-                            className="w-full p-2 bg-surface-base rounded-md outline-none text-caption text-content-primary border border-content-tertiary/20"
+                            className="w-full p-2 bg-lavender-bg rounded-chip outline-none text-[11px] text-ink-1"
                           >
                             <option value="__none">Uncategorized</option>
                             {categories.map((cat) => (
@@ -534,7 +515,7 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                 </table>
               </div>
               {parsedRows.length > 10 && (
-                <div className="p-3 text-center text-caption text-content-tertiary border-t" style={{ borderColor: 'var(--color-content-tertiary)' }}>
+                <div className="p-3 text-center text-[11px] text-ink-mute border-t border-ink-mute/10">
                   + {parsedRows.length - 10} more rows
                 </div>
               )}
@@ -548,13 +529,13 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
                   setParseErrors(0);
                   setCategoryMap({});
                 }}
-                className="px-6 py-3 rounded-lg text-body font-medium text-content-secondary hover:text-content-primary border border-content-tertiary/20 hover:border-content-tertiary/40 transition-colors"
+                className="px-6 py-3 rounded-pill text-[13px] font-medium text-ink-soft hover:text-ink-1 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImport}
-                className="flex-1 py-3 rounded-lg bg-accent-primary text-white text-body font-semibold hover:bg-accent-primary/90 transition-colors"
+                className="flex-1 py-3 rounded-pill bg-gradient-to-r from-purple-1 to-purple-2 text-white text-[13px] font-semibold"
               >
                 Import {parsedRows.length} transactions
               </button>
@@ -569,20 +550,20 @@ export default function CSVImportScreen({ categories, accounts, onBack, onImport
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="text-center py-24"
+              className="flex flex-col items-center justify-center py-24"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-                className="w-20 h-20 bg-positive/15 rounded-full flex items-center justify-center mx-auto mb-4"
+                className="w-20 h-20 bg-green-bg rounded-full flex items-center justify-center mx-auto mb-4"
               >
-                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--color-positive)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </motion.div>
-              <h2 className="text-title font-bold text-content-primary mb-1">Import complete!</h2>
-              <p className="text-caption text-content-secondary">
+              <h2 className="text-sm font-bold text-ink-1 mb-1">Import complete!</h2>
+              <p className="text-[11px] text-ink-mute">
                 {parsedRows.length} transactions imported successfully
               </p>
             </motion.div>
