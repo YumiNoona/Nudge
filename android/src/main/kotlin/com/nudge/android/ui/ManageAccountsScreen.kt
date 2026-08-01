@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -28,7 +30,11 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.Lucide
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.DS
+import com.nudge.android.ui.theme.formatCents
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,44 +62,63 @@ fun ManageAccountsScreen(
                 val cal = Calendar.getInstance().apply { timeInMillis = it.timestampEpoch }
                 cal.get(Calendar.MONTH) == currentMonth && cal.get(Calendar.YEAR) == currentYear
             }
-            .sumOf { if (it.type == "CREDIT") it.amountCents else -it.amountCents }
+            .sumOf { if (it.type.equals("credit", ignoreCase = true)) it.amountCents else -it.amountCents }
     }
+    val visibleAccounts = accounts.filter { !it.isArchived }
+    val totalBalance = visibleAccounts.sumOf { accountBalance(it.id) }
 
-    Column(modifier = Modifier.fillMaxSize().background(NudgeColors.Bone)) {
+    Column(modifier = Modifier.fillMaxSize().background(Nc.background).statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("← Back", color = NudgeColors.InkSoft)
+                Text("← Back", color = Nc.inkSoft)
             }
-            Text("Accounts", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+            Text("Accounts", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
             Spacer(Modifier.width(64.dp))
         }
 
-        if (accounts.isEmpty()) {
+        Box(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(24.dp)).background(DS.AccentDeep).padding(20.dp)
+        ) {
+            Column {
+                Text("TOTAL ACROSS ACCOUNTS", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .55f))
+                Spacer(Modifier.height(5.dp))
+                Text(formatCents(totalBalance), fontFamily = MonoFamily, fontSize = 27.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Spacer(Modifier.height(13.dp))
+                Text("${visibleAccounts.size} ACTIVE", fontFamily = MonoFamily, fontSize = 10.sp, color = Color.White.copy(alpha = .62f))
+            }
+            Box(Modifier.align(Alignment.TopEnd).size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .08f)), contentAlignment = Alignment.Center) {
+                Lucide.Wallet(size = 21.dp, color = DS.Signal)
+            }
+        }
+
+        if (visibleAccounts.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
+                modifier = Modifier.fillMaxWidth().weight(1f).padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Lucide.Wallet(size = 48.dp, strokeWidth = 1.8.dp, color = NudgeColors.InkMute)
+                    Lucide.Wallet(size = 48.dp, strokeWidth = 1.8.dp, color = Nc.inkMute)
                     Spacer(Modifier.height(16.dp))
                     Text(
                         "No accounts yet — tap + to add one",
                         fontSize = 14.sp,
-                        color = NudgeColors.InkSoft,
+                        color = Nc.inkSoft,
                         textAlign = TextAlign.Center
                     )
                 }
             }
         } else {
             LazyColumn(
+                modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(accounts, key = { it.id }) { account ->
+                items(visibleAccounts, key = { it.id }) { account ->
                     val balance = accountBalance(account.id)
                     AccountCard(
                         account = account,
@@ -118,9 +143,9 @@ fun ManageAccountsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .height(50.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
+            colors = ButtonDefaults.buttonColors(containerColor = DS.Signal, contentColor = DS.InkPrimary)
         ) {
-            Lucide.Plus(size = 18.dp, strokeWidth = 2.dp, color = Color.White)
+            Lucide.Plus(size = 18.dp, strokeWidth = 2.dp, color = DS.InkPrimary)
             Spacer(Modifier.width(8.dp))
             Text("Add Account", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -152,7 +177,7 @@ fun ManageAccountsScreen(
                         showDeleteDialog?.let { onDelete(it.id) }
                         showDeleteDialog = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Coral)
+                    colors = ButtonDefaults.buttonColors(containerColor = Nc.negative)
                 ) {
                     Text("Delete")
                 }
@@ -177,7 +202,8 @@ private fun AccountCard(
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(if (isPressed) 0.97f else 1f, label = "press")
 
-    val tint = NudgeColors.parse(account.color, NudgeColors.Emerald)
+    val tint = if (account.color.equals("#6366F1", true)) Color(0xFF3E6F8E)
+        else NudgeColors.parse(account.color, Nc.accent)
 
     Card(
         modifier = Modifier
@@ -185,7 +211,7 @@ private fun AccountCard(
             .scale(scale)
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)
+        colors = CardDefaults.cardColors(containerColor = Nc.surface)
     ) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
@@ -206,25 +232,28 @@ private fun AccountCard(
                     account.name,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.Ink
+                    color = Nc.ink
                 )
                 Text(
                     account.accountType.replace("_", " ").replaceFirstChar { it.uppercase() },
                     fontSize = 12.sp,
-                    color = NudgeColors.InkSoft
+                    color = Nc.inkSoft
                 )
+                if (account.isDefault) {
+                    Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Nc.accent)
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     "₹${String.format("%,.2f", balance / 100.0)}",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (balance >= 0) NudgeColors.Emerald else NudgeColors.Coral
+                    color = if (balance >= 0) Nc.accent else Nc.negative
                 )
                 Text(
                     "balance",
                     fontSize = 10.sp,
-                    color = NudgeColors.InkMute
+                    color = Nc.inkMute
                 )
             }
         }
@@ -256,6 +285,7 @@ private fun AccountEditSheet(
     var selectedType by remember { mutableStateOf(account?.accountType ?: "cash") }
     var last4 by remember { mutableStateOf(account?.last4Digits ?: "") }
     var selectedColor by remember { mutableStateOf(account?.color ?: "") }
+    var isDefault by remember { mutableStateOf(account?.isDefault ?: false) }
 
     val accountTypes = listOf("cash", "savings", "credit_card", "debit_card", "upi")
     val displayNames = mapOf(
@@ -265,10 +295,7 @@ private fun AccountEditSheet(
         "debit_card" to "Debit Card",
         "upi" to "UPI"
     )
-    val presetColors = listOf(
-        "#1FAE6A", "#5B8DEF", "#EF5DA8", "#F59E4B",
-        "#8B5CF6", "#F43F5E"
-    )
+    val presetColors = listOf("#365244", "#5D826C", "#149A8B", "#E38B42", "#3E6F8E", "#C65D4B")
     val isCardType = selectedType == "credit_card" || selectedType == "debit_card"
 
     val isValid = name.isNotBlank()
@@ -276,8 +303,9 @@ private fun AccountEditSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        dragHandle = null,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = NudgeColors.Surface
+        containerColor = Nc.surface
     ) {
         Column(
             modifier = Modifier
@@ -289,7 +317,7 @@ private fun AccountEditSheet(
                 modifier = Modifier
                     .width(36.dp).height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(NudgeColors.InkMute)
+                    .background(Nc.inkMute)
                     .align(Alignment.CenterHorizontally)
             )
             Spacer(Modifier.height(20.dp))
@@ -298,33 +326,33 @@ private fun AccountEditSheet(
                 if (isEditing) "Edit Account" else "Add Account",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.Ink
+                color = Nc.ink
             )
             Spacer(Modifier.height(20.dp))
 
             // Name
-            Text("Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
+            Text("Name", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Nc.inkSoft)
             Spacer(Modifier.height(6.dp))
             BasicTextField(
                 value = name,
                 onValueChange = { name = it },
-                textStyle = TextStyle(fontSize = 15.sp, color = NudgeColors.Ink),
-                cursorBrush = SolidColor(NudgeColors.Emerald),
+                textStyle = TextStyle(fontSize = 15.sp, color = Nc.ink),
+                cursorBrush = SolidColor(Nc.accent),
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NudgeColors.Bone)
+                    .background(Nc.background)
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 decorationBox = { inner ->
-                    if (name.isEmpty()) Text("Account name", fontSize = 15.sp, color = NudgeColors.InkMute)
+                    if (name.isEmpty()) Text("Account name", fontSize = 15.sp, color = Nc.inkMute)
                     inner()
                 }
             )
             Spacer(Modifier.height(16.dp))
 
             // Type
-            Text("Type", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
+            Text("Type", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Nc.inkSoft)
             Spacer(Modifier.height(6.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -338,14 +366,14 @@ private fun AccountEditSheet(
                         onClick = { selectedType = type },
                         label = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                AccountIcon(type, if (isSel) NudgeColors.Emerald else NudgeColors.InkSoft, 14.dp)
+                                AccountIcon(type, if (isSel) Nc.accent else Nc.inkSoft, 14.dp)
                                 Spacer(Modifier.width(4.dp))
                                 Text(label, fontSize = 11.sp)
                             }
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NudgeColors.EmeraldBg,
-                            selectedLabelColor = NudgeColors.Emerald
+                            selectedContainerColor = Nc.accentBg,
+                            selectedLabelColor = Nc.accent
                         ),
                         shape = RoundedCornerShape(10.dp)
                     )
@@ -355,33 +383,42 @@ private fun AccountEditSheet(
 
             // Last 4 digits
             if (isCardType) {
-                Text("Last 4 digits (optional)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
+                Text("Last 4 digits (optional)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Nc.inkSoft)
                 Spacer(Modifier.height(6.dp))
                 BasicTextField(
                     value = last4,
                     onValueChange = { if (it.length <= 4 && it.all { c -> c.isDigit() }) last4 = it },
-                    textStyle = TextStyle(fontSize = 15.sp, color = NudgeColors.Ink, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
-                    cursorBrush = SolidColor(NudgeColors.Emerald),
+                    textStyle = TextStyle(fontSize = 15.sp, color = Nc.ink, fontFamily = MonoFamily),
+                    cursorBrush = SolidColor(Nc.accent),
                     singleLine = true,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(NudgeColors.Bone)
+                        .background(Nc.background)
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     decorationBox = { inner ->
-                        if (last4.isEmpty()) Text("••••", fontSize = 15.sp, color = NudgeColors.InkMute)
+                        if (last4.isEmpty()) Text("••••", fontSize = 15.sp, color = Nc.inkMute)
                         inner()
                     }
                 )
                 Spacer(Modifier.height(16.dp))
             }
 
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Default account", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
+                    Text("Preselect it when adding expenses", fontSize = 11.sp, color = Nc.inkMute)
+                }
+                Switch(checked = isDefault, onCheckedChange = { isDefault = it })
+            }
+            Spacer(Modifier.height(16.dp))
+
             // Color tag
-            Text("Color tag (optional)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.InkSoft)
+            Text("Color tag (optional)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Nc.inkSoft)
             Spacer(Modifier.height(8.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
             ) {
                 presetColors.forEach { colorHex ->
                     val color = NudgeColors.parse(colorHex)
@@ -412,21 +449,26 @@ private fun AccountEditSheet(
             // Save
             Button(
                 onClick = {
-                    val entity = AccountEntity(
-                        id = account?.id ?: java.util.UUID.randomUUID().toString(),
+                    val entity = account?.copy(
                         name = name.trim(),
-                        bankName = account?.bankName,
                         accountType = selectedType,
                         last4Digits = last4.ifBlank { null },
                         color = selectedColor.ifBlank { null },
-                        icon = account?.icon,
-                        isActive = account?.isActive ?: true
+                        isDefault = isDefault
+                    ) ?: AccountEntity(
+                        id = java.util.UUID.randomUUID().toString(),
+                        name = name.trim(),
+                        bankName = null,
+                        accountType = selectedType,
+                        last4Digits = last4.ifBlank { null },
+                        color = selectedColor.ifBlank { null },
+                        isDefault = isDefault
                     )
                     onSave(entity)
                 },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald),
+                colors = ButtonDefaults.buttonColors(containerColor = Nc.accent),
                 enabled = isValid
             ) {
                 Text(
@@ -442,7 +484,7 @@ private fun AccountEditSheet(
                     onClick = { onDelete(account) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Delete Account", color = NudgeColors.Coral, fontSize = 14.sp)
+                    Text("Delete Account", color = Nc.negative, fontSize = 14.sp)
                 }
             }
         }

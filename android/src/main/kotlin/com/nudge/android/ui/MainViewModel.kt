@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import android.app.Application
+import android.provider.Telephony
 import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,9 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import java.security.SecureRandom
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import com.nudge.android.service.TransactionCaptureProcessor
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -25,6 +29,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val accounts: StateFlow<List<AccountEntity>>
     val budgets: StateFlow<List<BudgetEntity>>
     val gamificationProfile: StateFlow<GamificationProfileEntity?>
+    private val _captureScanState = MutableStateFlow<String?>(null)
+    val captureScanState: StateFlow<String?> = _captureScanState.asStateFlow()
 
     init {
         val app = application as NudgeApp
@@ -91,8 +97,74 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val txn = db.transactionDao().getById(id) ?: return@launch
             db.transactionDao().update(txn.copy(categoryId = categoryId, isReviewed = true))
+            val merchant = txn.merchantNormalized ?: txn.merchantRaw
+            if (merchant.isNotBlank() && categoryId.isNotBlank()) {
+                db.captureRuleDao().upsertAlias(
+                    MerchantAliasEntity(
+                        id = "learned_${merchant.lowercase().hashCode()}",
+                        rawPattern = Regex.escape(merchant),
+                        normalizedName = merchant,
+                        suggestedCategoryId = categoryId
+                    )
+                )
+            }
             awardXp(com.nudge.engine.GamificationMath.XP_REVIEW_TRANSACTION)
         }
+    }
+
+    fun updateTransaction(transaction: TransactionEntity) {
+        viewModelScope.launch {
+            db.transactionDao().update(transaction.copy(updatedAt = System.currentTimeMillis(), isReviewed = true))
+            val merchant = transaction.merchantNormalized ?: transaction.merchantRaw
+            transaction.categoryId?.takeIf { it.isNotBlank() }?.let { categoryId ->
+                db.captureRuleDao().upsertAlias(
+                    MerchantAliasEntity(
+                        id = "learned_${merchant.lowercase().hashCode()}",
+                        rawPattern = Regex.escape(merchant),
+                        normalizedName = merchant,
+                        suggestedCategoryId = categoryId
+                    )
+                )
+            }
+        }
+    }
+
+    fun scanHistoricalSms() {
+        viewModelScope.launch {
+            _captureScanState.value = "Scanning financial messages…"
+            val result = withContext(Dispatchers.IO) {
+                var added = 0
+                var checked = 0
+                val resolver = getApplication<Application>().contentResolver
+                val projection = arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE)
+                resolver.query(Telephony.Sms.Inbox.CONTENT_URI, projection, null, null, "${Telephony.Sms.DATE} DESC")?.use { cursor ->
+                    val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                    val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                    val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                    val processor = TransactionCaptureProcessor(getApplication())
+                    while (cursor.moveToNext() && checked < 500) {
+                        checked++
+                        val body = cursor.getString(bodyIndex) ?: continue
+                        if (!looksFinancial(body)) continue
+                        val outcome = processor.process(
+                            rawText = body,
+                            sourceId = cursor.getString(addressIndex).orEmpty(),
+                            source = "sms_import",
+                            receivedAt = cursor.getLong(dateIndex)
+                        )
+                        if (outcome is TransactionCaptureProcessor.Outcome.Added) added++
+                    }
+                }
+                added
+            }
+            _captureScanState.value = "Added $result new transaction${if (result == 1) "" else "s"}"
+        }
+    }
+
+    private fun looksFinancial(text: String): Boolean {
+        val value = text.lowercase()
+        return listOf("debited", "credited", "paid", "spent", "received", "refund", "upi", "inr", "rs.", "₹")
+            .any(value::contains)
     }
 
     fun addCategory(name: String, type: CategoryType, icon: String? = null, color: String? = null) {
@@ -110,6 +182,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun archiveCategory(id: String) {
+        viewModelScope.launch { db.categoryDao().archive(id) }
+    }
+
     fun addAccount(name: String, type: AccountType, bankName: String? = null, last4Digits: String? = null) {
         viewModelScope.launch {
             val account = AccountEntity(
@@ -125,6 +201,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun saveAccount(account: AccountEntity) {
+        viewModelScope.launch {
+            if (account.isDefault) db.accountDao().clearDefault()
+            db.accountDao().insert(account)
+        }
+    }
+
+    fun deleteAccount(id: String) {
+        viewModelScope.launch {
+            db.accountDao().getById(id)?.let { db.accountDao().delete(it) }
+        }
+    }
+
+    fun setDefaultAccount(id: String) {
+        viewModelScope.launch {
+            db.accountDao().clearDefault()
+            db.accountDao().setDefault(id)
+        }
+    }
+
+    fun archiveAccount(id: String) {
+        viewModelScope.launch { db.accountDao().archive(id) }
+    }
+
+    fun restoreAccount(id: String) {
+        viewModelScope.launch { db.accountDao().restore(id) }
+    }
+
     fun deleteTransaction(id: String) {
         viewModelScope.launch { db.transactionDao().deleteById(id) }
     }
@@ -135,6 +239,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun importCategory(cat: CategoryEntity) {
         viewModelScope.launch { db.categoryDao().insert(cat) }
+    }
+
+    fun importAccount(account: AccountEntity) {
+        viewModelScope.launch { db.accountDao().insert(account) }
+    }
+
+    fun importBudget(budget: BudgetEntity) {
+        viewModelScope.launch { db.budgetDao().insert(budget) }
     }
 
     fun saveBudget(id: String?, categoryId: String?, amountCents: Long, period: String, rolloverEnabled: Boolean, startDateEpoch: Long) {

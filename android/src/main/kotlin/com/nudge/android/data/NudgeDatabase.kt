@@ -31,6 +31,7 @@ abstract class NudgeDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun recurringRuleDao(): RecurringRuleDao
     abstract fun gamificationDao(): GamificationDao
+    abstract fun captureRuleDao(): CaptureRuleDao
 
     companion object {
         private var INSTANCE: NudgeDatabase? = null

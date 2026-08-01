@@ -16,7 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.engine.GamificationMath
 import com.nudge.engine.RecurringDetection
@@ -93,7 +94,8 @@ fun SubscriptionsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NudgeColors.SurfaceBase)
+            .background(Nc.background)
+            .statusBarsPadding()
     ) {
         // Top bar
         Row(
@@ -104,19 +106,19 @@ fun SubscriptionsScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("← Back", color = NudgeColors.ContentSecondary)
+                Text("← Back", color = Nc.inkSoft)
             }
             Text(
                 "Subscriptions",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
+                color = Nc.ink
             )
             Spacer(modifier = Modifier.width(64.dp))
         }
 
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 130.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Total monthly recurring card
@@ -124,7 +126,7 @@ fun SubscriptionsScreen(
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.XL),
                     colors = CardDefaults.cardColors(
-                        containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.1f)
+                        containerColor = Nc.accent.copy(alpha = 0.1f)
                     )
                 ) {
                     Column(
@@ -136,19 +138,19 @@ fun SubscriptionsScreen(
                         Text(
                             "Monthly Recurring",
                             fontSize = 13.sp,
-                            color = NudgeColors.ContentSecondary
+                            color = Nc.inkSoft
                         )
                         Text(
                             "₹${NumberFormat.getNumberInstance(Locale.getDefault()).format(monthlyRecurringTotal / 100)}",
                             fontSize = 32.sp,
                             fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = NudgeColors.AccentPrimary
+                            fontFamily = MonoFamily,
+                            color = Nc.accent
                         )
                         Text(
                             "per month",
                             fontSize = 12.sp,
-                            color = NudgeColors.ContentTertiary
+                            color = Nc.inkMute
                         )
                     }
                 }
@@ -161,7 +163,7 @@ fun SubscriptionsScreen(
                         "Upcoming Charges",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
+                        color = Nc.ink,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -173,7 +175,7 @@ fun SubscriptionsScreen(
 
                     Card(
                         shape = RoundedCornerShape(NudgeRadius.MD),
-                        colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                        colors = CardDefaults.cardColors(containerColor = Nc.surface)
                     ) {
                         Row(
                             modifier = Modifier
@@ -187,20 +189,20 @@ fun SubscriptionsScreen(
                                     recurring.merchantNormalized,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = NudgeColors.ContentPrimary
+                                    color = Nc.ink
                                 )
                                 Text(
                                     "Every ${recurring.interval.name.lowercase().replaceFirstChar { it.uppercase() }}" +
                                     " · Next: ${dateFormat.format(Date(recurring.nextExpectedDate.toEpochMilliseconds()))}",
                                     fontSize = 12.sp,
-                                    color = NudgeColors.ContentTertiary
+                                    color = Nc.inkMute
                                 )
                                 // Category hint
                                 merchant?.let {
                                     Text(
                                         "${it.icon ?: "📁"} ${it.name}",
                                         fontSize = 11.sp,
-                                        color = NudgeColors.AccentPrimary
+                                        color = Nc.accent
                                     )
                                 }
                             }
@@ -208,8 +210,8 @@ fun SubscriptionsScreen(
                                 "₹${NumberFormat.getNumberInstance(Locale.getDefault()).format(recurring.avgAmount / 100)}",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                fontFamily = FontFamily.Monospace,
-                                color = NudgeColors.Negative
+                                fontFamily = MonoFamily,
+                                color = Nc.negative
                             )
                         }
                     }
@@ -223,7 +225,7 @@ fun SubscriptionsScreen(
                         "All Detected Recurring",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
+                        color = Nc.ink,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                 }
@@ -237,7 +239,7 @@ fun SubscriptionsScreen(
                     Card(
                         shape = RoundedCornerShape(NudgeRadius.MD),
                         colors = CardDefaults.cardColors(
-                            containerColor = NudgeColors.SurfaceRaised.copy(alpha = 0.6f)
+                            containerColor = Nc.surface.copy(alpha = 0.6f)
                         )
                     ) {
                         Row(
@@ -252,21 +254,21 @@ fun SubscriptionsScreen(
                                     recurring.merchantNormalized,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = NudgeColors.ContentPrimary
+                                    color = Nc.ink
                                 )
                                 Text(
                                     "~${recurring.interval.name.lowercase().replaceFirstChar { it.uppercase() }}" +
                                     " · ${(recurring.confidence * 100).toInt()}% confidence",
                                     fontSize = 11.sp,
-                                    color = NudgeColors.ContentTertiary
+                                    color = Nc.inkMute
                                 )
                             }
                             Text(
                                 "₹${NumberFormat.getNumberInstance(Locale.getDefault()).format(recurring.avgAmount / 100)}",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                fontFamily = FontFamily.Monospace,
-                                color = NudgeColors.ContentSecondary
+                                fontFamily = MonoFamily,
+                                color = Nc.inkSoft
                             )
                         }
                     }
@@ -288,12 +290,12 @@ fun SubscriptionsScreen(
                             Text(
                                 "No recurring transactions detected yet",
                                 fontSize = 14.sp,
-                                color = NudgeColors.ContentSecondary
+                                color = Nc.inkSoft
                             )
                             Text(
                                 "Keep tracking — patterns will emerge over time",
                                 fontSize = 12.sp,
-                                color = NudgeColors.ContentTertiary
+                                color = Nc.inkMute
                             )
                         }
                     }

@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
 
 @Composable
@@ -83,14 +84,14 @@ fun GradientHeroCard(
             ) {
                 Text(
                     text = label,
-                    color = NudgeColors.Surface.copy(alpha = 0.7f),
+                    color = Nc.surface.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
 
                 Text(
                     text = value,
-                    color = NudgeColors.Surface,
+                    color = Nc.surface,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                     letterSpacing = (-1).sp
@@ -102,13 +103,13 @@ fun GradientHeroCard(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                color = if (deltaDown) NudgeColors.CoralBg else NudgeColors.GreenBg
+                                color = if (deltaDown) Nc.coralBg else Nc.greenBg
                             )
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = delta,
-                            color = if (deltaDown) NudgeColors.Coral else NudgeColors.Green,
+                            color = if (deltaDown) Nc.negative else Nc.positive,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -125,13 +126,13 @@ fun GradientHeroCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(NudgeColors.Surface.copy(alpha = 0.15f))
+                                .background(Nc.surface.copy(alpha = 0.15f))
                                 .clickable(onClick = onClick)
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 text = pillLabel,
-                                color = NudgeColors.Surface,
+                                color = Nc.surface,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             )

@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
 
 @Composable
 fun BadgeTile(
@@ -55,6 +55,9 @@ fun BadgeTile(
         mounted = true
     }
 
+    val inkMuteColor = Nc.inkMute
+    val inkColor = Nc.ink
+
     Card(
         modifier = modifier
             .scale(scale)
@@ -67,7 +70,7 @@ fun BadgeTile(
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (unlocked) NudgeColors.Surface else Color.Transparent
+            containerColor = if (unlocked) Nc.surface else Color.Transparent
         ),
         elevation = if (unlocked) CardDefaults.cardElevation(defaultElevation = 1.dp) else CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -78,7 +81,7 @@ fun BadgeTile(
                         Modifier.drawBehind {
                             val strokeWidth = 2.dp.toPx()
                             drawRoundRect(
-                                color = NudgeColors.InkMute.copy(alpha = 0.30f),
+                                color = inkMuteColor.copy(alpha = 0.30f),
                                 cornerRadius = CornerRadius(12.dp.toPx()),
                                 size = Size(size.width, size.height),
                                 style = Stroke(
@@ -117,7 +120,7 @@ fun BadgeTile(
                         unlocked -> label
                         else -> "???"
                     },
-                    color = if (unlocked) NudgeColors.Ink else NudgeColors.InkMute,
+                    color = if (unlocked) inkColor else inkMuteColor,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center

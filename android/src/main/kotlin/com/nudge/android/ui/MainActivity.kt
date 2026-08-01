@@ -7,31 +7,29 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.nudge.android.service.NudgeNotificationListener
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nudge.android.ui.components.BottomDock
-import com.nudge.android.ui.components.BNavItem
+import com.nudge.android.ui.components.DockItem
 import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.NudgeTheme
 
 class MainActivity : ComponentActivity() {
@@ -39,33 +37,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val viewModel: MainViewModel = viewModel()
-            var isDark by remember { mutableStateOf(applicationContext
-                .getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-                .getBoolean("dark_mode", false)) }
-
-            NudgeTheme(isDark = isDark) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val onboardingDone = applicationContext
-                        .getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-                        .getBoolean("onboarding_complete", false)
-
+            val vm: MainViewModel = viewModel()
+            val prefs = remember { getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
+            var dark by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
+            var onboardingDone by remember { mutableStateOf(prefs.getBoolean("onboarding_complete", false)) }
+            NudgeTheme(isDark = dark) {
+                Surface(Modifier.fillMaxSize()) {
                     if (!onboardingDone) {
                         OnboardingScreen(onDone = {
-                            applicationContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-                                .edit().putBoolean("onboarding_complete", true).apply()
-                            // Force recomposition — setContent will re-render with onboardingDone=true
-                            recreate()
+                            prefs.edit().putBoolean("onboarding_complete", true).apply()
+                            onboardingDone = true
                         })
                     } else {
-                        MainNavHost(viewModel, isDark) { new ->
-                            isDark = new
-                            applicationContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-                                .edit().putBoolean("dark_mode", new).apply()
-                        }
+                        ExpenseNavHost(vm, dark, onToggleTheme = {
+                            dark = !dark
+                            prefs.edit().putBoolean("dark_mode", dark).apply()
+                        })
                     }
                 }
             }
@@ -73,243 +60,129 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class NavScreen { Home, Review, More, Achievements, Challenges, Goals, Subscriptions, Charts, Budget, Envelope, Backup, Sync, Permissions, Accounts }
+// Legacy values remain temporarily so old, disconnected screens still compile.
+enum class NavScreen { History, Charts, Settings, Review, Accounts, Categories, Backup, Permissions, Home, More, Transactions, Wallet, Achievements, Challenges, Goals, Subscriptions, Budget, Envelope, Sync }
 
 @Composable
-fun MainNavHost(
-    viewModel: MainViewModel,
-    isDark: Boolean,
-    onToggleTheme: (Boolean) -> Unit
-) {
-    var current by remember { mutableStateOf(NavScreen.Home) }
-    var showAddSheet by remember { mutableStateOf(false) }
-    val needsReviewCount by viewModel.needsReviewCount.collectAsState()
+private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTheme: () -> Unit) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
+    val stack = remember { mutableStateListOf(NavScreen.History) }
+    val current = stack.last()
+    var showAdd by remember { mutableStateOf(false) }
+    var captureEnabled by remember { mutableStateOf(prefs.getBoolean("auto_capture_enabled", true)) }
+    var notificationEnabled by remember(current) { mutableStateOf(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) }
+    var smsGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                notificationEnabled = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+                smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
-    val budgets by viewModel.budgets.collectAsState()
-    val context = LocalContext.current
+    val scanState by viewModel.captureScanState.collectAsState()
 
-    // SMS permission launcher
-    val smsPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { grants ->
-        val prefs = context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putBoolean("sms_granted", grants.values.all { it }).apply()
+    fun root(destination: NavScreen) { stack.clear(); stack.add(destination) }
+    fun push(destination: NavScreen) { if (stack.lastOrNull() != destination) stack.add(destination) }
+    fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) else if (current != NavScreen.History) root(NavScreen.History) }
+
+    BackHandler(enabled = showAdd || stack.size > 1 || current != NavScreen.History) {
+        if (showAdd) showAdd = false else back()
     }
 
-    // Notification access check
-    val notificationEnabled = remember {
-        NotificationManagerCompat.getEnabledListenerPackages(context).any { it == context.packageName }
+    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+        smsGranted = grants.values.all { it }
+        prefs.edit().putBoolean("sms_granted", smsGranted).apply()
     }
 
-    val springSpec = spring<Float>(
-        dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
-        stiffness = androidx.compose.animation.core.Spring.StiffnessLow
-    )
-
-    val showBottomNav = current in listOf(NavScreen.Home, NavScreen.Review, NavScreen.More)
-
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = current,
             transitionSpec = {
-                (fadeIn(springSpec) + scaleIn(initialScale = 0.96f, animationSpec = springSpec))
-                    .togetherWith(fadeOut(springSpec))
+                (fadeIn(spring()) + slideInHorizontally { it / 10 }) togetherWith
+                    (fadeOut(spring()) + slideOutHorizontally { -it / 12 })
             },
-            label = "screen",
-            modifier = Modifier.fillMaxSize()
+            label = "expenseDestination"
         ) { screen ->
             when (screen) {
-                NavScreen.Home -> HomeScreen(
-                    viewModel = viewModel, isDark = isDark,
-                    onToggleTheme = { onToggleTheme(!isDark) },
-                    onNavigateToReview = { current = NavScreen.Review },
-                    onNavigateToMore = { current = NavScreen.More }
+                NavScreen.History, NavScreen.Home, NavScreen.Transactions -> HistoryScreen(
+                    transactions = transactions,
+                    categories = categories,
+                    accounts = accounts,
+                    captureEnabled = captureEnabled,
+                    onSettings = { push(NavScreen.Settings) },
+                    onReview = { push(NavScreen.Review) },
+                    onAdd = { showAdd = true },
+                    onUpdate = viewModel::updateTransaction,
+                    onDelete = viewModel::deleteTransaction
+                )
+                NavScreen.Charts -> ChartsScreen(transactions, categories, onBack = null)
+                NavScreen.Settings, NavScreen.More -> ExpenseSettingsScreen(
+                    isDark = isDark,
+                    captureEnabled = captureEnabled,
+                    notificationEnabled = notificationEnabled,
+                    smsGranted = smsGranted,
+                    scanState = scanState,
+                    onBack = ::back,
+                    onToggleTheme = onToggleTheme,
+                    onCaptureChanged = {
+                        captureEnabled = it
+                        prefs.edit().putBoolean("auto_capture_enabled", it).apply()
+                    },
+                    onRequestSms = { smsPermission.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)) },
+                    onNotificationSettings = {
+                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                        notificationEnabled = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+                    },
+                    onScanSms = viewModel::scanHistoricalSms,
+                    onAccounts = { push(NavScreen.Accounts) },
+                    onCategories = { push(NavScreen.Categories) },
+                    onBackup = { push(NavScreen.Backup) }
                 )
                 NavScreen.Review -> NeedsReviewSwipeScreen(
-                    transactions = transactions.filter { !it.isReviewed },
-                    categories = categories,
-                    onCategorize = { id, catId -> viewModel.reviewTransaction(id, catId) },
-                    onDismiss = { id -> viewModel.reviewTransaction(id, "") },
-                    onBack = { current = NavScreen.Home }
+                    transactions.filter { !it.isReviewed }, categories,
+                    onCategorize = viewModel::reviewTransaction,
+                    onDismiss = { viewModel.deleteTransaction(it) },
+                    onBack = ::back
                 )
-                NavScreen.More -> MoreScreen(
-                    isDark = isDark,
-                    onToggleTheme = { onToggleTheme(!isDark) },
-                    notificationEnabled = notificationEnabled,
-                    smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED,
-                    onBack = { current = NavScreen.Home },
-                    onNavigate = { current = it },
-                    onNavigateToAccounts = { current = NavScreen.Accounts },
-                    onRequestSms = {
-                        smsPermissionLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
-                    },
-                    onOpenNotificationSettings = {
-                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                    }
+                NavScreen.Accounts, NavScreen.Wallet -> ManageAccountsScreen(
+                    accounts, transactions,
+                    onAdd = viewModel::saveAccount,
+                    onUpdate = viewModel::saveAccount,
+                    onDelete = viewModel::deleteAccount,
+                    onBack = ::back
                 )
-                NavScreen.Accounts -> ManageAccountsScreen(
-                    accounts = accounts,
-                    transactions = transactions,
-                    onAdd = { viewModel.addAccount(it.name, com.nudge.model.AccountType.valueOf(it.accountType.uppercase()), it.bankName, it.last4Digits) },
-                    onUpdate = { /* update logic */ },
-                    onDelete = { /* delete logic */ },
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Achievements -> AchievementsScreen(
-                    gamificationProfile = viewModel.gamificationProfile.value,
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Challenges -> ChallengesScreen(
-                    categories = categories, transactions = transactions,
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Goals -> SavingsGoalsScreen(
-                    transactions = transactions,
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Subscriptions -> SubscriptionsScreen(
-                    transactions = transactions, categories = categories,
-                    recurringRules = emptyList(),
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Charts -> ChartsScreen(
-                    transactions = transactions, categories = categories,
-                    isDark = isDark,
-                    onBack = { current = NavScreen.Home }
-                )
-                NavScreen.Budget -> BudgetScreen(
-                    budgets = budgets, categories = categories, transactions = transactions,
-                    isDark = isDark,
-                    onSave = { id, catId, amt, period, roll, start ->
-                        viewModel.saveBudget(id, catId, amt, period, roll, start)
-                    },
-                    onDelete = { viewModel.deleteBudget(it) },
-                    onBack = { current = NavScreen.Home }
-                )
-                NavScreen.Envelope -> EnvelopeBudgetScreen(
-                    budgets = budgets, categories = categories, transactions = transactions,
-                    onAddBudget = {}, onEditBudget = {},
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Backup -> BackupScreen(
-                    onBack = { current = NavScreen.More },
-                    viewModel = viewModel
-                )
-                NavScreen.Sync -> SyncSettingsScreen(
-                    onBack = { current = NavScreen.More }
-                )
-                NavScreen.Permissions -> PermissionsScreen(
-                    notificationEnabled = notificationEnabled,
-                    smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED,
-                    onBack = { current = NavScreen.More },
-                    onRequestSms = {
-                        smsPermissionLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
-                    },
-                    onOpenNotificationSettings = {
-                        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                    }
-                )
+                NavScreen.Categories -> CategoryManagerScreen(categories, viewModel::addCategory, viewModel::archiveCategory, ::back)
+                NavScreen.Backup -> BackupScreen(::back, viewModel)
+                else -> HistoryScreen(transactions, categories, accounts, captureEnabled, { push(NavScreen.Settings) }, { push(NavScreen.Review) }, { showAdd = true }, viewModel::updateTransaction, viewModel::deleteTransaction)
             }
         }
 
-        // Bottom nav dock
-        if (showBottomNav) {
+        if (current == NavScreen.History || current == NavScreen.Charts || current == NavScreen.Home || current == NavScreen.Transactions) {
             BottomDock(
                 items = listOf(
-                    BNavItem("home", { c -> Lucide.Home(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "Home"),
-                    BNavItem("add",  { c -> Lucide.Plus(size = 22.dp, strokeWidth = 2.5.dp, color = c) }, ""),
-                    BNavItem("review", { c -> Lucide.ListTodo(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "Review", needsReviewCount),
-                    BNavItem("more", { c -> Lucide.Menu(size = 22.dp, strokeWidth = 1.8.dp, color = c) }, "More"),
+                    DockItem("history", { Lucide.ListTodo(size = 23.dp, color = it) }, "History", transactions.count { !it.isReviewed }),
+                    DockItem("add", { Lucide.Plus(size = 24.dp, color = it) }, "Add"),
+                    DockItem("charts", { Lucide.ChartBar(size = 23.dp, color = it) }, "Charts")
                 ),
-                activeId = when (current) {
-                    NavScreen.Home -> "home"
-                    NavScreen.Review -> "review"
-                    NavScreen.More -> "more"
-                    else -> "home"
-                },
-                onSelect = { id ->
-                    when (id) {
-                        "home" -> current = NavScreen.Home
-                        "review" -> current = NavScreen.Review
-                        "more" -> current = NavScreen.More
-                    }
-                },
-                onFabClick = { showAddSheet = true },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                activeId = if (current == NavScreen.Charts) "charts" else "history",
+                onSelect = { if (it == "charts") root(NavScreen.Charts) else root(NavScreen.History) },
+                onFabClick = { showAdd = true },
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
             )
         }
     }
 
-    // Add transaction modal sheet — available from anywhere via bottom nav FAB
-    AnimatedVisibility(
-        visible = showAddSheet,
-        enter = slideInVertically(
-            initialOffsetY = { it },
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-        ) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-    ) {
-        AddTransactionSheet(
-            categories = categories,
-            accounts = accounts,
-            onDismiss = { showAddSheet = false },
-            onAdd = { amount, type, merchant, accountId, categoryId, note ->
-                viewModel.addTransaction(amount, type, merchant, accountId, categoryId, note)
-                showAddSheet = false
-            }
-        )
-    }
-}
-
-// ── Permissions Screen ──
-
-@Composable
-fun PermissionsScreen(
-    notificationEnabled: Boolean,
-    smsGranted: Boolean,
-    onBack: () -> Unit,
-    onRequestSms: () -> Unit,
-    onOpenNotificationSettings: () -> Unit
-) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        TextButton(onClick = onBack) { Text("← Back", color = NudgeColors.InkSoft) }
-        Spacer(Modifier.height(8.dp))
-        Text("Permissions", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-        Spacer(Modifier.height(16.dp))
-
-        // SMS
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)) {
-            Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("SMS Access", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Ink)
-                    Text(if (smsGranted) "Granted" else "Not granted", fontSize = 12.sp, color = if (smsGranted) NudgeColors.Emerald else NudgeColors.Coral)
-                    Text("Auto-detect UPI & bank transaction SMS", fontSize = 11.sp, color = NudgeColors.InkMute)
-                }
-                if (!smsGranted) Button(onClick = onRequestSms, colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)) { Text("Grant") }
-                else Text("✓", color = NudgeColors.Emerald, fontSize = 20.sp)
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        // Notification listener
-        Card(shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Notification Access", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Ink)
-                        Text(if (notificationEnabled) "Enabled" else "Not enabled", fontSize = 12.sp, color = if (notificationEnabled) NudgeColors.Emerald else NudgeColors.Coral)
-                        Text("Capture GPay, PhonePe, Paytm notifications", fontSize = 11.sp, color = NudgeColors.InkMute)
-                    }
-                    if (!notificationEnabled) Button(onClick = onOpenNotificationSettings, colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)) { Text("Open Settings") }
-                    else Text("✓", color = NudgeColors.Emerald, fontSize = 20.sp)
-                }
-                if (!notificationEnabled) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Find \"Nudge\" in the list and toggle it on", fontSize = 11.sp, color = NudgeColors.Amber)
-                }
-            }
-        }
+    if (showAdd) AddTransactionSheet(categories, accounts, onDismiss = { showAdd = false }) { amount, type, merchant, account, category, note ->
+        viewModel.addTransaction(amount, type, merchant, account, category, note)
+        showAdd = false
     }
 }

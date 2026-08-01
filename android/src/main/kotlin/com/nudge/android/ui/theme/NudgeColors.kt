@@ -24,14 +24,14 @@ object NudgeColors {
     val SurfaceHover = Color(0xFFF0EFEC)
 
     // ── Ink (light theme) ──
-    val Ink = Color(0xFF1E1B2E)
-    val InkSoft = Color(0xFF6E6A85)
-    val InkMute = Color(0xFFA6A2B8)
+    val Ink = Color(0xFF111411)
+    val InkSoft = Color(0xFF626862)
+    val InkMute = Color(0xFF9BA19B)
 
     // ── Ink (dark theme) ──
-    val InkDark = Color(0xFFEBE9F5)
-    val InkSoftDark = Color(0xFF9A96B5)
-    val InkMuteDark = Color(0xFF5E5A78)
+    val InkDark = Color(0xFFF0F2EF)
+    val InkSoftDark = Color(0xFFA5AAA5)
+    val InkMuteDark = Color(0xFF666C67)
 
     // ── Semantic ──
     val Green = Emerald
@@ -55,8 +55,8 @@ object NudgeColors {
     val CatTealBg = Color(0xFFE3FAF6)
     val CatOrange = Color(0xFFF59E4B)
     val CatOrangeBg = Color(0xFFFFF1E3)
-    val CatViolet = Color(0xFF8B5CF6)
-    val CatVioletBg = Color(0xFFF0EBFF)
+    val CatViolet = Color(0xFF5D826C)
+    val CatVioletBg = Color(0xFFE7F0EA)
     val CatRose = Color(0xFFF43F5E)
     val CatRoseBg = Color(0xFFFFE4E8)
     val CatCyan = Color(0xFF06B6D4)
@@ -90,8 +90,8 @@ object NudgeColors {
     val DarkContentTertiary get() = InkMuteDark
 
     // Re-added colors
-    val Purple = Color(0xFF8B5CF6)
-    val PurpleDeep = Color(0xFF7C3AED)
+    val Purple = Emerald
+    val PurpleDeep = EmeraldDeep
     val DarkBg = Dark
 
     fun parse(colorString: String?, fallback: Color = InkMute): Color {

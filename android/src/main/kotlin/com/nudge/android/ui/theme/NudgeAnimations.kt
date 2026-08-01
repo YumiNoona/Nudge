@@ -72,7 +72,7 @@ fun AmountCountUp(
     durationMs: Int = MotionDuration.CELEBRATION,
     prefix: String = "₹",
     fontSize: Int = 36,
-    color: Color = NudgeColors.ContentPrimary,
+    color: Color = Nc.ink,
     fontWeight: FontWeight = FontWeight.Bold
 ) {
     val animatedValue by animateFloatAsState(
@@ -94,7 +94,7 @@ fun AmountCountUp(
         text = "$prefix$formatted",
         fontSize = fontSize.sp,
         fontWeight = fontWeight,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = MonoFamily,
         color = color,
         modifier = modifier
     )
@@ -154,18 +154,18 @@ fun AnimatedBudgetRing(
     // Color interpolation based on progress
     val ringColor by animateColorAsState(
         targetValue = when {
-            animatedProgress > 1f -> NudgeColors.Negative
-            animatedProgress > 0.8f -> NudgeColors.Warning
-            else -> NudgeColors.AccentPrimary
+            animatedProgress > 1f -> Nc.negative
+            animatedProgress > 0.8f -> Nc.warning
+            else -> Nc.accent
         },
         animationSpec = tween(MotionDuration.STANDARD),
         label = "ringColor"
     )
 
     val trackColor = if (isDark) {
-        NudgeColors.DarkContentTertiary.copy(alpha = 0.2f)
+        Nc.inkMute.copy(alpha = 0.2f)
     } else {
-        NudgeColors.ContentTertiary.copy(alpha = 0.2f)
+        Nc.inkMute.copy(alpha = 0.2f)
     }
 
     Box(contentAlignment = Alignment.Center, modifier = modifier.size(size)) {
@@ -180,7 +180,7 @@ fun AnimatedBudgetRing(
             "${(animatedProgress * 100).toInt()}%",
             fontSize = 10.sp,
             fontWeight = FontWeight.SemiBold,
-            color = NudgeColors.ContentSecondary
+            color = Nc.inkSoft
         )
     }
 }
@@ -255,7 +255,7 @@ fun LevelUpCelebration(
                 .size(200.dp)
                 .scale(burstScale)
                 .alpha(alpha * 0.3f)
-                .background(NudgeColors.AccentPrimary, shape = CircleShape)
+                .background(Nc.accent, shape = CircleShape)
         )
 
         // Confetti particles
@@ -265,11 +265,11 @@ fun LevelUpCelebration(
             val particleAlpha = (alpha * (0.5f + (i % 3) * 0.15f)).coerceIn(0f, 1f)
 
             val particleColor = listOf(
-                NudgeColors.AccentPrimary,
-                NudgeColors.Positive,
-                NudgeColors.Warning,
-                NudgeColors.AccentSecondary,
-                NudgeColors.Negative
+                Nc.accent,
+                Nc.positive,
+                Nc.warning,
+                Nc.accentDeep,
+                Nc.negative
             )[i % 5]
 
             Box(
@@ -302,14 +302,14 @@ fun LevelUpCelebration(
                 "Level $newLevel",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                color = NudgeColors.AccentPrimary
+                fontFamily = MonoFamily,
+                color = Nc.accent
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 title,
                 fontSize = 18.sp,
-                color = NudgeColors.DarkContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(24.dp))
             TextButton(onClick = onDismiss) {
@@ -360,7 +360,7 @@ fun SwipeToDeleteContainer(
                     .matchParentSize()
                     .alpha(deleteBgAlpha)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(NudgeColors.Negative.copy(alpha = 0.15f))
+                    .background(Nc.negative.copy(alpha = 0.15f))
             )
         }
 
@@ -428,7 +428,7 @@ fun NudgePullRefreshIndicator(
         label = "pullScale"
     )
 
-    val coinColor = if (isRefreshing) NudgeColors.AccentPrimary else NudgeColors.ContentTertiary
+    val coinColor = if (isRefreshing) Nc.accent else Nc.inkMute
 
     Text(
         text = "🪙",
@@ -475,7 +475,7 @@ fun StreakFlame(
             "${streakDays}d",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = NudgeColors.ContentPrimary
+            color = Nc.ink
         )
     }
 }
@@ -556,7 +556,7 @@ fun BadgeUnlockAnimation(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(NudgeColors.AccentPrimary.copy(alpha = 0.1f))
+                .background(Nc.accent.copy(alpha = 0.1f))
                 .padding(16.dp)
         ) {
             Text(badgeIcon, fontSize = 36.sp)
@@ -564,7 +564,7 @@ fun BadgeUnlockAnimation(
                 badgeName,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.AccentPrimary
+                color = Nc.accent
             )
         }
     }

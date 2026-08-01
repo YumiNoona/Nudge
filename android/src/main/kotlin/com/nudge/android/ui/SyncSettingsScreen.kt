@@ -15,7 +15,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import kotlinx.coroutines.launch
 
@@ -51,7 +52,8 @@ fun SyncSettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NudgeColors.SurfaceBase)
+            .background(Nc.background)
+            .statusBarsPadding()
     ) {
         // Top bar
         Row(
@@ -61,8 +63,8 @@ fun SyncSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) { Text("← Back", color = NudgeColors.ContentSecondary) }
-            Text("Sync Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.ContentPrimary)
+            TextButton(onClick = onBack) { Text("← Back", color = Nc.inkSoft) }
+            Text("Sync Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
             Spacer(modifier = Modifier.width(64.dp))
         }
 
@@ -78,9 +80,9 @@ fun SyncSettingsScreen(
                 shape = RoundedCornerShape(NudgeRadius.LG),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isSyncConfigured)
-                        NudgeColors.Positive.copy(alpha = 0.1f)
+                        Nc.positive.copy(alpha = 0.1f)
                     else
-                        NudgeColors.ContentTertiary.copy(alpha = 0.1f)
+                        Nc.inkMute.copy(alpha = 0.1f)
                 )
             ) {
                 Row(
@@ -94,7 +96,7 @@ fun SyncSettingsScreen(
                         modifier = Modifier
                             .size(12.dp)
                             .background(
-                                if (isSyncConfigured) NudgeColors.Positive else NudgeColors.ContentTertiary,
+                                if (isSyncConfigured) Nc.positive else Nc.inkMute,
                                 shape = RoundedCornerShape(6.dp)
                             )
                     )
@@ -103,12 +105,12 @@ fun SyncSettingsScreen(
                             if (isSyncConfigured) "Sync is active" else "Sync not configured",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = NudgeColors.ContentPrimary
+                            color = Nc.ink
                         )
                         Text(
                             if (isSyncConfigured) "Your data syncs across devices" else "Set up sync to access your data on all devices",
                             fontSize = 12.sp,
-                            color = NudgeColors.ContentSecondary
+                            color = Nc.inkSoft
                         )
                     }
                 }
@@ -134,11 +136,11 @@ fun SyncSettingsScreen(
                 // Register new device
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.LG),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                    colors = CardDefaults.cardColors(containerColor = Nc.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Register New Device", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.ContentPrimary)
-                        Text("Create a new sync identity", fontSize = 12.sp, color = NudgeColors.ContentSecondary)
+                        Text("Register New Device", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Nc.ink)
+                        Text("Create a new sync identity", fontSize = 12.sp, color = Nc.inkSoft)
                         Spacer(modifier = Modifier.height(8.dp))
 
                         OutlinedTextField(
@@ -168,7 +170,7 @@ fun SyncSettingsScreen(
                             },
                             enabled = localServerUrl.isNotBlank() && deviceName.isNotBlank() && !isRegistering,
                             shape = RoundedCornerShape(NudgeRadius.MD),
-                            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.AccentPrimary)
+                            colors = ButtonDefaults.buttonColors(containerColor = Nc.accent)
                         ) {
                             Text(if (isRegistering) "Registering..." else "Register")
                         }
@@ -178,11 +180,11 @@ fun SyncSettingsScreen(
                 // Pair with existing device
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.LG),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                    colors = CardDefaults.cardColors(containerColor = Nc.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Pair with Existing Device", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.ContentPrimary)
-                        Text("Enter a pairing code from another device", fontSize = 12.sp, color = NudgeColors.ContentSecondary)
+                        Text("Pair with Existing Device", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Nc.ink)
+                        Text("Enter a pairing code from another device", fontSize = 12.sp, color = Nc.inkSoft)
                         Spacer(modifier = Modifier.height(8.dp))
 
                         OutlinedTextField(
@@ -221,7 +223,7 @@ fun SyncSettingsScreen(
                             },
                             enabled = localServerUrl.isNotBlank() && pairCode.isNotBlank() && pairDeviceName.isNotBlank() && !isPairing,
                             shape = RoundedCornerShape(NudgeRadius.MD),
-                            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.AccentPrimary)
+                            colors = ButtonDefaults.buttonColors(containerColor = Nc.accent)
                         ) {
                             Text(if (isPairing) "Pairing..." else "Pair")
                         }
@@ -233,7 +235,7 @@ fun SyncSettingsScreen(
 
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.LG),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                    colors = CardDefaults.cardColors(containerColor = Nc.surface)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         DetailRow("Server", serverUrl)
@@ -249,7 +251,7 @@ fun SyncSettingsScreen(
                     onClick = onSyncNow,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(NudgeRadius.MD),
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.AccentPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = Nc.accent)
                 ) {
                     Text("Sync Now", fontSize = 15.sp)
                 }
@@ -257,7 +259,7 @@ fun SyncSettingsScreen(
                 // Auto-sync toggle
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.LG),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                    colors = CardDefaults.cardColors(containerColor = Nc.surface)
                 ) {
                     Row(
                         modifier = Modifier
@@ -267,8 +269,8 @@ fun SyncSettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Auto-sync", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = NudgeColors.ContentPrimary)
-                            Text("Sync automatically in background", fontSize = 12.sp, color = NudgeColors.ContentSecondary)
+                            Text("Auto-sync", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
+                            Text("Sync automatically in background", fontSize = 12.sp, color = Nc.inkSoft)
                         }
                         Switch(
                             checked = autoSyncEnabled,
@@ -277,40 +279,40 @@ fun SyncSettingsScreen(
                                 onToggleAutoSync(it)
                             },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = NudgeColors.AccentPrimary,
-                                checkedTrackColor = NudgeColors.AccentPrimary.copy(alpha = 0.3f)
+                                checkedThumbColor = Nc.accent,
+                                checkedTrackColor = Nc.accent.copy(alpha = 0.3f)
                             )
                         )
                     }
                 }
 
                 // Disconnect
-                SectionHeader("Danger Zone", color = NudgeColors.Negative)
+                SectionHeader("Danger Zone", color = Nc.negative)
 
                 Card(
                     shape = RoundedCornerShape(NudgeRadius.LG),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.Negative.copy(alpha = 0.08f))
+                    colors = CardDefaults.cardColors(containerColor = Nc.negative.copy(alpha = 0.08f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (!showDisconnectConfirm) {
-                            Text("Disconnect from sync", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Negative)
-                            Text("Your data stays on device. You can reconnect later.", fontSize = 12.sp, color = NudgeColors.ContentSecondary)
+                            Text("Disconnect from sync", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Nc.negative)
+                            Text("Your data stays on device. You can reconnect later.", fontSize = 12.sp, color = Nc.inkSoft)
                             Spacer(modifier = Modifier.height(8.dp))
                             OutlinedButton(
                                 onClick = { showDisconnectConfirm = true },
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = NudgeColors.Negative)
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Nc.negative)
                             ) {
                                 Text("Disconnect")
                             }
                         } else {
-                            Text("Are you sure?", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = NudgeColors.Negative)
+                            Text("Are you sure?", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Nc.negative)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(
                                     onClick = {
                                         onDisconnect()
                                         showDisconnectConfirm = false
                                     },
-                                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Negative),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Nc.negative),
                                     shape = RoundedCornerShape(NudgeRadius.SM)
                                 ) {
                                     Text("Yes, Disconnect")
@@ -327,11 +329,12 @@ fun SyncSettingsScreen(
                 }
             }
         }
+        Spacer(Modifier.height(120.dp))
     }
 }
 
 @Composable
-private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Color = NudgeColors.ContentPrimary) {
+private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Color = Nc.ink) {
     Text(
         title,
         fontSize = 13.sp,
@@ -349,8 +352,7 @@ private fun DetailRow(label: String, value: String) {
             .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(label, fontSize = 13.sp, color = NudgeColors.ContentSecondary)
-        Text(value, fontSize = 13.sp, color = NudgeColors.ContentPrimary, fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+        Text(label, fontSize = 13.sp, color = Nc.inkSoft)
+        Text(value, fontSize = 13.sp, color = Nc.ink, fontFamily = MonoFamily)
     }
 }
-

@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
 
 @Composable
@@ -46,10 +47,13 @@ fun RingStatCard(
     val ringSize = 88.dp
     val strokeWidth = 8.dp
 
+    val inkMuteColor = Nc.inkMute
+    val inkColor = Nc.ink
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface),
+        colors = CardDefaults.cardColors(containerColor = Nc.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(
@@ -72,7 +76,7 @@ fun RingStatCard(
                     )
 
                     drawArc(
-                        color = NudgeColors.InkMute.copy(alpha = 0.15f),
+                        color = inkMuteColor.copy(alpha = 0.15f),
                         startAngle = -90f,
                         sweepAngle = 360f,
                         useCenter = false,
@@ -99,7 +103,7 @@ fun RingStatCard(
                     ) {
                         Text(
                             text = centerText,
-                            color = NudgeColors.Ink,
+                            color = inkColor,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center
@@ -107,7 +111,7 @@ fun RingStatCard(
                         if (subtext != null) {
                             Text(
                                 text = subtext,
-                                color = NudgeColors.InkMute,
+                                color = inkMuteColor,
                                 fontSize = 9.sp,
                                 textAlign = TextAlign.Center
                             )
@@ -120,7 +124,7 @@ fun RingStatCard(
 
             Text(
                 text = label,
-                color = NudgeColors.InkSoft,
+                color = Nc.inkSoft,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center

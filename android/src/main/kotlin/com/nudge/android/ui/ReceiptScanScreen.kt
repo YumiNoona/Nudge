@@ -40,7 +40,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
 import java.util.concurrent.Executors
 
 @androidx.compose.runtime.Composable
@@ -71,16 +71,16 @@ fun ReceiptScanScreen(
 
     if (capturedBitmap != null) {
         // Review extracted data
-        Column(Modifier.fillMaxSize().background(NudgeColors.Bone).padding(24.dp)) {
+        Column(Modifier.fillMaxSize().background(Nc.background).padding(24.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Review Scanned Receipt", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                TextButton(onClick = onCancel) { Text("Cancel", color = NudgeColors.InkSoft) }
+                Text("Review Scanned Receipt", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
+                TextButton(onClick = onCancel) { Text("Cancel", color = Nc.inkSoft) }
             }
             Spacer(Modifier.height(16.dp))
 
-            Surface(shape = RoundedCornerShape(16.dp), color = NudgeColors.Surface, modifier = Modifier.fillMaxWidth()) {
+            Surface(shape = RoundedCornerShape(16.dp), color = Nc.surface, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {
-                    Text("Scanned ✓", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Emerald)
+                    Text("Scanned ✓", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Nc.accent)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(extractedAmount, { extractedAmount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp))
                     Spacer(Modifier.height(8.dp))
@@ -94,13 +94,13 @@ fun ReceiptScanScreen(
                 onClick = { onResult(extractedAmount, extractedMerchant, extractedDate) },
                 modifier = Modifier.fillMaxWidth().height(50.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
+                colors = ButtonDefaults.buttonColors(containerColor = Nc.accent)
             ) { Text("Confirm & Add", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
         }
     } else if (!hasCameraPermission) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("Camera access needed", fontSize = 16.sp, color = NudgeColors.Ink)
+                Text("Camera access needed", fontSize = 16.sp, color = Nc.ink)
                 Spacer(Modifier.height(8.dp))
                 Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) { Text("Grant Permission") }
             }
@@ -184,7 +184,7 @@ fun ReceiptScanScreen(
             if (isProcessing) {
                 Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(color = NudgeColors.Emerald)
+                        CircularProgressIndicator(color = Nc.accent)
                         Spacer(Modifier.height(12.dp))
                         Text("Extracting text...", color = Color.White)
                     }

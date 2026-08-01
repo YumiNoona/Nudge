@@ -23,14 +23,19 @@ class NudgeNotificationListener : NotificationListenerService() {
             "com.google.android.apps.nbu.paisa.user",
             "com.phonepe.app",
             "net.one97.paytm",
-            "com.amazon.mShop.android.shopping",
             "in.org.npci.upiapp",
+            "com.mobikwik_new",
+            "com.freecharge.android",
+            "com.csam.icici.bank.imobile",
+            "com.snapwork.hdfc",
+            "com.sbi.SBIFreedomPlus",
+            "com.axis.mobile",
+            "com.konylabs.cbplpat",
             "com.idfcfirstbank.optimus",
             "com.kotak.neo",
             "com.icici.bank.icicico",
             "com.hdfc.retail.netbanking",
             "com.yesbank.nomad",
-            "com.axis.mobile",
             "com.sbi.lotus"
         )
 
@@ -63,8 +68,10 @@ class NudgeNotificationListener : NotificationListenerService() {
         if (packageName !in TARGET_PACKAGES) return
 
         val extras = sbn.notification.extras
-        val title = extras.getString("android.title") ?: return
-        val text = extras.getString("android.text") ?: return
+        val title = extras.getCharSequence("android.title")?.toString().orEmpty()
+        val text = extras.getCharSequence("android.bigText")?.toString()
+            ?: extras.getCharSequence("android.text")?.toString()
+            ?: return
         val fullText = "$title: $text"
 
         if (!looksLikeTransaction(fullText)) return

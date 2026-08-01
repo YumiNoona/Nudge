@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.MotionDuration
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.engine.GamificationMath
 
@@ -257,12 +258,12 @@ fun ChallengesScreen(
                         "Challenges",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("\u2190", fontSize = 18.sp, color = NudgeColors.ContentSecondary)
+                        Text("\u2190", fontSize = 18.sp, color = Nc.inkSoft)
                     }
                 },
                 actions = {
@@ -271,12 +272,12 @@ fun ChallengesScreen(
                             "+ Custom",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NudgeColors.AccentPrimary
+                            color = Nc.accent
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NudgeColors.SurfaceBase
+                    containerColor = Nc.background
                 )
             )
         }
@@ -285,7 +286,7 @@ fun ChallengesScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(NudgeColors.SurfaceBase),
+                .background(Nc.background),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -294,7 +295,7 @@ fun ChallengesScreen(
                     "This Week's Challenges",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.ContentPrimary
+                    color = Nc.ink
                 )
             }
 
@@ -338,13 +339,13 @@ private fun ChallengeCard(challenge: ChallengeData) {
         shape = RoundedCornerShape(NudgeRadius.LG),
         colors = CardDefaults.cardColors(
             containerColor = if (challenge.isCompleted) {
-                NudgeColors.Positive.copy(alpha = 0.08f)
+                Nc.positive.copy(alpha = 0.08f)
             } else {
-                NudgeColors.SurfaceRaised
+                Nc.surface
             }
         ),
         border = if (challenge.isCompleted) {
-            androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.Positive.copy(alpha = 0.4f))
+            androidx.compose.foundation.BorderStroke(1.dp, Nc.positive.copy(alpha = 0.4f))
         } else {
             null
         }
@@ -361,8 +362,8 @@ private fun ChallengeCard(challenge: ChallengeData) {
                     .size(48.dp)
                     .clip(CircleShape)
                     .background(
-                        if (challenge.isCompleted) NudgeColors.Positive.copy(alpha = 0.15f)
-                        else NudgeColors.AccentPrimary.copy(alpha = 0.1f)
+                        if (challenge.isCompleted) Nc.positive.copy(alpha = 0.15f)
+                        else Nc.accent.copy(alpha = 0.1f)
                     )
             ) {
                 if (challenge.isCompleted) {
@@ -379,13 +380,13 @@ private fun ChallengeCard(challenge: ChallengeData) {
                     challenge.name,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (challenge.isCompleted) NudgeColors.ContentSecondary else NudgeColors.ContentPrimary,
+                    color = if (challenge.isCompleted) Nc.inkSoft else Nc.ink,
                     textDecoration = if (challenge.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                 )
                 Text(
                     challenge.description,
                     fontSize = 12.sp,
-                    color = NudgeColors.ContentTertiary,
+                    color = Nc.inkMute,
                     maxLines = 2
                 )
 
@@ -401,15 +402,15 @@ private fun ChallengeCard(challenge: ChallengeData) {
                             .weight(1f)
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
-                        color = if (challenge.isCompleted) NudgeColors.Positive else NudgeColors.AccentPrimary,
-                        trackColor = NudgeColors.ContentTertiary.copy(alpha = 0.2f)
+                        color = if (challenge.isCompleted) Nc.positive else Nc.accent,
+                        trackColor = Nc.inkMute.copy(alpha = 0.2f)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         "${challenge.currentProgress}/${challenge.targetProgress}",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NudgeColors.ContentSecondary
+                        color = Nc.inkSoft
                     )
                 }
             }
@@ -418,14 +419,14 @@ private fun ChallengeCard(challenge: ChallengeData) {
 
             Surface(
                 shape = RoundedCornerShape(NudgeRadius.SM),
-                color = NudgeColors.AccentPrimary.copy(alpha = 0.12f)
+                color = Nc.accent.copy(alpha = 0.12f)
             ) {
                 Text(
                     "+${challenge.rewardXp} XP",
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NudgeColors.AccentPrimary
+                    color = Nc.accent
                 )
             }
         }
@@ -437,7 +438,7 @@ private fun ChallengesEmptyState() {
     Card(
         shape = RoundedCornerShape(NudgeRadius.XL),
         colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
+            containerColor = Nc.accent.copy(alpha = 0.05f)
         )
     ) {
         Column(
@@ -455,12 +456,12 @@ private fun ChallengesEmptyState() {
                 "No challenges yet",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Text(
                 "Add some transactions to generate challenges",
                 fontSize = 13.sp,
-                color = NudgeColors.ContentTertiary
+                color = Nc.inkMute
             )
         }
     }
@@ -488,7 +489,7 @@ private fun CreateChallengeSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = NudgeColors.SurfaceBase
+        containerColor = Nc.background
     ) {
         Column(
             modifier = Modifier
@@ -500,7 +501,7 @@ private fun CreateChallengeSheet(
                     .width(36.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(NudgeColors.ContentTertiary)
+                    .background(Nc.inkMute)
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -510,7 +511,7 @@ private fun CreateChallengeSheet(
                 "Create Custom Challenge",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
+                color = Nc.ink
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -519,19 +520,19 @@ private fun CreateChallengeSheet(
                 "Name",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. Save more this month", fontSize = 14.sp, color = NudgeColors.ContentTertiary) },
+                placeholder = { Text("e.g. Save more this month", fontSize = 14.sp, color = Nc.inkMute) },
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f),
-                    focusedBorderColor = NudgeColors.AccentPrimary,
-                    focusedTextColor = NudgeColors.ContentPrimary,
-                    unfocusedTextColor = NudgeColors.ContentPrimary
+                    unfocusedBorderColor = Nc.inkMute.copy(alpha = 0.3f),
+                    focusedBorderColor = Nc.accent,
+                    focusedTextColor = Nc.ink,
+                    unfocusedTextColor = Nc.ink
                 ),
                 textStyle = TextStyle(fontSize = 15.sp),
                 shape = RoundedCornerShape(12.dp),
@@ -544,19 +545,19 @@ private fun CreateChallengeSheet(
                 "Description",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. Reduce eating out", fontSize = 14.sp, color = NudgeColors.ContentTertiary) },
+                placeholder = { Text("e.g. Reduce eating out", fontSize = 14.sp, color = Nc.inkMute) },
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f),
-                    focusedBorderColor = NudgeColors.AccentPrimary,
-                    focusedTextColor = NudgeColors.ContentPrimary,
-                    unfocusedTextColor = NudgeColors.ContentPrimary
+                    unfocusedBorderColor = Nc.inkMute.copy(alpha = 0.3f),
+                    focusedBorderColor = Nc.accent,
+                    focusedTextColor = Nc.ink,
+                    unfocusedTextColor = Nc.ink
                 ),
                 textStyle = TextStyle(fontSize = 15.sp),
                 shape = RoundedCornerShape(12.dp),
@@ -569,7 +570,7 @@ private fun CreateChallengeSheet(
                 "Category (optional)",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -586,10 +587,10 @@ private fun CreateChallengeSheet(
                         .fillMaxWidth()
                         .menuAnchor(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f),
-                        focusedBorderColor = NudgeColors.AccentPrimary,
-                        focusedTextColor = NudgeColors.ContentPrimary,
-                        unfocusedTextColor = NudgeColors.ContentPrimary
+                        unfocusedBorderColor = Nc.inkMute.copy(alpha = 0.3f),
+                        focusedBorderColor = Nc.accent,
+                        focusedTextColor = Nc.ink,
+                        unfocusedTextColor = Nc.ink
                     ),
                     textStyle = TextStyle(fontSize = 15.sp),
                     shape = RoundedCornerShape(12.dp)
@@ -600,7 +601,7 @@ private fun CreateChallengeSheet(
                     onDismissRequest = { categoryDropdownExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("None (all categories)", color = NudgeColors.ContentSecondary) },
+                        text = { Text("None (all categories)", color = Nc.inkSoft) },
                         onClick = {
                             selectedCategory = null
                             categoryDropdownExpanded = false
@@ -626,7 +627,7 @@ private fun CreateChallengeSheet(
                 "Target",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -635,7 +636,7 @@ private fun CreateChallengeSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NudgeColors.SurfaceRaised)
+                    .background(Nc.surface)
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
@@ -650,10 +651,10 @@ private fun CreateChallengeSheet(
                     textStyle = TextStyle(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
-                        fontFamily = FontFamily.Monospace
+                        color = Nc.ink,
+                        fontFamily = MonoFamily
                     ),
-                    cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+                    cursorBrush = SolidColor(Nc.accent),
                     modifier = Modifier.weight(1f),
                     decorationBox = { innerTextField ->
                         if (targetStr.isEmpty()) {
@@ -661,8 +662,8 @@ private fun CreateChallengeSheet(
                                 "0",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = NudgeColors.ContentTertiary,
-                                fontFamily = FontFamily.Monospace
+                                color = Nc.inkMute,
+                                fontFamily = MonoFamily
                             )
                         }
                         innerTextField()
@@ -694,8 +695,8 @@ private fun CreateChallengeSheet(
                     .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = NudgeColors.AccentPrimary,
-                    disabledContainerColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f)
+                    containerColor = Nc.accent,
+                    disabledContainerColor = Nc.inkMute.copy(alpha = 0.3f)
                 ),
                 enabled = isValid
             ) {

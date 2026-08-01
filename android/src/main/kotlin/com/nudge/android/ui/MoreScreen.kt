@@ -33,8 +33,17 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.DSIconChip
+import com.nudge.android.ui.theme.DSSpace
+import com.nudge.android.ui.theme.DSTypography
 import com.nudge.android.ui.theme.Lucide
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 
 @Composable
 fun MoreScreen(
@@ -42,7 +51,6 @@ fun MoreScreen(
     onToggleTheme: (Boolean) -> Unit,
     notificationEnabled: Boolean,
     smsGranted: Boolean,
-    onBack: () -> Unit,
     onNavigate: (NavScreen) -> Unit,
     onRequestSms: () -> Unit,
     onOpenNotificationSettings: () -> Unit,
@@ -50,13 +58,17 @@ fun MoreScreen(
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
+    val scope = rememberCoroutineScope()
 
     var displayName by remember { mutableStateOf(prefs.getString("display_name", "You") ?: "You") }
+    var photoPath by remember { mutableStateOf(prefs.getString("profile_photo_path", null)) }
     var photoUri by remember { mutableStateOf(prefs.getString("profile_photo_uri", null)) }
     var photoBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
-    LaunchedEffect(photoUri) {
-        photoBitmap = if (photoUri != null) {
+    LaunchedEffect(photoPath, photoUri) {
+        photoBitmap = if (photoPath != null) {
+            BitmapFactory.decodeFile(photoPath)
+        } else if (photoUri != null) {
             try {
                 context.contentResolver.openInputStream(Uri.parse(photoUri))?.use { stream ->
                     BitmapFactory.decodeStream(stream)
@@ -65,7 +77,7 @@ fun MoreScreen(
         } else null
     }
 
-    var showNameDialog by remember { mutableStateOf(false) }
+    var showProfileDialog by remember { mutableStateOf(false) }
     var nameEdit by remember { mutableStateOf(displayName) }
 
     val currencyCode by remember { mutableStateOf(prefs.getString("currency_code", "INR") ?: "INR") }
@@ -75,23 +87,40 @@ fun MoreScreen(
         ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            val uriStr = uri.toString()
-            photoUri = uriStr
-            prefs.edit().putString("profile_photo_uri", uriStr).apply()
+            scope.launch {
+                val savedPath = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val destination = File(context.filesDir, "profile-avatar.jpg")
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            FileOutputStream(destination).use { output -> input.copyTo(output) }
+                        } ?: error("Unable to read selected image")
+                        destination.absolutePath
+                    }.getOrNull()
+                }
+                if (savedPath != null) {
+                    photoPath = savedPath
+                    photoUri = null
+                    photoBitmap = BitmapFactory.decodeFile(savedPath)
+                    prefs.edit()
+                        .putString("profile_photo_path", savedPath)
+                        .remove("profile_photo_uri")
+                        .commit()
+                }
+            }
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(NudgeColors.Bone)) {
+    Column(modifier = Modifier.fillMaxSize().background(Nc.background).statusBarsPadding()) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = DSSpace.lg, vertical = DSSpace.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
-                Text("← Back", color = NudgeColors.InkSoft)
-            }
-            Text("Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-            Spacer(Modifier.width(64.dp))
+            Text("Settings", style = DSTypography.headlineLarge, color = Nc.ink)
+            Spacer(Modifier.weight(1f))
+            DSIconChip(
+                { Lucide.Settings(size = 18.dp, strokeWidth = 1.8.dp, color = Nc.accent) },
+                size = 40.dp
+            )
         }
 
         LazyColumn(
@@ -101,55 +130,51 @@ fun MoreScreen(
             // ── Profile card ──
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().clickable {
+                        nameEdit = displayName
+                        showProfileDialog = true
+                    },
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)
+                    colors = CardDefaults.cardColors(containerColor = Nc.surface)
                 ) {
                     Row(
                         Modifier.fillMaxWidth().padding(20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ScalableClickBox(onClick = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(NudgeColors.EmeraldBg),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (photoBitmap != null) {
-                                    Image(
-                                        bitmap = photoBitmap!!.asImageBitmap(),
-                                        contentDescription = "Profile photo",
-                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Lucide.User(size = 32.dp, strokeWidth = 1.8.dp, color = NudgeColors.Emerald)
-                                }
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(Nc.accentBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (photoBitmap != null) {
+                                Image(
+                                    bitmap = photoBitmap!!.asImageBitmap(),
+                                    contentDescription = "Profile photo",
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Lucide.User(size = 32.dp, strokeWidth = 1.8.dp, color = Nc.accent)
                             }
                         }
                         Spacer(Modifier.width(16.dp))
                         Column(Modifier.weight(1f)) {
-                            ScalableClickBox(onClick = {
-                                nameEdit = displayName
-                                showNameDialog = true
-                            }) {
-                                Text(
-                                    displayName,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = NudgeColors.Ink
-                                )
-                            }
+                            Text(
+                                displayName,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Nc.ink
+                            )
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 "Tap to edit profile",
                                 fontSize = 12.sp,
-                                color = NudgeColors.InkMute
+                                color = Nc.inkMute
                             )
                         }
-                        Lucide.ChevronRight(size = 18.dp, strokeWidth = 1.8.dp, color = NudgeColors.InkMute)
+                        Lucide.ChevronRight(size = 18.dp, strokeWidth = 1.8.dp, color = Nc.inkMute)
                     }
                 }
             }
@@ -163,16 +188,16 @@ fun MoreScreen(
                 GroupedCard(top = true, bottom = true) {
                     // Currency
                     ScalableRow(
-                        icon = { Lucide.Tag(size = 18.dp, strokeWidth = 1.8.dp, color = NudgeColors.Emerald) },
-                        tint = NudgeColors.Emerald,
+                        icon = { Lucide.Tag(size = 18.dp, strokeWidth = 1.8.dp, color = Nc.accent) },
+                        tint = Nc.accent,
                         label = "Currency",
                         subtitle = currencyCode,
                         trailing = {
-                            Lucide.ChevronRight(size = 16.dp, strokeWidth = 1.8.dp, color = NudgeColors.InkMute)
+                            Lucide.ChevronRight(size = 16.dp, strokeWidth = 1.8.dp, color = Nc.inkMute)
                         },
                         onClick = { showCurrencyDialog = true }
                     )
-                    Divider(color = NudgeColors.Bone, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    Divider(color = Nc.background, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                     // Dark mode
                     DarkModeRow(isDark = isDark, onToggle = onToggleTheme)
                 }
@@ -222,15 +247,15 @@ fun MoreScreen(
             item {
                 GroupedCard(top = true, bottom = false) {
                     ScalableRow(
-                        icon = { Lucide.Shield(size = 18.dp, strokeWidth = 1.8.dp, color = if (smsGranted) NudgeColors.Emerald else NudgeColors.Coral) },
-                        tint = if (smsGranted) NudgeColors.Emerald else NudgeColors.Coral,
+                        icon = { Lucide.Shield(size = 18.dp, strokeWidth = 1.8.dp, color = if (smsGranted) Nc.accent else Nc.negative) },
+                        tint = if (smsGranted) Nc.accent else Nc.negative,
                         label = "SMS Access",
                         subtitle = if (smsGranted) "Granted" else "Not granted",
                         trailing = {
                             if (!smsGranted) {
-                                SmallActionButton("Grant", NudgeColors.Emerald, onRequestSms)
+                                SmallActionButton("Grant", Nc.accent, onRequestSms)
                             } else {
-                                Text("✓", fontSize = 16.sp, color = NudgeColors.Emerald)
+                                Text("✓", fontSize = 16.sp, color = Nc.accent)
                             }
                         }
                     )
@@ -239,15 +264,15 @@ fun MoreScreen(
             item {
                 GroupedCard(top = false, bottom = true) {
                     ScalableRow(
-                        icon = { Lucide.Bell(size = 18.dp, strokeWidth = 1.8.dp, color = if (notificationEnabled) NudgeColors.Emerald else NudgeColors.Coral) },
-                        tint = if (notificationEnabled) NudgeColors.Emerald else NudgeColors.Coral,
+                        icon = { Lucide.Bell(size = 18.dp, strokeWidth = 1.8.dp, color = if (notificationEnabled) Nc.accent else Nc.negative) },
+                        tint = if (notificationEnabled) Nc.accent else Nc.negative,
                         label = "Notifications",
                         subtitle = if (notificationEnabled) "Enabled" else "Not enabled",
                         trailing = {
                             if (!notificationEnabled) {
-                                SmallActionButton("Open Settings", NudgeColors.Emerald, onOpenNotificationSettings)
+                                SmallActionButton("Open Settings", Nc.accent, onOpenNotificationSettings)
                             } else {
-                                Text("✓", fontSize = 16.sp, color = NudgeColors.Emerald)
+                                Text("✓", fontSize = 16.sp, color = Nc.accent)
                             }
                         }
                     )
@@ -261,7 +286,7 @@ fun MoreScreen(
             }
             item {
                 GroupedCard(top = true, bottom = false) {
-                    NavRow({ m, c, s, sw -> Lucide.Wallet(m, c, s, sw) }, NudgeColors.Emerald, "Budgets") { onNavigate(NavScreen.Budget) }
+                    NavRow({ m, c, s, sw -> Lucide.Wallet(m, c, s, sw) }, Nc.accent, "Budgets") { onNavigate(NavScreen.Budget) }
                 }
             }
             item {
@@ -295,44 +320,64 @@ fun MoreScreen(
                 }
             }
 
-            item { Spacer(Modifier.height(100.dp)) }
+            item { Spacer(Modifier.height(130.dp)) }
         }
     }
 
     // ── Dialogs ──
 
-    if (showNameDialog) {
+    if (showProfileDialog) {
         AlertDialog(
-            onDismissRequest = { showNameDialog = false },
-            title = { Text("Display Name", fontWeight = FontWeight.SemiBold) },
+            onDismissRequest = { showProfileDialog = false },
+            title = { Text("Edit profile", fontWeight = FontWeight.SemiBold) },
             text = {
-                BasicTextField(
-                    value = nameEdit,
-                    onValueChange = { nameEdit = it },
-                    textStyle = TextStyle(fontSize = 15.sp, color = NudgeColors.Ink),
-                    cursorBrush = SolidColor(NudgeColors.Emerald),
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(NudgeColors.Bone)
-                        .padding(horizontal = 14.dp, vertical = 12.dp)
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        Modifier.size(88.dp).clip(CircleShape).background(Nc.accentBg)
+                            .clickable { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (photoBitmap != null) {
+                            Image(
+                                bitmap = photoBitmap!!.asImageBitmap(),
+                                contentDescription = "Profile photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else Lucide.User(size = 38.dp, color = Nc.accent)
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Tap photo to change", fontSize = 11.sp, color = Nc.inkMute)
+                    Spacer(Modifier.height(18.dp))
+                    BasicTextField(
+                        value = nameEdit,
+                        onValueChange = { nameEdit = it.take(32) },
+                        textStyle = TextStyle(fontSize = 15.sp, color = Nc.ink),
+                        cursorBrush = SolidColor(Nc.accent),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                            .background(Nc.background).padding(horizontal = 14.dp, vertical = 13.dp),
+                        decorationBox = { field ->
+                            if (nameEdit.isBlank()) Text("Your name", color = Nc.inkMute)
+                            field()
+                        }
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
                         displayName = nameEdit.ifBlank { "You" }
-                        prefs.edit().putString("display_name", displayName).apply()
-                        showNameDialog = false
+                        prefs.edit().putString("display_name", displayName).commit()
+                        showProfileDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
+                    colors = ButtonDefaults.buttonColors(containerColor = Nc.accent)
                 ) {
                     Text("Save")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showNameDialog = false }) {
+                TextButton(onClick = { showProfileDialog = false }) {
                     Text("Cancel")
                 }
             },
@@ -366,13 +411,13 @@ fun MoreScreen(
                                     prefs.edit().putString("currency_code", code).apply()
                                     showCurrencyDialog = false
                                 },
-                            color = if (isSel) NudgeColors.EmeraldBg else Color.Transparent,
+                            color = if (isSel) Nc.accentBg else Color.Transparent,
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
                                 label,
                                 fontSize = 14.sp,
-                                color = if (isSel) NudgeColors.Emerald else NudgeColors.Ink,
+                                color = if (isSel) Nc.accent else Nc.ink,
                                 fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                             )
@@ -399,7 +444,7 @@ private fun SectionHeader(text: String) {
         text,
         fontSize = 11.sp,
         fontWeight = FontWeight.SemiBold,
-        color = NudgeColors.InkMute,
+        color = Nc.inkMute,
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
         letterSpacing = 0.5.sp
     )
@@ -415,7 +460,7 @@ private fun GroupedCard(top: Boolean, bottom: Boolean, content: @Composable () -
     }
     Card(
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface),
+        colors = CardDefaults.cardColors(containerColor = Nc.surface),
         modifier = Modifier.fillMaxWidth()
     ) {
         content()
@@ -472,15 +517,15 @@ private fun ScalableRow(
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = NudgeColors.Ink)
+            Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
             if (subtitle != null) {
-                Text(subtitle, fontSize = 11.sp, color = NudgeColors.InkMute)
+                Text(subtitle, fontSize = 11.sp, color = Nc.inkMute)
             }
         }
         if (trailing != null) {
             trailing()
         } else if (onClick != null) {
-            Lucide.ChevronRight(size = 16.dp, strokeWidth = 1.8.dp, color = NudgeColors.InkMute)
+            Lucide.ChevronRight(size = 16.dp, strokeWidth = 1.8.dp, color = Nc.inkMute)
         }
     }
 }
@@ -518,26 +563,26 @@ private fun DarkModeRow(isDark: Boolean, onToggle: (Boolean) -> Unit) {
             modifier = Modifier
                 .size(34.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(NudgeColors.Amber.copy(alpha = 0.12f)),
+                .background(Nc.warning.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             if (isDark) {
-                Lucide.Moon(size = 18.dp, strokeWidth = 1.8.dp, color = NudgeColors.Amber)
+                Lucide.Moon(size = 18.dp, strokeWidth = 1.8.dp, color = Nc.warning)
             } else {
-                Lucide.Sun(size = 18.dp, strokeWidth = 1.8.dp, color = NudgeColors.Amber)
+                Lucide.Sun(size = 18.dp, strokeWidth = 1.8.dp, color = Nc.warning)
             }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Dark mode", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = NudgeColors.Ink)
-            Text(if (isDark) "OLED dark" else "Light", fontSize = 11.sp, color = NudgeColors.InkMute)
+            Text("Dark mode", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
+            Text(if (isDark) "OLED dark" else "Light", fontSize = 11.sp, color = Nc.inkMute)
         }
         Switch(
             checked = isDark,
             onCheckedChange = onToggle,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = NudgeColors.Emerald,
-                checkedTrackColor = NudgeColors.EmeraldBg
+                checkedThumbColor = Nc.accent,
+                checkedTrackColor = Nc.accentBg
             )
         )
     }

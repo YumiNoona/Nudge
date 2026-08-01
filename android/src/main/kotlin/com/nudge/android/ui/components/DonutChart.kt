@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,7 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
 
 data class DonutSegment(
     val label: String,
@@ -46,7 +47,8 @@ fun DonutChart(
     centerLabel: String,
     centerSubtext: String? = null,
     modifier: Modifier = Modifier,
-    size: Dp = 160.dp
+    size: Dp = 160.dp,
+    showLegend: Boolean = true
 ) {
     val animatedFractions = segments.map { segment ->
         animateFloatAsState(
@@ -96,7 +98,7 @@ fun DonutChart(
             ) {
                 Text(
                     text = centerLabel,
-                    color = NudgeColors.Ink,
+                    color = Nc.ink,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
@@ -104,7 +106,7 @@ fun DonutChart(
                 if (centerSubtext != null) {
                     Text(
                         text = centerSubtext,
-                        color = NudgeColors.InkMute,
+                        color = Nc.inkMute,
                         fontSize = 11.sp,
                         textAlign = TextAlign.Center
                     )
@@ -112,28 +114,32 @@ fun DonutChart(
             }
         }
 
-        Spacer(modifier = Modifier.padding(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            segments.forEachIndexed { index, segment ->
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(segment.color)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = segment.label,
-                    color = NudgeColors.InkSoft,
-                    fontSize = 10.sp
-                )
-                if (index < segments.lastIndex) {
-                    Spacer(modifier = Modifier.width(12.dp))
+        if (showLegend) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                segments.forEachIndexed { index, segment ->
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(segment.color)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = segment.label,
+                        color = Nc.inkSoft,
+                        fontSize = 10.sp
+                    )
+                    if (index < segments.lastIndex) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
                 }
             }
         }

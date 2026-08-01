@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.GamificationProfileEntity
 import com.nudge.android.ui.theme.MotionDuration
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeRadius
 import com.nudge.android.ui.theme.SpringBouncy
 import com.nudge.engine.GamificationMath
@@ -121,16 +121,16 @@ fun AchievementsScreen(
                         "Achievements",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("\u2190", fontSize = 18.sp, color = NudgeColors.ContentSecondary)
+                        Text("\u2190", fontSize = 18.sp, color = Nc.inkSoft)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NudgeColors.SurfaceBase
+                    containerColor = Nc.background
                 )
             )
         }
@@ -140,7 +140,7 @@ fun AchievementsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .background(NudgeColors.SurfaceBase)
+                    .background(Nc.background)
             )
             return@Scaffold
         }
@@ -154,7 +154,7 @@ fun AchievementsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(NudgeColors.SurfaceBase),
+                .background(Nc.background),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -182,7 +182,7 @@ private fun LevelXpHeader(profile: GamificationProfileEntity) {
     Card(
         shape = RoundedCornerShape(NudgeRadius.LG),
         colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.08f)
+            containerColor = Nc.accent.copy(alpha = 0.08f)
         )
     ) {
         Row(
@@ -201,12 +201,12 @@ private fun LevelXpHeader(profile: GamificationProfileEntity) {
                     "${profile.level}",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NudgeColors.ContentPrimary
+                    color = Nc.ink
                 )
                 Text(
                     GamificationMath.levelTitle(profile.level),
                     fontSize = 10.sp,
-                    color = NudgeColors.ContentTertiary
+                    color = Nc.inkMute
                 )
             }
 
@@ -221,12 +221,12 @@ private fun LevelXpHeader(profile: GamificationProfileEntity) {
                         "Level ${profile.level}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.AccentPrimary
+                        color = Nc.accent
                     )
                     Text(
                         "${profile.xpTotal} XP",
                         fontSize = 12.sp,
-                        color = NudgeColors.ContentSecondary
+                        color = Nc.inkSoft
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
@@ -236,14 +236,14 @@ private fun LevelXpHeader(profile: GamificationProfileEntity) {
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp)),
-                    color = NudgeColors.AccentPrimary,
-                    trackColor = NudgeColors.AccentPrimary.copy(alpha = 0.2f)
+                    color = Nc.accent,
+                    trackColor = Nc.accent.copy(alpha = 0.2f)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     "${profile.currentStreakDays}d streak \uD83D\uDD25",
                     fontSize = 11.sp,
-                    color = NudgeColors.ContentSecondary
+                    color = Nc.inkSoft
                 )
             }
         }
@@ -256,7 +256,7 @@ private fun BadgeCountHeader(unlockedCount: Int, totalCount: Int) {
         "$unlockedCount / $totalCount unlocked",
         fontSize = 14.sp,
         fontWeight = FontWeight.SemiBold,
-        color = NudgeColors.ContentSecondary
+        color = Nc.inkSoft
     )
 }
 
@@ -287,10 +287,10 @@ private fun BadgeCard(badge: BadgeData, isUnlocked: Boolean, index: Int) {
         Card(
             shape = RoundedCornerShape(NudgeRadius.LG),
             colors = CardDefaults.cardColors(
-                containerColor = if (isUnlocked) NudgeColors.SurfaceRaised else NudgeColors.SurfaceBase
+                containerColor = if (isUnlocked) Nc.surface else Nc.background
             ),
             border = if (isUnlocked) {
-                androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.AccentPrimary.copy(alpha = 0.3f))
+                androidx.compose.foundation.BorderStroke(1.dp, Nc.accent.copy(alpha = 0.3f))
             } else {
                 null
             },
@@ -312,14 +312,14 @@ private fun BadgeCard(badge: BadgeData, isUnlocked: Boolean, index: Int) {
                         badge.name,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
+                        color = Nc.ink,
                         textAlign = TextAlign.Center,
                         maxLines = 2
                     )
                     Text(
                         badge.description,
                         fontSize = 9.sp,
-                        color = NudgeColors.ContentTertiary,
+                        color = Nc.inkMute,
                         textAlign = TextAlign.Center,
                         maxLines = 2
                     )
@@ -333,7 +333,7 @@ private fun BadgeCard(badge: BadgeData, isUnlocked: Boolean, index: Int) {
                         "???",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentTertiary,
+                        color = Nc.inkMute,
                         textAlign = TextAlign.Center
                     )
                 } else {
@@ -342,7 +342,7 @@ private fun BadgeCard(badge: BadgeData, isUnlocked: Boolean, index: Int) {
                         modifier = Modifier
                             .size(48.dp)
                             .clip(RoundedCornerShape(NudgeRadius.SM))
-                            .background(NudgeColors.ContentTertiary.copy(alpha = 0.15f))
+                            .background(Nc.inkMute.copy(alpha = 0.15f))
                     ) {
                         Text(
                             "\uD83D\uDD12",
@@ -354,7 +354,7 @@ private fun BadgeCard(badge: BadgeData, isUnlocked: Boolean, index: Int) {
                         "???",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentTertiary,
+                        color = Nc.inkMute,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -372,7 +372,7 @@ private fun AchievementsEmptyState(modifier: Modifier = Modifier) {
         Card(
             shape = RoundedCornerShape(NudgeRadius.XL),
             colors = CardDefaults.cardColors(
-                containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
+                containerColor = Nc.accent.copy(alpha = 0.05f)
             )
         ) {
             Column(
@@ -390,12 +390,12 @@ private fun AchievementsEmptyState(modifier: Modifier = Modifier) {
                     "No profile yet",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.ContentSecondary
+                    color = Nc.inkSoft
                 )
                 Text(
                     "Start tracking to earn badges!",
                     fontSize = 13.sp,
-                    color = NudgeColors.ContentTertiary
+                    color = Nc.inkMute
                 )
             }
         }

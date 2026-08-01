@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
 
 @Composable
@@ -50,7 +51,7 @@ fun SwipeReviewCardContent(
                 .fillMaxWidth(0.92f)
                 .offset(y = 8.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(NudgeColors.Surface.copy(alpha = 0.4f))
+                .background(Nc.surface.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -61,21 +62,21 @@ fun SwipeReviewCardContent(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = amount,
-                    color = if (amount.startsWith("-")) NudgeColors.Coral else NudgeColors.Green,
+                    color = if (amount.startsWith("-")) Nc.negative else Nc.positive,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = merchant,
-                    color = NudgeColors.Ink,
+                    color = Nc.ink,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = date,
-                    color = NudgeColors.InkMute,
+                    color = Nc.inkMute,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -84,12 +85,12 @@ fun SwipeReviewCardContent(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(NudgeColors.AmberBg)
+                            .background(Nc.amberBg)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "Low confidence ($confidence%)",
-                            color = NudgeColors.Amber,
+                            color = Nc.warning,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -106,12 +107,12 @@ fun SwipeReviewCardContent(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(NudgeColors.CoralBg),
+                            .background(Nc.coralBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✕",
-                            color = NudgeColors.Coral,
+                            color = Nc.negative,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -121,12 +122,12 @@ fun SwipeReviewCardContent(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(NudgeColors.GreenBg),
+                            .background(Nc.greenBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✓",
-                            color = NudgeColors.Green,
+                            color = Nc.positive,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -139,7 +140,7 @@ fun SwipeReviewCardContent(
         Card(
             modifier = Modifier.fillMaxWidth(0.92f),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface),
+            colors = CardDefaults.cardColors(containerColor = Nc.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
             Column(
@@ -151,21 +152,21 @@ fun SwipeReviewCardContent(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = amount,
-                    color = if (amount.startsWith("-")) NudgeColors.Coral else NudgeColors.Green,
+                    color = if (amount.startsWith("-")) Nc.negative else Nc.positive,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = merchant,
-                    color = NudgeColors.Ink,
+                    color = Nc.ink,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = date,
-                    color = NudgeColors.InkMute,
+                    color = Nc.inkMute,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -174,12 +175,12 @@ fun SwipeReviewCardContent(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(NudgeColors.AmberBg)
+                            .background(Nc.amberBg)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "Low confidence ($confidence%)",
-                            color = NudgeColors.Amber,
+                            color = Nc.warning,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium
                         )
@@ -196,12 +197,12 @@ fun SwipeReviewCardContent(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(NudgeColors.CoralBg),
+                            .background(Nc.coralBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✕",
-                            color = NudgeColors.Coral,
+                            color = Nc.negative,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -211,12 +212,12 @@ fun SwipeReviewCardContent(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(NudgeColors.GreenBg),
+                            .background(Nc.greenBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "✓",
-                            color = NudgeColors.Green,
+                            color = Nc.positive,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold
                         )

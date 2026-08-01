@@ -34,7 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.MotionDuration
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -102,12 +103,12 @@ fun SavingsGoalsScreen(
                         "Savings Goals",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("\u2190", fontSize = 18.sp, color = NudgeColors.ContentSecondary)
+                        Text("\u2190", fontSize = 18.sp, color = Nc.inkSoft)
                     }
                 },
                 actions = {
@@ -116,12 +117,12 @@ fun SavingsGoalsScreen(
                             "+ New Goal",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NudgeColors.AccentPrimary
+                            color = Nc.accent
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = NudgeColors.SurfaceBase
+                    containerColor = Nc.background
                 )
             )
         }
@@ -130,7 +131,7 @@ fun SavingsGoalsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(NudgeColors.SurfaceBase),
+                .background(Nc.background),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -180,7 +181,7 @@ private fun SavingsGoalCard(goal: SavingsGoalData) {
     Card(
         shape = RoundedCornerShape(NudgeRadius.LG),
         colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.SurfaceRaised
+            containerColor = Nc.surface
         )
     ) {
         Column(
@@ -205,15 +206,15 @@ private fun SavingsGoalCard(goal: SavingsGoalData) {
                         goal.name,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "\u20B9$currentFormatted of \u20B9$targetFormatted",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        color = NudgeColors.ContentPrimary
+                        fontFamily = MonoFamily,
+                        color = Nc.ink
                     )
                     Spacer(modifier = Modifier.height(6.dp))
 
@@ -223,8 +224,8 @@ private fun SavingsGoalCard(goal: SavingsGoalData) {
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = NudgeColors.AccentPrimary,
-                        trackColor = NudgeColors.ContentTertiary.copy(alpha = 0.2f)
+                        color = Nc.accent,
+                        trackColor = Nc.inkMute.copy(alpha = 0.2f)
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -237,20 +238,20 @@ private fun SavingsGoalCard(goal: SavingsGoalData) {
                             percentText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NudgeColors.AccentPrimary
+                            color = Nc.accent
                         )
                         if (dateText != null) {
                             Text(
                                 "by $dateText",
                                 fontSize = 11.sp,
-                                color = NudgeColors.ContentTertiary
+                                color = Nc.inkMute
                             )
                         }
                         if (goal.monthlyContribution != null && goal.monthlyContribution > 0) {
                             Text(
                                 "\u20B9${formatter.format(goal.monthlyContribution / 100)}/mo",
                                 fontSize = 11.sp,
-                                color = NudgeColors.ContentTertiary
+                                color = Nc.inkMute
                             )
                         }
                     }
@@ -273,7 +274,7 @@ private fun VisualMetaphorIllustration(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(NudgeRadius.MD))
-            .background(NudgeColors.AccentPrimary.copy(alpha = 0.06f))
+            .background(Nc.accent.copy(alpha = 0.06f))
     ) {
         when (metaphor) {
             VisualMetaphor.GROWING_PLANT -> PlantIllustration(progress)
@@ -338,6 +339,9 @@ private fun PlantIllustration(progress: Float) {
 
 @Composable
 private fun JarIllustration(progress: Float) {
+    val accentColor = Nc.accent
+    val inkSoftColor = Nc.inkSoft
+
     Canvas(modifier = Modifier.fillMaxSize()) {
         val jarLeft = size.width * 0.22f
         val jarRight = size.width * 0.78f
@@ -349,7 +353,7 @@ private fun JarIllustration(progress: Float) {
         // Liquid fill
         val fillHeight = jarHeight * progress
         drawRect(
-            color = NudgeColors.AccentPrimary.copy(alpha = 0.5f),
+            color = accentColor.copy(alpha = 0.5f),
             topLeft = Offset(jarLeft, jarBottom - fillHeight),
             size = Size(jarWidth, fillHeight)
         )
@@ -357,7 +361,7 @@ private fun JarIllustration(progress: Float) {
         // Liquid surface line
         if (progress > 0f) {
             drawLine(
-                color = NudgeColors.AccentPrimary.copy(alpha = 0.7f),
+                color = accentColor.copy(alpha = 0.7f),
                 start = Offset(jarLeft, jarBottom - fillHeight),
                 end = Offset(jarRight, jarBottom - fillHeight),
                 strokeWidth = 2f
@@ -373,13 +377,13 @@ private fun JarIllustration(progress: Float) {
         }
         drawPath(
             path = jarPath,
-            color = NudgeColors.ContentSecondary.copy(alpha = 0.4f),
+            color = inkSoftColor.copy(alpha = 0.4f),
             style = Stroke(width = 2f)
         )
 
         // Jar lid
         drawRect(
-            color = NudgeColors.ContentSecondary.copy(alpha = 0.3f),
+            color = inkSoftColor.copy(alpha = 0.3f),
             topLeft = Offset(jarLeft, jarTop),
             size = Size(jarWidth, 5f)
         )
@@ -548,7 +552,7 @@ private fun GoalsEmptyState() {
     Card(
         shape = RoundedCornerShape(NudgeRadius.XL),
         colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
+            containerColor = Nc.accent.copy(alpha = 0.05f)
         )
     ) {
         Column(
@@ -566,12 +570,12 @@ private fun GoalsEmptyState() {
                 "No savings goals yet",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Text(
                 "Tap \"+ New Goal\" to set your first savings target",
                 fontSize = 13.sp,
-                color = NudgeColors.ContentTertiary
+                color = Nc.inkMute
             )
         }
     }
@@ -616,7 +620,7 @@ private fun AddGoalSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = NudgeColors.SurfaceBase
+        containerColor = Nc.background
     ) {
         Column(
             modifier = Modifier
@@ -628,7 +632,7 @@ private fun AddGoalSheet(
                     .width(36.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(NudgeColors.ContentTertiary)
+                    .background(Nc.inkMute)
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -638,7 +642,7 @@ private fun AddGoalSheet(
                 "Add Savings Goal",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
+                color = Nc.ink
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -647,19 +651,19 @@ private fun AddGoalSheet(
                 "Name",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. Emergency Fund", fontSize = 14.sp, color = NudgeColors.ContentTertiary) },
+                placeholder = { Text("e.g. Emergency Fund", fontSize = 14.sp, color = Nc.inkMute) },
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f),
-                    focusedBorderColor = NudgeColors.AccentPrimary,
-                    focusedTextColor = NudgeColors.ContentPrimary,
-                    unfocusedTextColor = NudgeColors.ContentPrimary
+                    unfocusedBorderColor = Nc.inkMute.copy(alpha = 0.3f),
+                    focusedBorderColor = Nc.accent,
+                    focusedTextColor = Nc.ink,
+                    unfocusedTextColor = Nc.ink
                 ),
                 textStyle = TextStyle(fontSize = 15.sp),
                 shape = RoundedCornerShape(12.dp),
@@ -672,7 +676,7 @@ private fun AddGoalSheet(
                 "Target Amount",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -681,14 +685,14 @@ private fun AddGoalSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NudgeColors.SurfaceRaised)
+                    .background(Nc.surface)
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
                     "\u20B9",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NudgeColors.AccentPrimary
+                    color = Nc.accent
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 BasicTextField(
@@ -698,10 +702,10 @@ private fun AddGoalSheet(
                     textStyle = TextStyle(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
-                        fontFamily = FontFamily.Monospace
+                        color = Nc.ink,
+                        fontFamily = MonoFamily
                     ),
-                    cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+                    cursorBrush = SolidColor(Nc.accent),
                     modifier = Modifier.weight(1f),
                     decorationBox = { innerTextField ->
                         if (amountStr.isEmpty()) {
@@ -709,8 +713,8 @@ private fun AddGoalSheet(
                                 "0",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = NudgeColors.ContentTertiary,
-                                fontFamily = FontFamily.Monospace
+                                color = Nc.inkMute,
+                                fontFamily = MonoFamily
                             )
                         }
                         innerTextField()
@@ -725,7 +729,7 @@ private fun AddGoalSheet(
                 "Visual Style",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -749,8 +753,8 @@ private fun AddGoalSheet(
                             }
                         },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NudgeColors.AccentPrimary.copy(alpha = 0.15f),
-                            selectedLabelColor = NudgeColors.AccentPrimary
+                            selectedContainerColor = Nc.accent.copy(alpha = 0.15f),
+                            selectedLabelColor = Nc.accent
                         )
                     )
                 }
@@ -762,7 +766,7 @@ private fun AddGoalSheet(
                 "Target Date (optional)",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -774,19 +778,19 @@ private fun AddGoalSheet(
                     onClick = { showDatePicker = true },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.ContentTertiary.copy(alpha = 0.3f))
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Nc.inkMute.copy(alpha = 0.3f))
                 ) {
                     Text(
                         if (targetDateEpoch != null) dateFormat.format(Date(targetDateEpoch!!)) else "No target date",
                         fontSize = 15.sp,
-                        color = if (targetDateEpoch != null) NudgeColors.ContentPrimary else NudgeColors.ContentTertiary
+                        color = if (targetDateEpoch != null) Nc.ink else Nc.inkMute
                     )
                 }
 
                 if (targetDateEpoch != null) {
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { targetDateEpoch = null }) {
-                        Text("Clear", fontSize = 13.sp, color = NudgeColors.ContentTertiary)
+                        Text("Clear", fontSize = 13.sp, color = Nc.inkMute)
                     }
                 }
             }
@@ -797,7 +801,7 @@ private fun AddGoalSheet(
                 "Monthly Contribution (optional)",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -806,14 +810,14 @@ private fun AddGoalSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NudgeColors.SurfaceRaised)
+                    .background(Nc.surface)
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
                     "\u20B9",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NudgeColors.AccentPrimary
+                    color = Nc.accent
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 BasicTextField(
@@ -823,10 +827,10 @@ private fun AddGoalSheet(
                     textStyle = TextStyle(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
-                        fontFamily = FontFamily.Monospace
+                        color = Nc.ink,
+                        fontFamily = MonoFamily
                     ),
-                    cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+                    cursorBrush = SolidColor(Nc.accent),
                     modifier = Modifier.weight(1f),
                     decorationBox = { innerTextField ->
                         if (monthlyContributionStr.isEmpty()) {
@@ -834,8 +838,8 @@ private fun AddGoalSheet(
                                 "0",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = NudgeColors.ContentTertiary,
-                                fontFamily = FontFamily.Monospace
+                                color = Nc.inkMute,
+                                fontFamily = MonoFamily
                             )
                         }
                         innerTextField()
@@ -864,8 +868,8 @@ private fun AddGoalSheet(
                     .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = NudgeColors.AccentPrimary,
-                    disabledContainerColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f)
+                    containerColor = Nc.accent,
+                    disabledContainerColor = Nc.inkMute.copy(alpha = 0.3f)
                 ),
                 enabled = isValid
             ) {
@@ -894,12 +898,12 @@ private fun AddGoalSheet(
                     }
                     showDatePicker = false
                 }) {
-                    Text("OK", color = NudgeColors.AccentPrimary)
+                    Text("OK", color = Nc.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = NudgeColors.ContentSecondary)
+                    Text("Cancel", color = Nc.inkSoft)
                 }
             }
         ) {

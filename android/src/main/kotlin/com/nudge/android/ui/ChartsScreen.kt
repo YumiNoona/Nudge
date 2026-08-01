@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -17,28 +18,29 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
-import com.nudge.android.ui.theme.NudgeColors
-import com.nudge.android.ui.theme.NudgeRadius
-import java.text.NumberFormat
+import com.nudge.android.ui.components.DonutChart
+import com.nudge.android.ui.components.DonutSegment
+import com.nudge.android.ui.theme.*
 import java.util.Calendar
 import java.util.Locale
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChartsScreen(
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
-    isDark: Boolean,
-    onBack: () -> Unit
+    onBack: (() -> Unit)? = null
 ) {
-    val calendar = remember { Calendar.getInstance() }
     val now = remember { Calendar.getInstance() }
 
     var selectedYear by remember { mutableStateOf(now.get(Calendar.YEAR)) }
@@ -47,7 +49,7 @@ fun ChartsScreen(
     val monthLabel = remember(selectedYear, selectedMonth) {
         val cal = Calendar.getInstance()
         cal.set(selectedYear, selectedMonth, 1)
-        val fmt = java.text.SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+        val fmt = java.text.SimpleDateFormat("MMM yyyy", Locale.getDefault())
         fmt.format(cal.time)
     }
 
@@ -59,236 +61,189 @@ fun ChartsScreen(
         computeCategorySpending(transactions, categories, selectedYear, selectedMonth)
     }
 
-    val totalMonthSpend = remember(dailySpending) {
-        dailySpending.values.sum()
+    val totalMonthSpend = remember(dailySpending) { dailySpending.values.sum() }
+    val monthIncome = remember(transactions, selectedYear, selectedMonth) {
+        transactions.filter { txn ->
+            if (txn.type != "credit") return@filter false
+            val cal = Calendar.getInstance().apply { timeInMillis = txn.timestampEpoch }
+            cal.get(Calendar.YEAR) == selectedYear && cal.get(Calendar.MONTH) == selectedMonth
+        }.sumOf { it.amountCents }
     }
 
-    val formatter = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
-    val totalFormatted = remember(totalMonthSpend) { formatter.format(totalMonthSpend / 100.0) }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Charts",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                    )
-                },
-                navigationIcon = {
-                    TextButton(onClick = onBack) {
-                        Text("\u2190", fontSize = 18.sp, color = NudgeColors.ContentSecondary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) NudgeColors.DarkSurfaceBase else NudgeColors.SurfaceBase
-                )
-            )
+    Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
+        // ── Header ──
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = DSSpace.lg, vertical = DSSpace.md),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (onBack != null) IconButton(onClick = onBack) { Lucide.ArrowLeft(size = 20.dp, strokeWidth = 2.dp, color = DSBridge.inkSoft()) }
+            Text("Charts", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.weight(1f))
+            // Month navigator
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(DSBridge.surface())
+            ) {
+                IconButton(
+                    onClick = {
+                        if (selectedMonth == 0) { selectedMonth = 11; selectedYear-- } else selectedMonth--
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Text("‹", fontSize = 22.sp, color = DSBridge.accent())
+                }
+                Text(monthLabel, style = DSTypography.titleSmall, color = DSBridge.ink())
+                IconButton(
+                    onClick = {
+                        var newMonth = selectedMonth + 1
+                        var newYear = selectedYear
+                        if (newMonth > 11) { newMonth = 0; newYear++ }
+                        if (newYear < now.get(Calendar.YEAR) ||
+                            (newYear == now.get(Calendar.YEAR) && newMonth <= now.get(Calendar.MONTH))
+                        ) {
+                            selectedMonth = newMonth
+                            selectedYear = newYear
+                        }
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Text("›", fontSize = 22.sp, color = DSBridge.accent())
+                }
+            }
         }
-    ) { padding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .background(
-                    if (isDark) NudgeColors.DarkSurfaceBase
-                    else NudgeColors.SurfaceBase
-                )
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = DSSpace.lg),
+            verticalArrangement = Arrangement.spacedBy(DSSpace.md)
         ) {
-            // Total spend card
-            Card(
-                shape = RoundedCornerShape(NudgeRadius.XL),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+            // ── Total spend card ──
+            DSHeroCard {
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                    Text("Total Spend", style = DSTypography.labelMedium, color = Color.White.copy(alpha = 0.7f))
+                    Spacer(Modifier.height(DSSpace.xs))
                     Text(
-                        "Total Spend",
-                        fontSize = 13.sp,
-                        color = NudgeColors.ContentSecondary
+                        formatCents(totalMonthSpend),
+                        style = DSTypography.displayLarge, color = Color.White
                     )
-                    Text(
-                        "\u20B9$totalFormatted",
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        monthLabel,
-                        fontSize = 13.sp,
-                        color = NudgeColors.ContentTertiary
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Month navigation
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = {
-                            if (selectedMonth == 0) {
-                                selectedMonth = 11
-                                selectedYear--
-                            } else {
-                                selectedMonth--
-                            }
-                        }) {
-                            Text(
-                                "\u2039",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Light,
-                                color = NudgeColors.AccentPrimary
-                            )
-                        }
-
-                        Text(
-                            monthLabel,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                        )
-
-                        IconButton(onClick = {
-                            var newMonth = selectedMonth + 1
-                            var newYear = selectedYear
-                            if (newMonth > 11) {
-                                newMonth = 0
-                                newYear++
-                            }
-                            if (newYear < now.get(Calendar.YEAR) ||
-                                (newYear == now.get(Calendar.YEAR) && newMonth <= now.get(Calendar.MONTH))
-                            ) {
-                                selectedMonth = newMonth
-                                selectedYear = newYear
-                            }
-                        }) {
-                            Text(
-                                "\u203A",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Light,
-                                color = NudgeColors.AccentPrimary
-                            )
-                        }
+                    Spacer(Modifier.height(DSSpace.md))
+                    Row(horizontalArrangement = Arrangement.spacedBy(DSSpace.sm)) {
+                        HeroPill("Spent", formatCents(totalMonthSpend))
+                        HeroPill("Income", formatCents(monthIncome))
                     }
                 }
             }
 
-            // Daily spending line chart
-            Card(
-                shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        "Daily Spending",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
+            // ── Daily spending ──
+            DSCard {
+                Column(Modifier.fillMaxWidth().padding(DSSpace.base)) {
+                    Text("Daily Spending", style = DSTypography.titleMedium, color = DSBridge.ink())
+                    Spacer(Modifier.height(DSSpace.md))
                     DailySpendChart(
                         dailySpending = dailySpending,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp)
+                        modifier = Modifier.fillMaxWidth().height(200.dp)
                     )
                 }
             }
 
-            // Category breakdown
-            Card(
-                shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        "By Category",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
+            // ── By category donut ──
+            DSCard {
+                Column(Modifier.fillMaxWidth().padding(DSSpace.base)) {
+                    Text("By Category", style = DSTypography.titleMedium, color = DSBridge.ink())
+                    Spacer(Modifier.height(DSSpace.md))
 
                     if (categorySpending.isEmpty()) {
                         Text(
                             "No spending data for this month",
-                            fontSize = 13.sp,
-                            color = NudgeColors.ContentTertiary,
-                            modifier = Modifier.padding(vertical = 16.dp)
+                            style = DSTypography.bodySmall, color = DSBridge.inkMute(),
+                            modifier = Modifier.padding(vertical = DSSpace.base)
                         )
                     } else {
-                        CategoryBarChart(
-                            categorySpending = categorySpending,
-                            totalSpend = totalMonthSpend,
-                            formatter = formatter,
-                            modifier = Modifier.fillMaxWidth()
+                        DonutChart(
+                            segments = categorySpending.take(8).map { (_, color, amount) ->
+                                DonutSegment("", amount.toFloat() / totalMonthSpend.coerceAtLeast(1).toFloat(), color)
+                            },
+                            centerLabel = formatCentsPlain(totalMonthSpend),
+                            centerSubtext = "spent",
+                            size = 150.dp,
+                            showLegend = false,
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
                         )
+                        Spacer(Modifier.height(DSSpace.md))
+                        categorySpending.take(8).forEach { (name, color, amount) ->
+                            val fraction = if (totalMonthSpend > 0) amount * 100f / totalMonthSpend else 0f
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+                                Spacer(Modifier.width(DSSpace.sm))
+                                Text(name, style = DSTypography.titleSmall, color = DSBridge.ink(), modifier = Modifier.weight(1f), maxLines = 1)
+                                Text(
+                                    "${formatCentsPlain(amount)} · ${"%.0f".format(fraction)}%",
+                                    style = DSTypography.labelMedium, fontFamily = MonoFamily, color = DSBridge.inkSoft()
+                                )
+                            }
+                        }
+                        if (categorySpending.size > 8) {
+                            Text(
+                                "+ ${categorySpending.size - 8} more categories",
+                                style = DSTypography.labelSmall, color = DSBridge.inkMute(),
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(Modifier.height(110.dp))
         }
     }
 }
 
 @Composable
+private fun HeroPill(label: String, value: String) {
+    Surface(shape = RoundedCornerShape(12.dp), color = Color.White.copy(alpha = 0.15f)) {
+        Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Text(label, style = DSTypography.labelSmall, color = Color.White.copy(alpha = 0.7f))
+            Text(value, style = DSTypography.titleMedium, fontFamily = MonoFamily, color = Color.White)
+        }
+    }
+}
+
+@OptIn(ExperimentalTextApi::class)
+@Composable
 private fun DailySpendChart(
     dailySpending: Map<Int, Long>,
     modifier: Modifier = Modifier
 ) {
-    if (dailySpending.isEmpty()) {
+    if (dailySpending.values.all { it == 0L }) {
         Box(
             modifier = modifier,
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                "No data",
-                fontSize = 13.sp,
-                color = NudgeColors.ContentTertiary
-            )
+            Text("No data", style = DSTypography.bodySmall, color = DSBridge.inkMute())
         }
         return
     }
 
     val maxAmount = remember(dailySpending) { dailySpending.values.maxOrNull()?.toFloat() ?: 1f }
     val days = remember(dailySpending) { dailySpending.keys.sorted() }
+    val textMeasurer = rememberTextMeasurer()
+
+    val gridLineColor = DSBridge.inkMute()
+    val lineColor = DSBridge.accent()
 
     Canvas(modifier = modifier) {
         if (days.isEmpty()) return@Canvas
 
-        val paddingLeft = 40f
-        val paddingBottom = 30f
+        val paddingLeft = 44f
+        val paddingBottom = 24f
         val paddingTop = 16f
-        val paddingRight = 16f
+        val paddingRight = 8f
 
         val chartWidth = size.width - paddingLeft - paddingRight
         val chartHeight = size.height - paddingTop - paddingBottom
@@ -301,40 +256,42 @@ private fun DailySpendChart(
             Offset(x, y)
         }
 
-        // Draw grid lines
+        // Grid lines
         val gridLines = 4
         for (i in 0..gridLines) {
             val y = paddingTop + (chartHeight * i / gridLines)
             drawLine(
-                color = NudgeColors.ContentTertiary.copy(alpha = 0.15f),
+                color = gridLineColor.copy(alpha = 0.12f),
                 start = Offset(paddingLeft, y),
                 end = Offset(paddingLeft + chartWidth, y),
                 strokeWidth = 1f
             )
         }
 
-        // Draw fill area
+        // Y-axis max label
+        val yLabelStyle = TextStyle(fontSize = 9.sp, color = gridLineColor.copy(alpha = 0.7f))
+        drawText(
+            textMeasurer,
+            AnnotatedString("₹${maxAmount.toInt()}"),
+            topLeft = Offset(0f, paddingTop - 4f),
+            style = yLabelStyle
+        )
+
+        // Fill area
         if (points.isNotEmpty()) {
             val fillPath = Path().apply {
                 moveTo(points.first().x, paddingTop + chartHeight)
-                points.forEach { point ->
-                    lineTo(point.x, point.y)
-                }
+                points.forEach { point -> lineTo(point.x, point.y) }
                 lineTo(points.last().x, paddingTop + chartHeight)
                 close()
             }
-
-            drawPath(
-                path = fillPath,
-                color = NudgeColors.AccentPrimary.copy(alpha = 0.1f)
-            )
+            drawPath(fillPath, lineColor.copy(alpha = 0.1f))
         }
 
-        // Draw smooth line
+        // Smooth line
         if (points.size >= 2) {
             val linePath = Path().apply {
                 moveTo(points.first().x, points.first().y)
-
                 for (i in 0 until points.size - 1) {
                     val p1 = points[i]
                     val p2 = points[i + 1]
@@ -344,98 +301,31 @@ private fun DailySpendChart(
                 }
                 lineTo(points.last().x, points.last().y)
             }
-
             drawPath(
-                path = linePath,
-                color = NudgeColors.AccentPrimary,
-                style = Stroke(
-                    width = 3.dp.toPx(),
-                    cap = StrokeCap.Round,
-                    join = StrokeJoin.Round
-                )
+                linePath, lineColor,
+                style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
         }
 
-        // Draw dots
+        // Dots
         points.forEach { point ->
-            drawCircle(
-                color = NudgeColors.AccentPrimary,
-                radius = 3.dp.toPx(),
-                center = point
-            )
+            drawCircle(lineColor, radius = 3.dp.toPx(), center = point)
         }
 
-        // X axis labels
+        // X-axis day labels (5 across)
         val labelStep = (days.size / 5).coerceAtLeast(1)
-        days.filterIndexed { index, _ -> index % labelStep == 0 || index == days.size - 1 }.forEach { day ->
+        val labeledDays = days.filterIndexed { index, _ -> index % labelStep == 0 }
+            .plus(days.last())
+            .distinct()
+        labeledDays.forEach { day ->
             val x = paddingLeft + ((day - days.first()).toFloat() / dayRange) * chartWidth
-            // Y axis labels (max only)
-        }
-    }
-}
-
-@Composable
-private fun CategoryBarChart(
-    categorySpending: List<Triple<String, Color, Long>>,
-    totalSpend: Long,
-    formatter: NumberFormat,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        val maxSpend = remember(categorySpending) {
-            categorySpending.maxOfOrNull { it.third }?.toFloat() ?: 1f
-        }
-
-        categorySpending.take(8).forEach { (name, color, amount) ->
-            val fraction = if (maxSpend > 0) amount.toFloat() / maxSpend else 0f
-            val formattedAmount = remember(amount) { formatter.format(amount / 100.0) }
-
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        name,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = NudgeColors.ContentPrimary
-                    )
-                    Text(
-                        "\u20B9$formattedAmount",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = FontFamily.Monospace,
-                        color = NudgeColors.ContentSecondary
-                    )
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(20.dp)
-                        .clip(RoundedCornerShape(NudgeRadius.SM))
-                        .background(NudgeColors.ContentTertiary.copy(alpha = 0.12f))
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(fraction.coerceIn(0.04f, 1f))
-                            .clip(RoundedCornerShape(NudgeRadius.SM))
-                            .background(color)
-                    )
-                }
-            }
-        }
-
-        if (categorySpending.size > 8) {
-            Text(
-                "+ ${categorySpending.size - 8} more categories",
-                fontSize = 12.sp,
-                color = NudgeColors.ContentTertiary
+            val layout = textMeasurer.measure(
+                AnnotatedString("$day"),
+                style = yLabelStyle
+            )
+            drawText(
+                layout,
+                topLeft = Offset((x - layout.size.width / 2f).coerceIn(0f, size.width - layout.size.width), paddingTop + chartHeight + 8f)
             )
         }
     }
@@ -509,5 +399,5 @@ private fun parseCategoryColor(colorStr: String?, index: Int): Color {
             )
         } catch (_: Exception) { }
     }
-    return NudgeColors.CategoryColors[index % NudgeColors.CategoryColors.size]
+    return Nc.catColors[index % Nc.catColors.size]
 }

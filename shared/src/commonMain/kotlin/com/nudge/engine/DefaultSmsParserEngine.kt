@@ -36,7 +36,9 @@ class DefaultSmsParserEngine : SmsParserEngine {
     // --- Public API ---
 
     override fun parse(rawText: String, senderId: String): ParsedTransaction? {
-        val cleaned = rawText.trim()
+        // Normalize the rupee glyph up front so templates work consistently
+        // even when an OEM/SMS provider changes text encoding.
+        val cleaned = rawText.trim().replace("\u20B9", "Rs.")
         if (cleaned.isEmpty()) return null
 
         // Step 1: Identify the bank
@@ -47,9 +49,14 @@ class DefaultSmsParserEngine : SmsParserEngine {
         if (result != null) {
             // Step 4: Normalize merchant
             val normResult = merchantNormalizer.normalize(result.merchantRaw)
+            val semanticType = when {
+                cleaned.contains("refund", true) || cleaned.contains("reversal", true) || cleaned.contains("reversed", true) -> TransactionType.REFUND
+                else -> result.type
+            }
             return result.copy(
+                type = semanticType,
                 merchantNormalized = normResult.normalized,
-                confidenceScore = (result.confidenceScore * normResult.confidence).coerceIn(0f, 1f)
+                confidenceScore = (result.confidenceScore * 0.8f + normResult.confidence * 0.2f).coerceIn(0f, 1f)
             )
         }
 
@@ -59,7 +66,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
             val normResult = merchantNormalizer.normalize(fallback.merchantRaw)
             return fallback.copy(
                 merchantNormalized = normResult.normalized,
-                confidenceScore = (0.4f * normResult.confidence).coerceIn(0f, 1f)
+                confidenceScore = (fallback.confidenceScore * 0.8f + normResult.confidence * 0.2f).coerceIn(0f, 1f)
             )
         }
 
@@ -303,13 +310,13 @@ class DefaultSmsParserEngine : SmsParserEngine {
     private fun inferTransactionType(text: String): TransactionType {
         val lowered = text.lowercase()
         return when {
-            lowered.contains("credit") || lowered.contains("received") || lowered.contains("deposited") ||
-            lowered.contains("added") || lowered.contains("salary") || lowered.contains("refund") ->
-                TransactionType.CREDIT
-            lowered.contains("refund") && !lowered.contains("debited") ->
+            lowered.contains("refund") || lowered.contains("reversal") || lowered.contains("reversed") ->
                 TransactionType.REFUND
             lowered.contains("transfer") || lowered.contains("transferred") ->
                 TransactionType.TRANSFER
+            lowered.contains("credit") || lowered.contains("received") || lowered.contains("deposited") ||
+            lowered.contains("added") || lowered.contains("salary") ->
+                TransactionType.CREDIT
             else -> TransactionType.DEBIT
         }
     }

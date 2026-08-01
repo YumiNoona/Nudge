@@ -23,7 +23,8 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.BudgetEntity
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -37,7 +38,6 @@ fun BudgetScreen(
     budgets: List<BudgetEntity>,
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
-    isDark: Boolean,
     onSave: (id: String?, categoryId: String?, amountCents: Long, period: String, rolloverEnabled: Boolean, startDateEpoch: Long) -> Unit,
     onDelete: (id: String) -> Unit,
     onBack: () -> Unit
@@ -53,12 +53,12 @@ fun BudgetScreen(
                         "Budgets",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                 },
                 navigationIcon = {
                     TextButton(onClick = onBack) {
-                        Text("\u2190", fontSize = 18.sp, color = NudgeColors.ContentSecondary)
+                        Text("\u2190", fontSize = 18.sp, color = Nc.inkSoft)
                     }
                 },
                 actions = {
@@ -70,12 +70,12 @@ fun BudgetScreen(
                             "+ Add Budget",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = NudgeColors.AccentPrimary
+                            color = Nc.accent
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isDark) NudgeColors.DarkSurfaceBase else NudgeColors.SurfaceBase
+                    containerColor = Nc.background
                 )
             )
         }
@@ -84,11 +84,8 @@ fun BudgetScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .background(
-                    if (isDark) NudgeColors.DarkSurfaceBase
-                    else NudgeColors.SurfaceBase
-                ),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                .background(Nc.background),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 130.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (budgets.isEmpty()) {
@@ -114,7 +111,6 @@ fun BudgetScreen(
                         spent = spent,
                         progress = progress,
                         remaining = remaining,
-                        isDark = isDark,
                         onClick = {
                             editingBudget = budget
                             showSheet = true
@@ -148,7 +144,6 @@ private fun BudgetCard(
     spent: Long,
     progress: Float,
     remaining: Long,
-    isDark: Boolean,
     onClick: () -> Unit
 ) {
     val formatter = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
@@ -159,7 +154,7 @@ private fun BudgetCard(
     Card(
         shape = RoundedCornerShape(NudgeRadius.LG),
         colors = CardDefaults.cardColors(
-            containerColor = if (isDark) NudgeColors.DarkSurfaceRaised else NudgeColors.SurfaceRaised
+            containerColor = Nc.surface
         ),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
@@ -177,18 +172,18 @@ private fun BudgetCard(
                     progress = progress.coerceAtMost(1f),
                     modifier = Modifier.fillMaxSize(),
                     color = when {
-                        progress > 1f -> NudgeColors.Negative
-                        progress > 0.8f -> NudgeColors.Warning
-                        else -> NudgeColors.AccentPrimary
+                        progress > 1f -> Nc.negative
+                        progress > 0.8f -> Nc.warning
+                        else -> Nc.accent
                     },
                     strokeWidth = 5.dp,
-                    trackColor = NudgeColors.ContentTertiary.copy(alpha = 0.2f)
+                    trackColor = Nc.inkMute.copy(alpha = 0.2f)
                 )
                 Text(
                     "${(progress * 100).toInt()}%",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
+                    color = Nc.ink
                 )
             }
 
@@ -207,7 +202,7 @@ private fun BudgetCard(
                         category?.name ?: "All Categories",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isDark) NudgeColors.DarkContentPrimary else NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                 }
 
@@ -216,7 +211,7 @@ private fun BudgetCard(
                 Text(
                     "\u20B9$spentFormatted spent of \u20B9$totalFormatted",
                     fontSize = 13.sp,
-                    color = NudgeColors.ContentSecondary
+                    color = Nc.inkSoft
                 )
 
                 Spacer(modifier = Modifier.height(6.dp))
@@ -227,28 +222,28 @@ private fun BudgetCard(
                 ) {
                     Surface(
                         shape = RoundedCornerShape(NudgeRadius.SM),
-                        color = NudgeColors.AccentPrimary.copy(alpha = 0.1f)
+                        color = Nc.accent.copy(alpha = 0.1f)
                     ) {
                         Text(
                             budget.period.replaceFirstChar { it.uppercase() },
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = NudgeColors.AccentPrimary
+                            color = Nc.accent
                         )
                     }
 
                     if (budget.rolloverEnabled) {
                         Surface(
                             shape = RoundedCornerShape(NudgeRadius.SM),
-                            color = NudgeColors.Warning.copy(alpha = 0.15f)
+                            color = Nc.warning.copy(alpha = 0.15f)
                         ) {
                             Text(
                                 "Rollover",
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = NudgeColors.Warning
+                                color = Nc.warning
                             )
                         }
                     }
@@ -260,13 +255,13 @@ private fun BudgetCard(
                     if (remaining >= 0) "\u20B9$remainingFormatted" else "-\u20B9$remainingFormatted",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = if (remaining >= 0) NudgeColors.Positive else NudgeColors.Negative
+                    fontFamily = MonoFamily,
+                    color = if (remaining >= 0) Nc.positive else Nc.negative
                 )
                 Text(
                     if (remaining >= 0) "left" else "over",
                     fontSize = 11.sp,
-                    color = if (remaining >= 0) NudgeColors.Positive.copy(alpha = 0.7f) else NudgeColors.Negative.copy(alpha = 0.7f)
+                    color = if (remaining >= 0) Nc.positive.copy(alpha = 0.7f) else Nc.negative.copy(alpha = 0.7f)
                 )
             }
         }
@@ -278,7 +273,7 @@ private fun BudgetsEmptyState() {
     Card(
         shape = RoundedCornerShape(NudgeRadius.XL),
         colors = CardDefaults.cardColors(
-            containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
+            containerColor = Nc.accent.copy(alpha = 0.05f)
         )
     ) {
         Column(
@@ -296,12 +291,12 @@ private fun BudgetsEmptyState() {
                 "No budgets yet",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Text(
                 "Tap \"+ Add Budget\" to set your first spending limit",
                 fontSize = 13.sp,
-                color = NudgeColors.ContentTertiary
+                color = Nc.inkMute
             )
         }
     }
@@ -341,8 +336,9 @@ private fun BudgetEditSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        dragHandle = null,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        containerColor = NudgeColors.SurfaceBase
+        containerColor = Nc.background
     ) {
         Column(
             modifier = Modifier
@@ -355,7 +351,7 @@ private fun BudgetEditSheet(
                     .width(36.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(NudgeColors.ContentTertiary)
+                    .background(Nc.inkMute)
                     .align(Alignment.CenterHorizontally)
             )
 
@@ -365,7 +361,7 @@ private fun BudgetEditSheet(
                 if (isEditing) "Edit Budget" else "New Budget",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
+                color = Nc.ink
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -375,7 +371,7 @@ private fun BudgetEditSheet(
                 "Category",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -392,10 +388,10 @@ private fun BudgetEditSheet(
                         .fillMaxWidth()
                         .menuAnchor(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f),
-                        focusedBorderColor = NudgeColors.AccentPrimary,
-                        focusedTextColor = NudgeColors.ContentPrimary,
-                        unfocusedTextColor = NudgeColors.ContentPrimary
+                        unfocusedBorderColor = Nc.inkMute.copy(alpha = 0.3f),
+                        focusedBorderColor = Nc.accent,
+                        focusedTextColor = Nc.ink,
+                        unfocusedTextColor = Nc.ink
                     ),
                     textStyle = TextStyle(fontSize = 15.sp),
                     shape = RoundedCornerShape(12.dp)
@@ -408,7 +404,7 @@ private fun BudgetEditSheet(
                     val expenseCategories = categories.filter { it.type == "expense" }
                     if (expenseCategories.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text("No categories available", color = NudgeColors.ContentTertiary) },
+                            text = { Text("No categories available", color = Nc.inkMute) },
                             onClick = { categoryDropdownExpanded = false }
                         )
                     } else {
@@ -434,7 +430,7 @@ private fun BudgetEditSheet(
                 "Budget Amount",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -443,14 +439,14 @@ private fun BudgetEditSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(NudgeColors.SurfaceRaised)
+                    .background(Nc.surface)
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
                 Text(
                     "\u20B9",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    color = NudgeColors.AccentPrimary
+                    color = Nc.accent
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 BasicTextField(
@@ -460,10 +456,10 @@ private fun BudgetEditSheet(
                     textStyle = TextStyle(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary,
-                        fontFamily = FontFamily.Monospace
+                        color = Nc.ink,
+                        fontFamily = MonoFamily
                     ),
-                    cursorBrush = SolidColor(NudgeColors.AccentPrimary),
+                    cursorBrush = SolidColor(Nc.accent),
                     modifier = Modifier.weight(1f),
                     decorationBox = { innerTextField ->
                         if (amountStr.isEmpty()) {
@@ -471,8 +467,8 @@ private fun BudgetEditSheet(
                                 "0",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = NudgeColors.ContentTertiary,
-                                fontFamily = FontFamily.Monospace
+                                color = Nc.inkMute,
+                                fontFamily = MonoFamily
                             )
                         }
                         innerTextField()
@@ -488,7 +484,7 @@ private fun BudgetEditSheet(
                 "Period",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -500,8 +496,8 @@ private fun BudgetEditSheet(
                         onClick = { selectedPeriod = period },
                         label = { Text(period, fontSize = 12.sp) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = NudgeColors.AccentPrimary.copy(alpha = 0.15f),
-                            selectedLabelColor = NudgeColors.AccentPrimary
+                            selectedContainerColor = Nc.accent.copy(alpha = 0.15f),
+                            selectedLabelColor = Nc.accent
                         )
                     )
                 }
@@ -520,22 +516,22 @@ private fun BudgetEditSheet(
                         "Rollover",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                     Text(
                         "Carry unspent budget to next period",
                         fontSize = 12.sp,
-                        color = NudgeColors.ContentTertiary
+                        color = Nc.inkMute
                     )
                 }
                 Switch(
                     checked = rolloverEnabled,
                     onCheckedChange = { rolloverEnabled = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = NudgeColors.AccentPrimary,
-                        checkedTrackColor = NudgeColors.AccentPrimary.copy(alpha = 0.3f),
-                        uncheckedThumbColor = NudgeColors.ContentTertiary,
-                        uncheckedTrackColor = NudgeColors.ContentTertiary.copy(alpha = 0.2f)
+                        checkedThumbColor = Nc.accent,
+                        checkedTrackColor = Nc.accent.copy(alpha = 0.3f),
+                        uncheckedThumbColor = Nc.inkMute,
+                        uncheckedTrackColor = Nc.inkMute.copy(alpha = 0.2f)
                     )
                 )
             }
@@ -547,7 +543,7 @@ private fun BudgetEditSheet(
                 "Start Date",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = NudgeColors.ContentSecondary
+                color = Nc.inkSoft
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -555,12 +551,12 @@ private fun BudgetEditSheet(
                 onClick = { showDatePicker = true },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.ContentTertiary.copy(alpha = 0.3f))
+                border = androidx.compose.foundation.BorderStroke(1.dp, Nc.inkMute.copy(alpha = 0.3f))
             ) {
                 Text(
                     dateFormat.format(Date(startDateEpoch)),
                     fontSize = 15.sp,
-                    color = NudgeColors.ContentPrimary
+                    color = Nc.ink
                 )
             }
 
@@ -583,8 +579,8 @@ private fun BudgetEditSheet(
                     .height(50.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = NudgeColors.AccentPrimary,
-                    disabledContainerColor = NudgeColors.ContentTertiary.copy(alpha = 0.3f)
+                    containerColor = Nc.accent,
+                    disabledContainerColor = Nc.inkMute.copy(alpha = 0.3f)
                 ),
                 enabled = isValid
             ) {
@@ -604,13 +600,13 @@ private fun BudgetEditSheet(
                         .fillMaxWidth()
                         .height(50.dp),
                     shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, NudgeColors.Negative)
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Nc.negative)
                 ) {
                     Text(
                         "Delete Budget",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.Negative
+                        color = Nc.negative
                     )
                 }
             }
@@ -633,12 +629,12 @@ private fun BudgetEditSheet(
                     }
                     showDatePicker = false
                 }) {
-                    Text("OK", color = NudgeColors.AccentPrimary)
+                    Text("OK", color = Nc.accent)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", color = NudgeColors.ContentSecondary)
+                    Text("Cancel", color = Nc.inkSoft)
                 }
             }
         ) {

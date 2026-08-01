@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
 
 @Composable
@@ -52,13 +53,13 @@ fun TransactionRow(
             ) {
                 Text(
                     text = merchant,
-                    color = NudgeColors.Ink,
+                    color = Nc.ink,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = subtext,
-                    color = NudgeColors.InkMute,
+                    color = Nc.inkMute,
                     fontSize = 11.sp
                 )
             }
@@ -67,14 +68,14 @@ fun TransactionRow(
 
             Text(
                 text = amount,
-                color = if (isExpense) NudgeColors.Coral else NudgeColors.Green,
+                color = if (isExpense) Nc.negative else Nc.positive,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
 
         Divider(
-            color = NudgeColors.InkMute.copy(alpha = 0.12f),
+            color = Nc.inkMute.copy(alpha = 0.12f),
             thickness = 0.5.dp
         )
     }

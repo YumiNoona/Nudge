@@ -37,7 +37,7 @@ object DefaultsSeeder {
         if (acctCount == 0) {
             val defaultAccounts = listOf(
                 AccountEntity(IdGenerator.generate(), "Cash", null, "cash", null, "#10B981", "\uD83D\uDCB5", true),
-                AccountEntity(IdGenerator.generate(), "Savings", null, "savings", null, "#6366F1", "\uD83C\uDFE6", true),
+                AccountEntity(IdGenerator.generate(), "Savings", null, "savings", null, "#3E6F8E", "\uD83C\uDFE6", true),
                 AccountEntity(IdGenerator.generate(), "Credit Card", null, "credit_card", null, "#F97316", "\uD83D\uDCB3", true),
                 AccountEntity(IdGenerator.generate(), "UPI", null, "upi", null, "#22D3EE", "\uD83D\uDCF2", true),
             )

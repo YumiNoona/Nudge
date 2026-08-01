@@ -8,6 +8,12 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY timestamp_epoch DESC")
     fun getAll(): Flow<List<TransactionEntity>>
 
+    @Query("SELECT * FROM transactions ORDER BY timestamp_epoch DESC")
+    suspend fun getAllOnce(): List<TransactionEntity>
+
+    @Query("SELECT * FROM transactions WHERE amount_cents = :amount AND type = :type AND timestamp_epoch BETWEEN :startEpoch AND :endEpoch ORDER BY timestamp_epoch DESC")
+    suspend fun findPotentialDuplicates(amount: Long, type: String, startEpoch: Long, endEpoch: Long): List<TransactionEntity>
+
     @Query("SELECT * FROM transactions WHERE is_reviewed = 0 ORDER BY timestamp_epoch DESC")
     fun getNeedsReview(): Flow<List<TransactionEntity>>
 

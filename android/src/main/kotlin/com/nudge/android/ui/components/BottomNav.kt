@@ -1,12 +1,12 @@
 package com.nudge.android.ui.components
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,131 +15,124 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.DS
+import com.nudge.android.ui.theme.MonoFamily
 
-data class BNavItem(
+data class DockItem(
     val id: String,
     val icon: @Composable (Color) -> Unit,
     val label: String,
     val badgeCount: Int = 0
 )
 
+/** High-contrast, CRED-inspired navigation dock with an integrated add action. */
 @Composable
 fun BottomDock(
-    items: List<BNavItem>,
+    items: List<DockItem>,
     activeId: String,
     onSelect: (String) -> Unit,
     onFabClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val activeIndex = items.indexOfFirst { it.id == activeId }.coerceAtLeast(0)
-    val slotWidth = 64.dp
+    val actionIndex = if (onFabClick != null) items.size / 2 else -1
 
-    val indicatorX by animateDpAsState(
-        targetValue = slotWidth * activeIndex,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "navSlide"
-    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 18.dp, vertical = 12.dp)
+            .height(72.dp)
+            .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.28f))
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF161A17))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items.forEachIndexed { index, item ->
+            val isAction = index == actionIndex
+            val active = item.id == activeId && !isAction
+            val interaction = remember { MutableInteractionSource() }
+            val pressed by interaction.collectIsPressedAsState()
+            val scale by animateFloatAsState(
+                targetValue = if (pressed) 0.9f else 1f,
+                animationSpec = spring(stiffness = 650f, dampingRatio = 0.72f),
+                label = "dockPress"
+            )
+            val tint by animateColorAsState(
+                targetValue = if (active) DS.Signal else Color(0xFF929A94),
+                label = "dockTint"
+            )
 
-    Box(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-        // Track — frosted pill
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .shadow(16.dp, RoundedCornerShape(50), spotColor = Color.Black.copy(alpha = 0.08f))
-                .clip(RoundedCornerShape(50))
-                .background(Color.White.copy(alpha = 0.88f))
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            items.forEachIndexed { i, item ->
-                val isFab = onFabClick != null && i == items.size / 2
-                val active = item.id == activeId
-
-                val tint by animateColorAsState(
-                    if (active && !isFab) NudgeColors.Emerald
-                    else if (isFab) Color.White
-                    else Color(0xFF444444),
-                    label = "navTint"
-                )
-
-                if (isFab) {
-                    // Raised center FAB
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .scale(scale)
+                    .clip(RoundedCornerShape(16.dp))
+                    .then(if (active) Modifier.background(Color.White.copy(alpha = 0.06f)) else Modifier)
+                    .clickable(interactionSource = interaction, indication = null) {
+                        if (isAction) onFabClick?.invoke() else onSelect(item.id)
+                    }
+                    .semantics { contentDescription = if (isAction) "Add transaction" else item.label },
+                contentAlignment = Alignment.Center
+            ) {
+                if (isAction) {
                     Box(
                         modifier = Modifier
-                            .offset(y = (-14).dp)
                             .size(48.dp)
-                            .shadow(10.dp, CircleShape, spotColor = NudgeColors.Emerald.copy(alpha = 0.35f))
-                            .clip(CircleShape)
-                            .background(NudgeColors.Emerald)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) { onFabClick() },
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = DS.Signal.copy(alpha = 0.26f))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(DS.Signal),
                         contentAlignment = Alignment.Center
                     ) {
-                        item.icon(tint)
+                        item.icon(DS.InkPrimary)
                     }
                 } else {
-                    // Normal slot
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable(
-                                indication = null,
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) { onSelect(item.id) }
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        // Active pill behind icon
-                        if (active) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = indicatorX - slotWidth * i)
-                                    .size(48.dp, 32.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(NudgeColors.Emerald.copy(alpha = 0.15f))
-                            )
-                        }
-
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(24.dp)) {
+                        Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                             item.icon(tint)
                         }
-
-                        // Label
+                        Spacer(Modifier.height(3.dp))
                         Text(
-                            item.label,
-                            fontSize = 9.sp,
-                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                            color = if (active) NudgeColors.Emerald else Color(0xFF666666),
+                            text = item.label.uppercase(),
+                            color = if (active) DS.Signal else Color(0xFF929A94),
+                            fontFamily = MonoFamily,
+                            fontSize = 8.sp,
+                            lineHeight = 10.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            letterSpacing = 0.4.sp,
                             maxLines = 1
                         )
+                    }
 
-                        // Badge
-                        if (item.badgeCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .offset(x = 10.dp, y = (-28).dp)
-                                    .clip(CircleShape)
-                                    .background(NudgeColors.Coral),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    "${item.badgeCount}",
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
+                    if (item.badgeCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-6).dp, y = 1.dp)
+                                .size(17.dp)
+                                .clip(CircleShape)
+                                .background(DS.Negative),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = item.badgeCount.coerceAtMost(9).toString(),
+                                color = Color.White,
+                                fontFamily = MonoFamily,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }

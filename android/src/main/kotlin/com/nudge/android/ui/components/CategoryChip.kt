@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeColors
 
 @Composable
@@ -94,7 +95,7 @@ fun CategoryChip(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = label,
-                color = NudgeColors.InkMute,
+                color = Nc.inkMute,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,

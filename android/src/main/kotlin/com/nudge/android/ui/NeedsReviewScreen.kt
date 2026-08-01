@@ -30,7 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeHaptics
 import java.text.NumberFormat
 import java.util.*
@@ -51,8 +52,8 @@ fun NeedsReviewSwipeScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🎉", fontSize = 48.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("All caught up!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                Text("No transactions need review right now", fontSize = 14.sp, color = NudgeColors.InkSoft)
+                Text("All caught up!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
+                Text("No transactions need review right now", fontSize = 14.sp, color = Nc.inkSoft)
                 Spacer(modifier = Modifier.height(16.dp))
                 TextButton(onClick = onBack) { Text("Back") }
             }
@@ -68,7 +69,7 @@ fun NeedsReviewSwipeScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("✅", fontSize = 48.sp)
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("All reviewed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+                Text("All reviewed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
                 TextButton(onClick = onBack) { Text("Done") }
             }
         }
@@ -83,30 +84,30 @@ fun NeedsReviewSwipeScreen(
     val swipeThreshold = 120f
     val rotation = (offsetX / 300f * 12f).coerceIn(-12f, 12f)
     val bgAlpha = (offsetX.absoluteValue / swipeThreshold).coerceIn(0f, 0.15f)
-    val bgColor = if (offsetX > 0) NudgeColors.Emerald.copy(alpha = bgAlpha)
-                  else if (offsetX < 0) NudgeColors.Coral.copy(alpha = bgAlpha)
+    val bgColor = if (offsetX > 0) Nc.accent.copy(alpha = bgAlpha)
+                  else if (offsetX < 0) Nc.negative.copy(alpha = bgAlpha)
                   else Color.Transparent
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
         TextButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
             Lucide.ChevronLeft(size = 18.dp, strokeWidth = 2.dp)
-            Text("Back", color = NudgeColors.InkSoft)
+            Text("Back", color = Nc.inkSoft)
         }
 
         Text(
             "${currentIndex + 1} / ${transactions.size}",
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
             fontSize = 13.sp,
-            color = NudgeColors.InkMute
+            color = Nc.inkMute
         )
 
         // Hints
-        if (offsetX < -40f) Text("Skip ←", modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp).alpha(offsetX.absoluteValue / 80f), color = NudgeColors.Coral, fontWeight = FontWeight.SemiBold)
-        if (offsetX > 40f) Text("Categorize →", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).alpha(offsetX / 80f), color = NudgeColors.Emerald, fontWeight = FontWeight.SemiBold)
+        if (offsetX < -40f) Text("Skip ←", modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp).swipeAlpha(offsetX.absoluteValue / 80f), color = Nc.negative, fontWeight = FontWeight.SemiBold)
+        if (offsetX > 40f) Text("Categorize →", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).swipeAlpha(offsetX / 80f), color = Nc.accent, fontWeight = FontWeight.SemiBold)
 
         // Peek cards
         if (currentIndex + 1 < transactions.size) {
-            Card(modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.7f).offset(y = 16.dp).alpha(0.3f), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)) {
+            Card(modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.7f).offset(y = 16.dp).swipeAlpha(0.3f), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Nc.surface)) {
                 Box(modifier = Modifier.height(140.dp))
             }
         }
@@ -142,7 +143,7 @@ fun NeedsReviewSwipeScreen(
                 },
             shape = RoundedCornerShape(28.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = NudgeColors.Surface)
+            colors = CardDefaults.cardColors(containerColor = Nc.surface)
         ) {
             Column(
                 modifier = Modifier.padding(28.dp),
@@ -153,23 +154,23 @@ fun NeedsReviewSwipeScreen(
                     "₹${fmt.format(amount)}",
                     fontSize = 38.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    fontFamily = FontFamily.Monospace,
-                    color = if (currentTxn.type == "debit") NudgeColors.Coral else NudgeColors.Emerald
+                    fontFamily = MonoFamily,
+                    color = if (currentTxn.type == "debit") Nc.negative else Nc.accent
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(currentTxn.merchantRaw, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
+                Text(currentTxn.merchantRaw, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
                 if (currentTxn.sourceRawText != null) {
                     Text(
                         "\"${currentTxn.sourceRawText}\"",
                         fontSize = 12.sp,
-                        color = NudgeColors.InkMute,
+                        color = Nc.inkMute,
                         maxLines = 3,
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }
                 if (currentTxn.confidenceScore < 0.7f) {
-                    Surface(shape = RoundedCornerShape(8.dp), color = NudgeColors.AmberBg, modifier = Modifier.padding(top = 8.dp)) {
-                        Text("Low confidence (${(currentTxn.confidenceScore * 100).toInt()}%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp, color = NudgeColors.Amber)
+                    Surface(shape = RoundedCornerShape(8.dp), color = Nc.amberBg, modifier = Modifier.padding(top = 8.dp)) {
+                        Text("Low confidence (${(currentTxn.confidenceScore * 100).toInt()}%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp, color = Nc.warning)
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -180,7 +181,7 @@ fun NeedsReviewSwipeScreen(
                             haptics.warning(); onDismiss(currentTxn.id); currentIndex++; offsetX = 0f; offsetY = 0f
                         },
                         shape = CircleShape,
-                        color = NudgeColors.CoralBg
+                        color = Nc.coralBg
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Lucide.X(size = 22.dp, strokeWidth = 2.dp)
@@ -192,7 +193,7 @@ fun NeedsReviewSwipeScreen(
                             haptics.confirm(); showCategoryPicker = true
                         },
                         shape = CircleShape,
-                        color = NudgeColors.Emerald
+                        color = Nc.accent
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Lucide.Check(size = 22.dp, strokeWidth = 2.5.dp)
@@ -233,12 +234,12 @@ fun CategoryPickerDialog(
                 "Categorize ₹${fmt.format(currentTxn.amountCents / 100)}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.Ink
+                color = Nc.ink
             )
         },
         text = {
             Column {
-                Text(currentTxn.merchantRaw, fontSize = 14.sp, color = NudgeColors.InkSoft)
+                Text(currentTxn.merchantRaw, fontSize = 14.sp, color = Nc.inkSoft)
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
@@ -251,12 +252,12 @@ fun CategoryPickerDialog(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(NudgeColors.Bone)
+                                .background(Nc.background)
                                 .clickable { onSelect(cat.id) }
                                 .padding(8.dp)
                         ) {
                             Text(cat.icon ?: "📁", fontSize = 18.sp)
-                            Text(cat.name, fontSize = 10.sp, color = NudgeColors.InkSoft, maxLines = 1, textAlign = TextAlign.Center)
+                            Text(cat.name, fontSize = 10.sp, color = Nc.inkSoft, maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
                 }
@@ -264,11 +265,11 @@ fun CategoryPickerDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = NudgeColors.InkSoft) }
+            TextButton(onClick = onDismiss) { Text("Cancel", color = Nc.inkSoft) }
         },
-        containerColor = NudgeColors.Surface,
+        containerColor = Nc.surface,
         shape = RoundedCornerShape(24.dp)
     )
 }
 
-private fun Modifier.alpha(a: Float): Modifier = this.then(Modifier.graphicsLayer { alpha = a })
+private fun Modifier.swipeAlpha(a: Float): Modifier = this.then(Modifier.graphicsLayer { alpha = a })

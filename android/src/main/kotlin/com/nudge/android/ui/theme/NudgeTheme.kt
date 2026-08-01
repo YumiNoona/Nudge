@@ -2,77 +2,78 @@ package com.nudge.android.ui.theme
 
 import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val LightScheme = lightColorScheme(
-    primary = NudgeColors.Emerald,
+    primary = DS.Accent,
     onPrimary = Color.White,
-    primaryContainer = NudgeColors.EmeraldBg,
-    onPrimaryContainer = NudgeColors.EmeraldDeep,
-    secondary = NudgeColors.EmeraldDeep,
+    primaryContainer = DS.AccentSoft,
+    onPrimaryContainer = DS.AccentDeep,
+    secondary = DS.AccentDeep,
     onSecondary = Color.White,
-    background = NudgeColors.Bone,
-    onBackground = NudgeColors.Ink,
-    surface = NudgeColors.Surface,
-    onSurface = NudgeColors.Ink,
-    surfaceVariant = NudgeColors.SurfaceHover,
-    onSurfaceVariant = NudgeColors.InkSoft,
-    outline = NudgeColors.InkMute.copy(alpha = 0.3f),
-    error = NudgeColors.Coral,
+    background = DS.Surface0,
+    onBackground = DS.InkPrimary,
+    surface = DS.Surface1,
+    onSurface = DS.InkPrimary,
+    surfaceVariant = DS.Surface2,
+    onSurfaceVariant = DS.InkSecondary,
+    outline = DS.InkTertiary,
+    error = DS.Negative,
     onError = Color.White,
-    errorContainer = NudgeColors.CoralBg,
-    onErrorContainer = NudgeColors.Coral
+    errorContainer = DS.WarningBg,
+    onErrorContainer = DS.Negative
 )
 
 private val DarkScheme = darkColorScheme(
-    primary = NudgeColors.Emerald,
+    primary = DS.DarkAccent,
     onPrimary = Color.Black,
-    primaryContainer = NudgeColors.EmeraldBg.copy(alpha = 0.2f),
-    onPrimaryContainer = NudgeColors.Emerald,
-    secondary = NudgeColors.EmeraldDeep,
+    primaryContainer = DS.DarkAccentSoft,
+    onPrimaryContainer = DS.DarkAccent,
+    secondary = DS.DarkAccent,
     onSecondary = Color.Black,
-    background = NudgeColors.Dark,
-    onBackground = NudgeColors.InkDark,
-    surface = NudgeColors.SurfaceDark,
-    onSurface = NudgeColors.InkDark,
-    surfaceVariant = NudgeColors.SurfaceDark.copy(alpha = 0.5f),
-    onSurfaceVariant = NudgeColors.InkSoftDark,
-    outline = NudgeColors.InkMuteDark.copy(alpha = 0.3f),
-    error = NudgeColors.Coral,
+    background = DS.DarkSurface0,
+    onBackground = DS.DarkInkPrimary,
+    surface = DS.DarkSurface1,
+    onSurface = DS.DarkInkPrimary,
+    surfaceVariant = DS.DarkSurface2,
+    onSurfaceVariant = DS.DarkInkSecondary,
+    outline = DS.DarkInkTertiary,
+    error = DS.Negative,
     onError = Color.Black,
-    errorContainer = NudgeColors.CoralBgDark,
-    onErrorContainer = NudgeColors.Coral
+    errorContainer = DS.DarkWarningBg,
+    onErrorContainer = DS.Negative
 )
+
+// App-wide dark-mode state — lets DSBridge pick the right tokens
+// regardless of the OS theme setting.
+val LocalNudgeIsDark = staticCompositionLocalOf { false }
 
 @Composable
 fun NudgeTheme(
     isDark: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (dynamicColor) {
-        // Material You slot — uses wallpaper-derived colors when available
-        if (isDark) dynamicDarkColorScheme(LocalContext.current)
-        else dynamicLightColorScheme(LocalContext.current)
-    } else {
-        if (isDark) DarkScheme else LightScheme
-    }
+    val scheme = if (isDark) DarkScheme else LightScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as? Activity)?.window
-            window?.let {
-                WindowCompat.getInsetsController(it, view)
-                    .isAppearanceLightStatusBars = !isDark
+            (view.context as? Activity)?.window?.let {
+                WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = !isDark
             }
         }
     }
 
-    MaterialTheme(colorScheme = colorScheme, content = content)
+    CompositionLocalProvider(LocalNudgeIsDark provides isDark) {
+        MaterialTheme(colorScheme = scheme, typography = DSTypography, content = content)
+    }
 }

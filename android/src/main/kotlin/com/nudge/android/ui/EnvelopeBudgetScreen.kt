@@ -18,7 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import java.text.NumberFormat
 import java.util.Locale
@@ -43,7 +44,8 @@ fun EnvelopeBudgetScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NudgeColors.SurfaceBase)
+            .background(Nc.background)
+            .statusBarsPadding()
     ) {
         // Top bar
         Row(
@@ -54,16 +56,16 @@ fun EnvelopeBudgetScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             TextButton(onClick = onBack) {
-                Text("← Back", color = NudgeColors.ContentSecondary)
+                Text("← Back", color = Nc.inkSoft)
             }
             Text(
                 "Envelopes",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = NudgeColors.ContentPrimary
+                color = Nc.ink
             )
             TextButton(onClick = onAddBudget) {
-                Text("+ Envelope", color = NudgeColors.AccentPrimary)
+                Text("+ Envelope", color = Nc.accent)
             }
         }
 
@@ -71,7 +73,7 @@ fun EnvelopeBudgetScreen(
         Card(
             shape = RoundedCornerShape(NudgeRadius.LG),
             colors = CardDefaults.cardColors(
-                containerColor = NudgeColors.AccentPrimary.copy(alpha = 0.05f)
+                containerColor = Nc.accent.copy(alpha = 0.05f)
             ),
             modifier = Modifier.padding(horizontal = 16.dp)
         ) {
@@ -82,13 +84,13 @@ fun EnvelopeBudgetScreen(
                     "How Envelope Budgeting Works",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = NudgeColors.ContentPrimary
+                    color = Nc.ink
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     "Put money in envelopes for each category. When an envelope is empty, you stop spending in that category. Unused money can roll over to next month.",
                     fontSize = 12.sp,
-                    color = NudgeColors.ContentSecondary
+                    color = Nc.inkSoft
                 )
             }
         }
@@ -107,12 +109,12 @@ fun EnvelopeBudgetScreen(
                         "No envelopes yet",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.ContentPrimary
+                        color = Nc.ink
                     )
                     Text(
                         "Create envelopes to track spending by category",
                         fontSize = 13.sp,
-                        color = NudgeColors.ContentSecondary
+                        color = Nc.inkSoft
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedButton(
@@ -125,7 +127,7 @@ fun EnvelopeBudgetScreen(
             }
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(16.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 130.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(budgets) { index, budget ->
@@ -176,8 +178,8 @@ fun EnvelopeCard(
     )
 
     val fillColor = when {
-        progress > 1f -> NudgeColors.Negative
-        progress > 0.8f -> NudgeColors.Warning
+        progress > 1f -> Nc.negative
+        progress > 0.8f -> Nc.warning
         else -> categoryColor
     }
 
@@ -185,7 +187,7 @@ fun EnvelopeCard(
 
     Card(
         shape = RoundedCornerShape(NudgeRadius.LG),
-        colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised),
+        colors = CardDefaults.cardColors(containerColor = Nc.surface),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Column(
@@ -208,19 +210,19 @@ fun EnvelopeCard(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(categoryName, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = NudgeColors.ContentPrimary)
+                        Text(categoryName, fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
                         Row {
                             Text(
                                 "₹${formatter.format(spentAmount)} of ₹${formatter.format(budgetAmount)}",
                                 fontSize = 13.sp,
-                                color = NudgeColors.ContentSecondary,
-                                fontFamily = FontFamily.Monospace
+                                color = Nc.inkSoft,
+                                fontFamily = MonoFamily
                             )
                             if (hasRollover) {
                                 Text(
                                     " · Rollover",
                                     fontSize = 12.sp,
-                                    color = NudgeColors.AccentPrimary
+                                    color = Nc.accent
                                 )
                             }
                         }
@@ -232,13 +234,13 @@ fun EnvelopeCard(
                         "₹${formatter.format(maxOf(0, remaining))}",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        color = if (remaining >= 0) NudgeColors.ContentPrimary else NudgeColors.Negative
+                        fontFamily = MonoFamily,
+                        color = if (remaining >= 0) Nc.ink else Nc.negative
                     )
                     Text(
                         if (remaining >= 0) "left" else "over",
                         fontSize = 11.sp,
-                        color = NudgeColors.ContentTertiary
+                        color = Nc.inkMute
                     )
                 }
             }
@@ -251,7 +253,7 @@ fun EnvelopeCard(
                     .fillMaxWidth()
                     .height(20.dp)
                     .clip(RoundedCornerShape(NudgeRadius.SM))
-                    .background(NudgeColors.ContentTertiary.copy(alpha = 0.15f))
+                    .background(Nc.inkMute.copy(alpha = 0.15f))
             ) {
                 // Filled portion
                 Box(
@@ -269,7 +271,7 @@ fun EnvelopeCard(
                             .fillMaxWidth(tick)
                             .width(1.dp)
                             .fillMaxHeight()
-                            .background(NudgeColors.SurfaceBase.copy(alpha = 0.5f))
+                            .background(Nc.background.copy(alpha = 0.5f))
                     )
                 }
 
@@ -288,12 +290,11 @@ fun EnvelopeCard(
 
 private fun parseColor(hex: String?, index: Int): Color {
     if (hex.isNullOrBlank()) {
-        return NudgeColors.CategoryColors[index % NudgeColors.CategoryColors.size]
+        return Nc.catColors[index % Nc.catColors.size]
     }
     return try {
         Color(android.graphics.Color.parseColor(hex))
     } catch (_: Exception) {
-        NudgeColors.CategoryColors[index % NudgeColors.CategoryColors.size]
+        Nc.catColors[index % Nc.catColors.size]
     }
 }
-

@@ -1,15 +1,18 @@
 package com.nudge.android.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import android.content.pm.PackageManager
 import android.provider.Settings
-import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,235 +20,303 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OnboardingScreen(onDone: () -> Unit) {
-    val ctx = LocalContext.current
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(pageCount = { 5 })
-    val prefs = remember { ctx.getSharedPreferences("nudge_prefs", android.content.Context.MODE_PRIVATE) }
-
-    // Step state
-    var displayName by remember { mutableStateOf("") }
-    var avatarUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedCurrency by remember { mutableStateOf(prefs.getString("currency", "INR") ?: "INR") }
-    val smsGranted = remember { mutableStateOf(ContextCompat.checkSelfPermission(ctx, Manifest.permission.RECEIVE_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
-
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) avatarUri = uri
+    val pager = rememberPagerState(pageCount = { 4 })
+    var name by remember { mutableStateOf(preferences.getString("display_name", "") ?: "") }
+    var currency by remember { mutableStateOf(preferences.getString("currency_code", "INR") ?: "INR") }
+    var smsGranted by remember {
+        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED)
     }
 
-    val smsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-        smsGranted.value = grants.values.all { it }
+    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        smsGranted = result.values.all { it }
     }
 
-    fun completeOnboarding() {
-        prefs.edit()
+    fun finish() {
+        preferences.edit()
             .putBoolean("onboarding_complete", true)
-            .putString("currency", selectedCurrency)
+            .putString("display_name", name.trim().ifBlank { "You" })
+            .putString("currency_code", currency)
             .apply()
-        if (displayName.isNotBlank()) prefs.edit().putString("display_name", displayName).apply()
-        if (avatarUri != null) prefs.edit().putString("avatar_uri", avatarUri.toString()).apply()
         onDone()
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(NudgeColors.Bone)) {
-        // Progress dots
+    Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 48.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.Center
+            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            repeat(5) { i ->
-                Box(
-                    modifier = Modifier
-                        .padding(4.dp)
-                        .size(if (pagerState.currentPage == i) 28.dp else 8.dp, 8.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            if (pagerState.currentPage == i) NudgeColors.Emerald
-                            else NudgeColors.InkMute.copy(alpha = 0.3f)
-                        )
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(DS.AccentDeep), contentAlignment = Alignment.Center) {
+                Text("N", color = DS.Signal, fontWeight = FontWeight.Black, fontSize = 15.sp)
+            }
+            Spacer(Modifier.width(9.dp))
+            Text("Nudge", color = DSBridge.ink(), fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Spacer(Modifier.weight(1f))
+            if (pager.currentPage < 3) {
+                Text(
+                    "Skip",
+                    color = DSBridge.inkSoft(),
+                    fontSize = 12.sp,
+                    modifier = Modifier.clip(CircleShape).clickable { finish() }.padding(horizontal = 10.dp, vertical = 8.dp)
                 )
             }
         }
 
         HorizontalPager(
-            state = pagerState,
+            state = pager,
             modifier = Modifier.weight(1f),
-            userScrollEnabled = pagerState.currentPage < 4 // can't swipe past last page
+            userScrollEnabled = true
         ) { page ->
-            Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                when (page) {
-                    0 -> {
-                        // Welcome
-                        Box(
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(
-                                Brush.linearGradient(listOf(NudgeColors.Emerald, NudgeColors.EmeraldDeep))
-                            ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Lucide.Wallet(size = 36.dp, strokeWidth = 1.5.dp, color = Color.White)
-                        }
-                        Spacer(Modifier.height(32.dp))
-                        Text("Welcome to Nudge", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                        Spacer(Modifier.height(12.dp))
-                        Text("Track expenses automatically. No spreadsheets, no guilt.", fontSize = 15.sp, color = NudgeColors.InkSoft, textAlign = TextAlign.Center, lineHeight = 22.sp)
-                    }
-                    1 -> {
-                        // Permissions explainer
-                        Lucide.Shield(size = 48.dp, strokeWidth = 1.5.dp, color = NudgeColors.Emerald)
-                        Spacer(Modifier.height(24.dp))
-                        Text("Stay private, stay smart", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "We read bank & UPI SMS on-device to auto-log expenses. Nothing leaves your phone. No account required. You control what we access.",
-                            fontSize = 14.sp, color = NudgeColors.InkSoft, textAlign = TextAlign.Center, lineHeight = 22.sp
-                        )
-                    }
-                    2 -> {
-                        // Currency
-                        Lucide.Wallet(size = 48.dp, strokeWidth = 1.5.dp, color = NudgeColors.Emerald)
-                        Spacer(Modifier.height(24.dp))
-                        Text("Your currency", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                        Spacer(Modifier.height(16.dp))
-                        val currencies = listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£", "JPY" to "¥", "AUD" to "A$", "CAD" to "C$", "SGD" to "S$")
-                        currencies.forEach { (code, symbol) ->
-                            val sel = selectedCurrency == code
-                            Surface(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { selectedCurrency = code },
-                                shape = RoundedCornerShape(14.dp),
-                                color = if (sel) NudgeColors.EmeraldBg else NudgeColors.Surface
-                            ) {
-                                Row(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Text("$symbol  $code", fontSize = 16.sp, fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal, color = if (sel) NudgeColors.Emerald else NudgeColors.Ink)
-                                    if (sel) Text("✓", color = NudgeColors.Emerald, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                    3 -> {
-                        // Profile
-                        Box(
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(NudgeColors.InkMute.copy(alpha = 0.15f)).clickable { imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (avatarUri != null) {
-                                // Would load via Coil/Glide in production — show checkmark for now
-                                Lucide.Check(size = 32.dp, strokeWidth = 2.dp, color = NudgeColors.Emerald)
-                            } else {
-                                Lucide.User(size = 32.dp, strokeWidth = 1.5.dp, color = NudgeColors.InkMute)
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text("Tap to add photo", fontSize = 12.sp, color = NudgeColors.InkSoft)
-                        Spacer(Modifier.height(24.dp))
-                        Text("What should we call you?", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                        Spacer(Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = displayName,
-                            onValueChange = { displayName = it },
-                            placeholder = { Text("Your name", color = NudgeColors.InkMute) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        )
-                    }
-                    4 -> {
-                        // Done
-                        Box(
-                            modifier = Modifier.size(80.dp).clip(CircleShape).background(NudgeColors.EmeraldBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Lucide.Check(size = 36.dp, strokeWidth = 2.5.dp, color = NudgeColors.Emerald)
-                        }
-                        Spacer(Modifier.height(24.dp))
-                        Text("You're all set!", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = NudgeColors.Ink)
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            "Nudge will now track your expenses as they happen. Open the app anytime to review, budget, and earn rewards.",
-                            fontSize = 14.sp, color = NudgeColors.InkSoft, textAlign = TextAlign.Center, lineHeight = 22.sp
-                        )
-                    }
+            AnimatedContent(
+                targetState = page,
+                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(180)) },
+                label = "onboardingPage",
+                modifier = Modifier.fillMaxSize()
+            ) { current ->
+                when (current) {
+                    0 -> WelcomePage()
+                    1 -> CapturePage(
+                        smsGranted = smsGranted,
+                        onSms = { smsPermission.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)) },
+                        onNotifications = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                    )
+                    2 -> PersonalizePage(name, { name = it }, currency, { currency = it })
+                    else -> ReadyPage(name.trim().ifBlank { "You" })
                 }
             }
         }
 
-        // Bottom button
-        Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp)) {
-            when (pagerState.currentPage) {
-                0 -> Button(
-                    onClick = { scope.launch { pagerState.animateScrollToPage(1) } },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
-                ) { Text("Get Started", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
-                1 -> {
-                    Column {
-                        Button(
-                            onClick = {
-                                smsLauncher.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS))
-                            },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
-                        ) { Text("Grant SMS Access", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { scope.launch { pagerState.animateScrollToPage(2) } },
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) { Text("Skip for now", fontSize = 14.sp, color = NudgeColors.InkSoft) }
-                    }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                repeat(4) { index ->
+                    Box(
+                        Modifier.width(if (pager.currentPage == index) 24.dp else 7.dp).height(7.dp)
+                            .clip(CircleShape)
+                            .background(if (index <= pager.currentPage) DS.Accent else DSBridge.inkMute().copy(alpha = .22f))
+                    )
                 }
-                2 -> Button(
-                    onClick = { scope.launch { pagerState.animateScrollToPage(3) } },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
-                ) { Text("Continue", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
-                3 -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(
-                            onClick = { scope.launch { pagerState.animateScrollToPage(4) } },
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(16.dp)
-                        ) { Text("Skip", fontSize = 14.sp, color = NudgeColors.InkSoft) }
-                        Button(
-                            onClick = { scope.launch { pagerState.animateScrollToPage(4) } },
-                            modifier = Modifier.weight(1f).height(52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
-                        ) { Text("Save & Continue", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
-                    }
+            }
+            Spacer(Modifier.weight(1f))
+            Surface(
+                onClick = {
+                    if (pager.currentPage == 3) finish()
+                    else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
+                },
+                shape = RoundedCornerShape(17.dp),
+                color = DS.AccentDeep,
+                shadowElevation = 6.dp
+            ) {
+                Row(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (pager.currentPage == 3) "Start tracking" else "Continue", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(12.dp))
+                    Text("→", color = DS.Signal, fontSize = 18.sp)
                 }
-                4 -> Button(
-                    onClick = { completeOnboarding() },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Emerald)
-                ) { Text("Start Tracking", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
             }
         }
+        Spacer(Modifier.navigationBarsPadding().height(12.dp))
+    }
+}
+
+@Composable
+private fun WelcomePage() {
+    OnboardingFrame(
+        eyebrow = "PRIVATE BY DESIGN",
+        title = "Every expense,\nsettled quietly.",
+        body = "Nudge turns bank and UPI alerts into a clean money timeline—right on your phone."
+    ) {
+        Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
+            Surface(
+                modifier = Modifier.width(278.dp).shadow(18.dp, RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = .12f)),
+                shape = RoundedCornerShape(30.dp),
+                color = DS.AccentDeep
+            ) {
+                Column(Modifier.padding(22.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("This month", color = Color.White.copy(alpha = .62f), fontSize = 10.sp)
+                        Spacer(Modifier.weight(1f))
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(DS.Signal))
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Text("₹24,860", color = Color.White, fontFamily = MonoFamily, fontSize = 31.sp, fontWeight = FontWeight.Bold)
+                    Text("12% less than last month", color = DS.Signal, fontSize = 10.sp)
+                    Spacer(Modifier.height(22.dp))
+                    Surface(shape = RoundedCornerShape(18.dp), color = Color.White.copy(alpha = .1f)) {
+                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(38.dp).clip(CircleShape).background(DS.Signal), contentAlignment = Alignment.Center) {
+                                Lucide.Check(size = 18.dp, strokeWidth = 2.dp, color = DS.InkPrimary)
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Swiggy", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                Text("Food · captured now", color = Color.White.copy(alpha = .55f), fontSize = 9.sp)
+                            }
+                            Text("−₹640", color = Color.White, fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapturePage(smsGranted: Boolean, onSms: () -> Unit, onNotifications: () -> Unit) {
+    OnboardingFrame(
+        eyebrow = "AUTOMATIC CAPTURE",
+        title = "Your spending finds\nits own way in.",
+        body = "Read only transaction alerts. Processing happens on-device and message content is never uploaded."
+    ) {
+        Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PermissionCard(
+                icon = { color -> Lucide.Shield(size = 20.dp, strokeWidth = 1.7.dp, color = color) },
+                title = "Bank & UPI SMS",
+                detail = if (smsGranted) "Ready to capture" else "Detect debits and credits",
+                enabled = smsGranted,
+                onClick = onSms
+            )
+            PermissionCard(
+                icon = { color -> Lucide.Bell(size = 20.dp, strokeWidth = 1.7.dp, color = color) },
+                title = "Payment notifications",
+                detail = "GPay, PhonePe, Paytm and banks",
+                enabled = false,
+                onClick = onNotifications
+            )
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                Lucide.Shield(size = 14.dp, strokeWidth = 1.7.dp, color = DSBridge.inkMute())
+                Spacer(Modifier.width(6.dp))
+                Text("No account required · works offline", color = DSBridge.inkMute(), fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PermissionCard(
+    icon: @Composable (Color) -> Unit,
+    title: String,
+    detail: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(20.dp), color = DSBridge.surface()) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (enabled) DS.Signal else DSBridge.accentBg()), contentAlignment = Alignment.Center) {
+                icon(if (enabled) DS.InkPrimary else DSBridge.accent())
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, color = DSBridge.ink(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(detail, color = DSBridge.inkMute(), fontSize = 10.sp)
+            }
+            Text(if (enabled) "Ready" else "Enable", color = if (enabled) DSBridge.positive() else DSBridge.accent(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun PersonalizePage(name: String, onName: (String) -> Unit, currency: String, onCurrency: (String) -> Unit) {
+    OnboardingFrame(
+        eyebrow = "MAKE IT YOURS",
+        title = "A money space\nthat feels personal.",
+        body = "Choose what Nudge calls you and how amounts appear. You can change these later."
+    ) {
+        Column(Modifier.fillMaxWidth().padding(top = 22.dp)) {
+            Text("YOUR NAME", fontSize = 9.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute())
+            Spacer(Modifier.height(8.dp))
+            Surface(shape = RoundedCornerShape(17.dp), color = DSBridge.surface()) {
+                BasicTextField(
+                    value = name,
+                    onValueChange = onName,
+                    singleLine = true,
+                    textStyle = TextStyle(color = DSBridge.ink(), fontSize = 14.sp, fontWeight = FontWeight.Medium),
+                    cursorBrush = SolidColor(DSBridge.accent()),
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    decorationBox = { field ->
+                        if (name.isBlank()) Text("What should we call you?", color = DSBridge.inkMute(), fontSize = 13.sp)
+                        field()
+                    }
+                )
+            }
+            Spacer(Modifier.height(18.dp))
+            Text("CURRENCY", fontSize = 9.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute())
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£").forEach { (code, symbol) ->
+                    val selected = code == currency
+                    Surface(
+                        onClick = { onCurrency(code) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) DS.AccentDeep else DSBridge.surface()
+                    ) {
+                        Column(Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(symbol, color = if (selected) DS.Signal else DSBridge.ink(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text(code, color = if (selected) Color.White else DSBridge.inkMute(), fontSize = 9.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadyPage(name: String) {
+    OnboardingFrame(
+        eyebrow = "READY WHEN YOU ARE",
+        title = "Welcome home,\n$name.",
+        body = "Add your first expense or let Nudge capture the next one. Everything stays editable."
+    ) {
+        Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(118.dp).clip(CircleShape).background(DS.AccentSoft), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(82.dp).clip(CircleShape).background(DS.Signal), contentAlignment = Alignment.Center) {
+                    Lucide.Check(size = 36.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingFrame(eyebrow: String, title: String, body: String, visual: @Composable () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { visual() }
+        Text(eyebrow, color = DSBridge.accent(), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+        Spacer(Modifier.height(10.dp))
+        Text(title, color = DSBridge.ink(), fontSize = 34.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, letterSpacing = (-1).sp)
+        Spacer(Modifier.height(12.dp))
+        Text(body, color = DSBridge.inkSoft(), fontSize = 13.sp, lineHeight = 20.sp, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 330.dp))
+        Spacer(Modifier.height(24.dp))
     }
 }

@@ -22,8 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
-import com.nudge.android.ui.theme.NudgeColors
+import com.nudge.android.ui.theme.Nc
 import com.nudge.android.ui.theme.NudgeRadius
+import com.nudge.android.ui.theme.DS
+import com.nudge.android.ui.theme.Lucide
+import com.nudge.android.ui.theme.MonoFamily
+import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,7 +78,8 @@ fun BackupScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(NudgeColors.SurfaceBase)
+            .background(Nc.background)
+            .statusBarsPadding()
     ) {
         // Top bar
         Row(
@@ -84,8 +89,8 @@ fun BackupScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) { Text("← Back", color = NudgeColors.ContentSecondary) }
-            Text("Data & Backup", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.ContentPrimary)
+            TextButton(onClick = onBack) { Text("← Back", color = Nc.inkSoft) }
+            Text("Data & Backup", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
             Spacer(modifier = Modifier.width(64.dp))
         }
 
@@ -99,18 +104,25 @@ fun BackupScreen(
             // Stats card
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised)
+                colors = CardDefaults.cardColors(containerColor = DS.AccentDeep)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    StatItem("${transactions.size}", "Transactions")
-                    StatItem("${categories.size}", "Categories")
-                    StatItem("${accounts.size}", "Accounts")
-                    StatItem("${budgets.size}", "Budgets")
+                Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("LOCAL DATA VAULT", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.2.sp, color = Color.White.copy(alpha = .55f))
+                            Text("Everything stays yours", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+                        Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .08f)), contentAlignment = Alignment.Center) {
+                            Lucide.Shield(size = 20.dp, color = DS.Signal)
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        StatItem("${transactions.size}", "Transactions", Color.White, Color.White.copy(alpha = .55f))
+                        StatItem("${categories.size}", "Categories", Color.White, Color.White.copy(alpha = .55f))
+                        StatItem("${accounts.size}", "Accounts", Color.White, Color.White.copy(alpha = .55f))
+                        StatItem("${budgets.size}", "Budgets", Color.White, Color.White.copy(alpha = .55f))
+                    }
                 }
             }
 
@@ -119,7 +131,7 @@ fun BackupScreen(
 
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised),
+                colors = CardDefaults.cardColors(containerColor = Nc.surface),
                 modifier = Modifier.clickable {
                     exportLauncher.launch("nudge-backup-${java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())}.json")
                 }
@@ -131,11 +143,15 @@ fun BackupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Export as JSON", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = NudgeColors.ContentPrimary)
-                        Text("Standard unencrypted backup file", fontSize = 12.sp, color = NudgeColors.ContentTertiary)
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Nc.accentBg), contentAlignment = Alignment.Center) {
+                        Lucide.Download(size = 20.dp, color = Nc.accent)
                     }
-                    Text("↓", fontSize = 20.sp, color = NudgeColors.AccentPrimary)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Export as JSON", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
+                        Text("Standard unencrypted backup file", fontSize = 12.sp, color = Nc.inkMute)
+                    }
+                    Text("↓", fontSize = 20.sp, color = Nc.accent)
                 }
             }
 
@@ -144,7 +160,7 @@ fun BackupScreen(
 
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(containerColor = NudgeColors.SurfaceRaised),
+                colors = CardDefaults.cardColors(containerColor = Nc.surface),
                 modifier = Modifier.clickable {
                     importLauncher.launch(arrayOf("application/json", "*/*"))
                 }
@@ -156,23 +172,27 @@ fun BackupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Import from backup", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = NudgeColors.ContentPrimary)
-                        Text("Restore from a JSON backup file. Merges with existing data.", fontSize = 12.sp, color = NudgeColors.ContentTertiary)
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Nc.accentBg), contentAlignment = Alignment.Center) {
+                        Lucide.Database(size = 20.dp, color = Nc.accent)
                     }
-                    Text("↑", fontSize = 20.sp, color = NudgeColors.AccentPrimary)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Import from backup", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
+                        Text("Restore from a JSON backup file. Merges with existing data.", fontSize = 12.sp, color = Nc.inkMute)
+                    }
+                    Text("↑", fontSize = 20.sp, color = Nc.accent)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             // Delete section
-            SectionHeader("Danger Zone", color = NudgeColors.Negative)
+            SectionHeader("Danger Zone", color = Nc.negative)
 
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
                 colors = CardDefaults.cardColors(
-                    containerColor = NudgeColors.Negative.copy(alpha = 0.08f)
+                    containerColor = Nc.negative.copy(alpha = 0.08f)
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -180,20 +200,20 @@ fun BackupScreen(
                         "Delete All Data",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = NudgeColors.Negative
+                        color = Nc.negative
                     )
                     Text(
                         "This will permanently delete ALL your transactions, categories, budgets, and settings. This cannot be undone.",
                         fontSize = 12.sp,
-                        color = NudgeColors.ContentSecondary
+                        color = Nc.inkSoft
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (!showDeleteConfirm) {
                         OutlinedButton(
                             onClick = { showDeleteConfirm = true },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = NudgeColors.Negative),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Nc.negative),
                             border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(NudgeColors.Negative)
+                                brush = androidx.compose.ui.graphics.SolidColor(Nc.negative)
                             )
                         ) {
                             Text("Delete Everything")
@@ -202,7 +222,7 @@ fun BackupScreen(
                         Text(
                             "Type DELETE to confirm:",
                             fontSize = 12.sp,
-                            color = NudgeColors.ContentSecondary
+                            color = Nc.inkSoft
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(
@@ -226,7 +246,7 @@ fun BackupScreen(
                                     }
                                 },
                                 enabled = deleteText == "DELETE",
-                                colors = ButtonDefaults.buttonColors(containerColor = NudgeColors.Negative),
+                                colors = ButtonDefaults.buttonColors(containerColor = Nc.negative),
                                 shape = RoundedCornerShape(NudgeRadius.SM)
                             ) {
                                 Text("Delete")
@@ -236,11 +256,12 @@ fun BackupScreen(
                 }
             }
         }
+        Spacer(Modifier.height(120.dp))
     }
 }
 
 @Composable
-private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Color = NudgeColors.ContentPrimary) {
+private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Color = Nc.ink) {
     Text(
         title,
         fontSize = 13.sp,
@@ -251,10 +272,10 @@ private fun SectionHeader(title: String, color: androidx.compose.ui.graphics.Col
 }
 
 @Composable
-private fun StatItem(value: String, label: String) {
+private fun StatItem(value: String, label: String, valueColor: Color = Nc.accent, labelColor: Color = Nc.inkMute) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = NudgeColors.AccentPrimary)
-        Text(label, fontSize = 11.sp, color = NudgeColors.ContentTertiary)
+        Text(value, fontFamily = MonoFamily, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(label, fontSize = 10.sp, color = labelColor)
     }
 }
 
@@ -302,7 +323,10 @@ private suspend fun exportToUri(
         json.put("accounts", accounts.toJson { acct ->
             JSONObject().apply {
                 put("id", acct.id); put("name", acct.name)
-                put("accountType", acct.accountType); put("last4Digits", acct.last4Digits ?: "")
+                put("bankName", acct.bankName ?: ""); put("accountType", acct.accountType)
+                put("last4Digits", acct.last4Digits ?: ""); put("color", acct.color ?: "")
+                put("isDefault", acct.isDefault); put("isArchived", acct.isArchived)
+                put("balanceCents", acct.balanceCents ?: JSONObject.NULL)
             }
         })
 
@@ -311,6 +335,7 @@ private suspend fun exportToUri(
                 put("id", b.id); put("categoryId", b.categoryId ?: "")
                 put("amountCents", b.amountCents); put("period", b.period)
                 put("rolloverEnabled", b.rolloverEnabled)
+                put("startDateEpoch", b.startDateEpoch)
             }
         })
 
@@ -379,6 +404,43 @@ private suspend fun importFromUri(
             }
         }
 
+        val accountsArr = json.optJSONArray("accounts")
+        if (accountsArr != null) {
+            for (i in 0 until accountsArr.length()) {
+                val obj = accountsArr.getJSONObject(i)
+                viewModel.importAccount(
+                    AccountEntity(
+                        id = obj.optString("id", com.nudge.util.IdGenerator.generate()),
+                        name = obj.optString("name", "Imported account"),
+                        bankName = obj.optString("bankName", "").ifEmpty { null },
+                        accountType = obj.optString("accountType", "cash"),
+                        last4Digits = obj.optString("last4Digits", "").ifEmpty { null },
+                        color = obj.optString("color", "").ifEmpty { null },
+                        isDefault = obj.optBoolean("isDefault", false),
+                        isArchived = obj.optBoolean("isArchived", false),
+                        balanceCents = if (obj.isNull("balanceCents")) null else obj.optLong("balanceCents")
+                    )
+                )
+            }
+        }
+
+        val budgetsArr = json.optJSONArray("budgets")
+        if (budgetsArr != null) {
+            for (i in 0 until budgetsArr.length()) {
+                val obj = budgetsArr.getJSONObject(i)
+                viewModel.importBudget(
+                    BudgetEntity(
+                        id = obj.optString("id", com.nudge.util.IdGenerator.generate()),
+                        categoryId = obj.optString("categoryId", "").ifEmpty { null },
+                        amountCents = obj.optLong("amountCents", 0),
+                        period = obj.optString("period", "monthly"),
+                        rolloverEnabled = obj.optBoolean("rolloverEnabled", false),
+                        startDateEpoch = obj.optLong("startDateEpoch", System.currentTimeMillis())
+                    )
+                )
+            }
+        }
+
         withContext(Dispatchers.Main) {
             Toast.makeText(context, "Data imported successfully", Toast.LENGTH_SHORT).show()
         }
@@ -388,4 +450,3 @@ private suspend fun importFromUri(
         }
     }
 }
-
