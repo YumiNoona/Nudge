@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -20,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -73,11 +76,9 @@ fun ManageAccountsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
-                Text("← Back", color = Nc.inkSoft)
-            }
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Lucide.ArrowLeft(size = 22.dp, color = Nc.inkSoft) }
             Text("Accounts", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-            Spacer(Modifier.width(64.dp))
+            Spacer(Modifier.width(48.dp))
         }
 
         Box(
@@ -94,6 +95,14 @@ fun ManageAccountsScreen(
             Box(Modifier.align(Alignment.TopEnd).size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .08f)), contentAlignment = Alignment.Center) {
                 Lucide.Wallet(size = 21.dp, color = DS.Signal)
             }
+        }
+
+        if (visibleAccounts.isNotEmpty()) {
+            AccountStackPreview(
+                accounts = visibleAccounts,
+                balanceFor = ::accountBalance,
+                onOpen = { account -> editingAccount = account; showSheet = true }
+            )
         }
 
         if (visibleAccounts.isEmpty()) {
@@ -118,6 +127,9 @@ fun ManageAccountsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                item {
+                    Text("YOUR ACCOUNTS", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = Nc.inkMute, modifier = Modifier.padding(vertical = 4.dp))
+                }
                 items(visibleAccounts, key = { it.id }) { account ->
                     val balance = accountBalance(account.id)
                     AccountCard(
@@ -141,8 +153,8 @@ fun ManageAccountsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .height(50.dp),
-            shape = RoundedCornerShape(16.dp),
+                .height(56.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = DS.Signal, contentColor = DS.InkPrimary)
         ) {
             Lucide.Plus(size = 18.dp, strokeWidth = 2.dp, color = DS.InkPrimary)
@@ -189,6 +201,54 @@ fun ManageAccountsScreen(
             },
             shape = RoundedCornerShape(20.dp)
         )
+    }
+}
+
+@Composable
+private fun AccountStackPreview(
+    accounts: List<AccountEntity>,
+    balanceFor: (String) -> Long,
+    onOpen: (AccountEntity) -> Unit
+) {
+    val stack = accounts.take(3)
+    Box(Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 20.dp, vertical = 8.dp)) {
+        stack.mapIndexed { index, account -> index to account }.asReversed().forEach { (index, account) ->
+            val tint = NudgeColors.parse(account.color, DS.Accent)
+            val isTop = index == 0
+            Surface(
+                onClick = { if (isTop) onOpen(account) },
+                enabled = isTop,
+                modifier = Modifier.fillMaxWidth().height(132.dp)
+                    .offset(y = (index * 13).dp)
+                    .scale(1f - index * .038f)
+                    .rotate(if (index == 1) -1.1f else if (index == 2) 1.1f else 0f)
+                    .alpha(1f - index * .18f),
+                shape = RoundedCornerShape(24.dp),
+                color = if (isTop) tint else DS.AccentDeep,
+                shadowElevation = if (isTop) 12.dp else 2.dp
+            ) {
+                Box(Modifier.fillMaxSize().padding(20.dp)) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AccountIcon(account.accountType, Color.White, 20.dp)
+                            Spacer(Modifier.width(9.dp))
+                            Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Spacer(Modifier.weight(1f))
+                            if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
+                            fontFamily = MonoFamily,
+                            fontSize = 9.sp,
+                            color = Color.White.copy(alpha = .64f)
+                        )
+                    }
+                    Text("TAP TO EDIT", fontFamily = MonoFamily, fontSize = 8.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.align(Alignment.BottomEnd))
+                }
+            }
+        }
     }
 }
 
@@ -284,8 +344,10 @@ private fun AccountEditSheet(
     var name by remember { mutableStateOf(account?.name ?: "") }
     var selectedType by remember { mutableStateOf(account?.accountType ?: "cash") }
     var last4 by remember { mutableStateOf(account?.last4Digits ?: "") }
+    var bankName by remember { mutableStateOf(account?.bankName ?: "") }
     var selectedColor by remember { mutableStateOf(account?.color ?: "") }
     var isDefault by remember { mutableStateOf(account?.isDefault ?: false) }
+    var showScanner by remember { mutableStateOf(false) }
 
     val accountTypes = listOf("cash", "savings", "credit_card", "debit_card", "upi")
     val displayNames = mapOf(
@@ -310,6 +372,8 @@ private fun AccountEditSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(bottom = 32.dp)
         ) {
@@ -356,7 +420,7 @@ private fun AccountEditSheet(
             Spacer(Modifier.height(6.dp))
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
             ) {
                 accountTypes.forEach { type ->
                     val isSel = selectedType == type
@@ -401,6 +465,23 @@ private fun AccountEditSheet(
                         inner()
                     }
                 )
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = { showScanner = true },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp)
+                ) {
+                    Lucide.Camera(size = 19.dp, color = Nc.accent)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (last4.isBlank()) "Scan card" else "Scan again")
+                    Spacer(Modifier.weight(1f))
+                    Text("ON-DEVICE", fontFamily = MonoFamily, fontSize = 8.sp, color = Nc.inkMute)
+                }
+                if (bankName.isNotBlank()) {
+                    Spacer(Modifier.height(7.dp))
+                    Text("$bankName · •••• $last4", style = MaterialTheme.typography.bodySmall, color = Nc.inkSoft)
+                }
                 Spacer(Modifier.height(16.dp))
             }
 
@@ -452,13 +533,14 @@ private fun AccountEditSheet(
                     val entity = account?.copy(
                         name = name.trim(),
                         accountType = selectedType,
+                        bankName = bankName.ifBlank { null },
                         last4Digits = last4.ifBlank { null },
                         color = selectedColor.ifBlank { null },
                         isDefault = isDefault
                     ) ?: AccountEntity(
                         id = java.util.UUID.randomUUID().toString(),
                         name = name.trim(),
-                        bankName = null,
+                        bankName = bankName.ifBlank { null },
                         accountType = selectedType,
                         last4Digits = last4.ifBlank { null },
                         color = selectedColor.ifBlank { null },
@@ -488,5 +570,17 @@ private fun AccountEditSheet(
                 }
             }
         }
+    }
+
+    if (showScanner) {
+        CardScannerDialog(
+            onDismiss = { showScanner = false },
+            onScanned = { result ->
+                last4 = result.last4
+                bankName = result.network + (result.expiry?.let { " · $it" } ?: "")
+                if (name.isBlank()) name = "${result.network} •••• ${result.last4}"
+                showScanner = false
+            }
+        )
     }
 }

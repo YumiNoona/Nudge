@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.DS
 import com.nudge.android.ui.theme.MonoFamily
+import com.nudge.android.ui.theme.NudgeHaptics
 
 data class DockItem(
     val id: String,
@@ -43,12 +45,14 @@ fun BottomDock(
     modifier: Modifier = Modifier
 ) {
     val actionIndex = if (onFabClick != null) items.size / 2 else -1
+    val localContext = LocalContext.current
+    val haptics = remember(localContext) { NudgeHaptics(localContext) }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 12.dp)
-            .height(72.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .height(76.dp)
             .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.28f))
             .clip(RoundedCornerShape(24.dp))
             .background(Color(0xFF161A17))
@@ -79,6 +83,7 @@ fun BottomDock(
                     .clip(RoundedCornerShape(16.dp))
                     .then(if (active) Modifier.background(Color.White.copy(alpha = 0.06f)) else Modifier)
                     .clickable(interactionSource = interaction, indication = null) {
+                        if (isAction) haptics.impactMedium() else haptics.impactLight()
                         if (isAction) onFabClick?.invoke() else onSelect(item.id)
                     }
                     .semantics { contentDescription = if (isAction) "Add transaction" else item.label },
@@ -87,7 +92,7 @@ fun BottomDock(
                 if (isAction) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(52.dp)
                             .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = DS.Signal.copy(alpha = 0.26f))
                             .clip(RoundedCornerShape(16.dp))
                             .background(DS.Signal),

@@ -48,7 +48,13 @@ class DefaultSmsParserEngine : SmsParserEngine {
         val result = tryRegexPatterns(cleaned, bankName)
         if (result != null) {
             // Step 4: Normalize merchant
-            val normResult = merchantNormalizer.normalize(result.merchantRaw)
+            var normResult = merchantNormalizer.normalize(result.merchantRaw)
+            if (normResult.normalized == "Unknown merchant") {
+                val extractedMerchant = extractMerchant(cleaned)
+                if (!extractedMerchant.equals("Unknown", ignoreCase = true)) {
+                    normResult = merchantNormalizer.normalize(extractedMerchant)
+                }
+            }
             val semanticType = when {
                 cleaned.contains("refund", true) || cleaned.contains("reversal", true) || cleaned.contains("reversed", true) -> TransactionType.REFUND
                 else -> result.type
@@ -285,6 +291,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
     private fun extractMerchant(text: String): String {
         // Try to find merchant after common prepositions
         val patterns = listOf(
+            Regex("""on\s+\d{1,2}-[A-Za-z]{3}-\d{2,4}\s+on\s+([A-Za-z0-9][A-Za-z0-9 &.'_-]{1,48})""", RegexOption.IGNORE_CASE),
             Regex("""(?:at|to|from|via|towards)\s+(\S+(?:\s+\S+){0,4})""", RegexOption.IGNORE_CASE),
             Regex("""(?:for)\s+(\S+(?:\s+\S+){0,4})""", RegexOption.IGNORE_CASE),
             Regex("""(?:Trf|Transfer|Payment)\s+(?:to|for)?\s*(\S+(?:\s+\S+){0,4})""", RegexOption.IGNORE_CASE),

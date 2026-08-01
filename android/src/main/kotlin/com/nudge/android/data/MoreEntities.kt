@@ -46,3 +46,32 @@ data class SenderWhitelistEntity(
     @ColumnInfo(name = "country") val country: String = "IN",
     @ColumnInfo(name = "is_active") val isActive: Boolean = true
 )
+
+@Entity(
+    tableName = "saved_source_messages",
+    foreignKeys = [ForeignKey(
+        entity = TransactionEntity::class,
+        parentColumns = ["id"],
+        childColumns = ["transaction_id"],
+        onDelete = ForeignKey.CASCADE
+    )],
+    indices = [
+        Index(value = ["transaction_id"], unique = true),
+        Index(value = ["message_timestamp"]),
+        Index(value = ["source_type"])
+    ]
+)
+data class SavedSourceMessageEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "transaction_id") val transactionId: String,
+    @ColumnInfo(name = "source_type") val sourceType: String,
+    @ColumnInfo(name = "sender") val sender: String?,
+    @ColumnInfo(name = "package_name") val packageName: String?,
+    @ColumnInfo(name = "original_message_id") val originalMessageId: String?,
+    @ColumnInfo(name = "original_message_uri") val originalMessageUri: String?,
+    @ColumnInfo(name = "encrypted_body") val encryptedBody: String?,
+    @ColumnInfo(name = "message_timestamp") val messageTimestamp: Long,
+    @ColumnInfo(name = "captured_at") val capturedAt: Long,
+    @ColumnInfo(name = "confidence") val confidence: Float,
+    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
+)

@@ -5,9 +5,14 @@ import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.MerchantAliasEntity
 import com.nudge.android.data.NudgeDatabase
 import com.nudge.android.data.TransactionEntity
+import com.nudge.android.data.SavedSourceMessageEntity
+import com.nudge.android.data.SourceMessageCrypto
+import com.nudge.android.data.SourceMessagePolicy
 import com.nudge.engine.DefaultSmsParserEngine
 import com.nudge.model.TransactionType
 import com.nudge.util.IdGenerator
+import com.nudge.android.widget.NudgeWidget
+import androidx.glance.appwidget.updateAll
 import kotlin.math.abs
 
 /** One deterministic ingestion path for SMS and notification transactions. */
@@ -16,6 +21,14 @@ class TransactionCaptureProcessor(context: Context) {
     private val db = NudgeDatabase.getInstance(appContext)
     private val parser = DefaultSmsParserEngine()
     private val prefs = appContext.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
+    private val sourceCrypto by lazy { SourceMessageCrypto() }
+
+    data class SourceMetadata(
+        val sender: String? = null,
+        val packageName: String? = null,
+        val originalMessageId: String? = null,
+        val originalMessageUri: String? = null
+    )
 
     sealed interface Outcome {
         data class Added(val transaction: TransactionEntity) : Outcome
@@ -27,7 +40,8 @@ class TransactionCaptureProcessor(context: Context) {
         rawText: String,
         sourceId: String,
         source: String,
-        receivedAt: Long = System.currentTimeMillis()
+        receivedAt: Long = System.currentTimeMillis(),
+        sourceMetadata: SourceMetadata = SourceMetadata()
     ): Outcome {
         if (!prefs.getBoolean("auto_capture_enabled", true)) return Outcome.Ignored("Capture disabled")
         if (looksFailedOrPending(rawText)) return Outcome.Ignored("Pending or failed event")
@@ -39,8 +53,8 @@ class TransactionCaptureProcessor(context: Context) {
         val aliases = db.captureRuleDao().getAliases()
         val alias = findAlias(rawText, parsed.merchantNormalized, aliases)
         val merchant = alias?.normalizedName
-            ?: parsed.merchantNormalized?.takeUnless { it.equals("unknown", true) }
-            ?: friendlySourceName(sourceId)
+            ?: parsed.merchantNormalized?.takeUnless { it.equals("unknown", true) || it.equals("unknown merchant", true) }
+            ?: "Unknown merchant"
 
         val accounts = db.accountDao().getAllOnce().toMutableList()
         val account = resolveAccount(rawText, accounts) ?: createFallbackAccount()
@@ -80,7 +94,6 @@ class TransactionCaptureProcessor(context: Context) {
         val reviewed = parsed.type == TransactionType.TRANSFER ||
             (overallConfidence >= .72f && categoryId != null)
 
-        val retainSource = prefs.getBoolean("retain_source_excerpt", false)
         val transaction = TransactionEntity(
             id = IdGenerator.generate(),
             amountCents = parsed.amount,
@@ -90,12 +103,36 @@ class TransactionCaptureProcessor(context: Context) {
             categoryId = categoryId,
             accountId = account.id,
             source = source,
-            sourceRawText = if (retainSource) sanitizeSource(rawText) else null,
+            sourceRawText = null,
             confidenceScore = overallConfidence,
             isReviewed = reviewed,
             timestampEpoch = receivedAt
         )
         db.transactionDao().insert(transaction)
+        val saveBody = SourceMessagePolicy.shouldSaveBody(
+            prefs.getBoolean("save_transaction_messages", false),
+            source
+        )
+        val encryptedBody = if (saveBody) runCatching { sourceCrypto.encrypt(rawText) }.getOrNull() else null
+        db.savedSourceMessageDao().upsert(
+            SavedSourceMessageEntity(
+                id = "source_${transaction.id}",
+                transactionId = transaction.id,
+                sourceType = source,
+                sender = sourceMetadata.sender ?: sourceId.takeIf { source == "sms" || source.startsWith("sms_") },
+                packageName = sourceMetadata.packageName ?: sourceId.takeIf { source == "notification" },
+                originalMessageId = sourceMetadata.originalMessageId,
+                originalMessageUri = sourceMetadata.originalMessageUri,
+                encryptedBody = encryptedBody,
+                messageTimestamp = receivedAt,
+                capturedAt = System.currentTimeMillis(),
+                confidence = overallConfidence
+            )
+        )
+        SourceMessagePolicy.retentionCutoff(System.currentTimeMillis(), prefs.getInt("source_retention_days", 0))?.let { cutoff ->
+            db.savedSourceMessageDao().clearSavedBodiesBefore(cutoff)
+        }
+        runCatching { NudgeWidget().updateAll(appContext) }
         return Outcome.Added(transaction)
     }
 
@@ -147,15 +184,6 @@ class TransactionCaptureProcessor(context: Context) {
         }
     }
 
-    private fun friendlySourceName(sourceId: String): String = when {
-        sourceId.contains("phonepe", true) -> "PhonePe"
-        sourceId.contains("paisa", true) -> "Google Pay"
-        sourceId.contains("paytm", true) -> "Paytm"
-        sourceId.contains("swiggy", true) -> "Swiggy"
-        sourceId.contains("zomato", true) -> "Zomato"
-        else -> "Captured transaction"
-    }
-
     private fun looksFailedOrPending(text: String): Boolean {
         val lower = text.lowercase()
         return listOf("failed", "declined", "pending", "processing", "cancelled", "canceled", "request money", "payment due", "due date", "statement generated", "reminder")
@@ -177,8 +205,4 @@ class TransactionCaptureProcessor(context: Context) {
         return common / maxOf(left.toSet().size, right.toSet().size).coerceAtLeast(1)
     }
 
-    private fun sanitizeSource(text: String): String = text
-        .replace(Regex("\\b[0-9]{6,}\\b"), "••••")
-        .replace(Regex("(?i)(ref|utr|txn)[^ ]{0,4}[A-Z0-9-]{6,}"), "$1 ••••")
-        .take(220)
 }

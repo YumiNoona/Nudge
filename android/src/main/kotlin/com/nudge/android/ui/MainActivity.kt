@@ -27,20 +27,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.nudge.android.ui.components.BottomDock
 import com.nudge.android.ui.components.DockItem
 import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeTheme
 
 class MainActivity : ComponentActivity() {
+    private val pendingAction = MutableStateFlow(WidgetAction.NONE)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingAction.value = intent.toWidgetAction()
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel()
             val prefs = remember { getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
             var dark by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
             var onboardingDone by remember { mutableStateOf(prefs.getBoolean("onboarding_complete", false)) }
+            val widgetAction by pendingAction.collectAsState()
             NudgeTheme(isDark = dark) {
                 Surface(Modifier.fillMaxSize()) {
                     if (!onboardingDone) {
@@ -49,7 +54,7 @@ class MainActivity : ComponentActivity() {
                             onboardingDone = true
                         })
                     } else {
-                        ExpenseNavHost(vm, dark, onToggleTheme = {
+                        ExpenseNavHost(vm, dark, requestedAction = widgetAction, onActionConsumed = { pendingAction.value = WidgetAction.NONE }, onToggleTheme = {
                             dark = !dark
                             prefs.edit().putBoolean("dark_mode", dark).apply()
                         })
@@ -58,16 +63,40 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingAction.value = intent.toWidgetAction()
+    }
+
+    companion object {
+        const val EXTRA_OPEN_ADD = "com.nudge.android.OPEN_ADD"
+        const val EXTRA_OPEN_REVIEW = "com.nudge.android.OPEN_REVIEW"
+    }
+}
+
+private enum class WidgetAction { NONE, ADD, REVIEW }
+private fun Intent?.toWidgetAction(): WidgetAction = when {
+    this?.getBooleanExtra(MainActivity.EXTRA_OPEN_ADD, false) == true -> WidgetAction.ADD
+    this?.getBooleanExtra(MainActivity.EXTRA_OPEN_REVIEW, false) == true -> WidgetAction.REVIEW
+    else -> WidgetAction.NONE
 }
 
 // Legacy values remain temporarily so old, disconnected screens still compile.
-enum class NavScreen { History, Charts, Settings, Review, Accounts, Categories, Backup, Permissions, Home, More, Transactions, Wallet, Achievements, Challenges, Goals, Subscriptions, Budget, Envelope, Sync }
+enum class NavScreen { History, Charts, Settings, Review, Accounts, Categories, Backup, SavedMessages, Permissions, Home, More, Transactions, Wallet, Achievements, Challenges, Goals, Subscriptions, Budget, Envelope, Sync }
 
 @Composable
-private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTheme: () -> Unit) {
+private fun ExpenseNavHost(
+    viewModel: MainViewModel,
+    isDark: Boolean,
+    requestedAction: WidgetAction,
+    onActionConsumed: () -> Unit,
+    onToggleTheme: () -> Unit
+) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
-    val stack = remember { mutableStateListOf(NavScreen.History) }
+    val stack = remember { mutableStateListOf(NavScreen.Transactions) }
     val current = stack.last()
     var showAdd by remember { mutableStateOf(false) }
     var captureEnabled by remember { mutableStateOf(prefs.getBoolean("auto_capture_enabled", true)) }
@@ -88,13 +117,23 @@ private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTh
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
+    val sources by viewModel.sourceMessages.collectAsState()
     val scanState by viewModel.captureScanState.collectAsState()
 
     fun root(destination: NavScreen) { stack.clear(); stack.add(destination) }
     fun push(destination: NavScreen) { if (stack.lastOrNull() != destination) stack.add(destination) }
-    fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) else if (current != NavScreen.History) root(NavScreen.History) }
+    fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) else if (current != NavScreen.Transactions) root(NavScreen.Transactions) }
 
-    BackHandler(enabled = showAdd || stack.size > 1 || current != NavScreen.History) {
+    LaunchedEffect(requestedAction) {
+        when (requestedAction) {
+            WidgetAction.ADD -> showAdd = true
+            WidgetAction.REVIEW -> push(NavScreen.Review)
+            WidgetAction.NONE -> Unit
+        }
+        if (requestedAction != WidgetAction.NONE) onActionConsumed()
+    }
+
+    BackHandler(enabled = showAdd || stack.size > 1 || current != NavScreen.Transactions) {
         if (showAdd) showAdd = false else back()
     }
 
@@ -117,6 +156,8 @@ private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTh
                     transactions = transactions,
                     categories = categories,
                     accounts = accounts,
+                    sources = sources,
+                    decryptSource = viewModel::decryptSourceBody,
                     captureEnabled = captureEnabled,
                     onSettings = { push(NavScreen.Settings) },
                     onReview = { push(NavScreen.Review) },
@@ -124,7 +165,7 @@ private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTh
                     onUpdate = viewModel::updateTransaction,
                     onDelete = viewModel::deleteTransaction
                 )
-                NavScreen.Charts -> ChartsScreen(transactions, categories, onBack = null)
+                NavScreen.Charts -> ChartsScreen(transactions, categories, onBack = { root(NavScreen.Transactions) })
                 NavScreen.Settings, NavScreen.More -> ExpenseSettingsScreen(
                     isDark = isDark,
                     captureEnabled = captureEnabled,
@@ -145,11 +186,14 @@ private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTh
                     onScanSms = viewModel::scanHistoricalSms,
                     onAccounts = { push(NavScreen.Accounts) },
                     onCategories = { push(NavScreen.Categories) },
-                    onBackup = { push(NavScreen.Backup) }
+                    onBackup = { push(NavScreen.Backup) },
+                    onSavedMessages = { push(NavScreen.SavedMessages) }
                 )
                 NavScreen.Review -> NeedsReviewSwipeScreen(
-                    transactions.filter { !it.isReviewed }, categories,
+                    transactions.filter { !it.isReviewed }, categories, accounts, sources,
                     onCategorize = viewModel::reviewTransaction,
+                    onCreateCategory = viewModel::createCategoryForTransaction,
+                    decryptSource = viewModel::decryptSourceBody,
                     onDismiss = { viewModel.deleteTransaction(it) },
                     onBack = ::back
                 )
@@ -160,21 +204,36 @@ private fun ExpenseNavHost(viewModel: MainViewModel, isDark: Boolean, onToggleTh
                     onDelete = viewModel::deleteAccount,
                     onBack = ::back
                 )
-                NavScreen.Categories -> CategoryManagerScreen(categories, viewModel::addCategory, viewModel::archiveCategory, ::back)
+                NavScreen.Categories -> CategoryManagerScreen(categories, viewModel::addCategory, viewModel::updateCategory, viewModel::deleteCategory, ::back)
                 NavScreen.Backup -> BackupScreen(::back, viewModel)
-                else -> HistoryScreen(transactions, categories, accounts, captureEnabled, { push(NavScreen.Settings) }, { push(NavScreen.Review) }, { showAdd = true }, viewModel::updateTransaction, viewModel::deleteTransaction)
+                NavScreen.SavedMessages -> SavedMessagesScreen(
+                    sources = sources,
+                    transactions = transactions,
+                    accounts = accounts,
+                    categories = categories,
+                    decryptSource = viewModel::decryptSourceBody,
+                    onDeleteBody = viewModel::deleteSavedSourceBody,
+                    onClearAll = viewModel::clearAllSavedSourceBodies,
+                    onRetentionChanged = viewModel::applySourceRetention,
+                    onBack = ::back
+                )
+                else -> HistoryScreen(
+                    transactions, categories, accounts, sources, viewModel::decryptSourceBody, captureEnabled,
+                    { push(NavScreen.Settings) }, { push(NavScreen.Review) }, { showAdd = true },
+                    viewModel::updateTransaction, viewModel::deleteTransaction
+                )
             }
         }
 
         if (current == NavScreen.History || current == NavScreen.Charts || current == NavScreen.Home || current == NavScreen.Transactions) {
             BottomDock(
                 items = listOf(
-                    DockItem("history", { Lucide.ListTodo(size = 23.dp, color = it) }, "History", transactions.count { !it.isReviewed }),
+                    DockItem("transactions", { Lucide.ListTodo(size = 23.dp, color = it) }, "Transactions", transactions.count { !it.isReviewed }),
                     DockItem("add", { Lucide.Plus(size = 24.dp, color = it) }, "Add"),
                     DockItem("charts", { Lucide.ChartBar(size = 23.dp, color = it) }, "Charts")
                 ),
-                activeId = if (current == NavScreen.Charts) "charts" else "history",
-                onSelect = { if (it == "charts") root(NavScreen.Charts) else root(NavScreen.History) },
+                activeId = if (current == NavScreen.Charts) "charts" else "transactions",
+                onSelect = { if (it == "charts") root(NavScreen.Charts) else root(NavScreen.Transactions) },
                 onFabClick = { showAdd = true },
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
             )

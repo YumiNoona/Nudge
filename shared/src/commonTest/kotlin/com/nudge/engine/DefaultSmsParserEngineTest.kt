@@ -27,4 +27,34 @@ class DefaultSmsParserEngineTest {
         val result = assertNotNull(parser.parse("INR 45,000 credited to your account as salary", "HDFCBK"))
         assertEquals(TransactionType.CREDIT, result.type)
     }
+
+    @Test
+    fun removesDateAndSequenceFromUnityMerchant() {
+        val result = parser.normalizeMerchant("UNITY SOFTWARE INC ON 2026-07-26:1")
+        assertEquals("Unity Software Inc", result)
+    }
+
+    @Test
+    fun removesReferenceMetadataFromMerchant() {
+        val result = parser.normalizeMerchant("SWIGGY via UPI Ref 87ABC9921")
+        assertEquals("Swiggy", result)
+    }
+
+    @Test
+    fun bankAccountFragmentIsNotAMerchant() {
+        val result = parser.normalizeMerchant("Using ICICI Bank Card XX4008 on 25-Jul-26")
+        assertEquals("Unknown merchant", result)
+    }
+
+    @Test
+    fun extractsMerchantAfterIciciCardDate() {
+        val result = assertNotNull(
+            parser.parse(
+                "INR 1,003.99 spent using ICICI Bank Card XX4008 on 25-Jul-2026 on ANOMALY. Avl Limit: INR 20,000",
+                "ICICIB",
+            ),
+        )
+
+        assertEquals("Anomaly", result.merchantNormalized)
+    }
 }

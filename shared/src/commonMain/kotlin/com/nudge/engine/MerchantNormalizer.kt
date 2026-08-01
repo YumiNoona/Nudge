@@ -77,14 +77,29 @@ object MerchantNormalizer {
      * Clean raw merchant string — remove transaction IDs, ref numbers, etc.
      */
     private fun clean(raw: String): String {
-        var result = raw.trim()
+        var result = raw.trim().trim('"', '\'', ' ')
+        // Stop at transaction metadata accidentally captured after the merchant.
+        result = result.replace(
+            Regex("""(?i)\s+\b(?:on|at)\s+(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}-[A-Za-z]{3}-\d{2,4})(?::\d+)?(?:\s.*)?$"""),
+            ""
+        )
+        result = result.replace(
+            Regex("""(?i)\s+\b(?:via\s+(?:upi|imps|neft|rtgs)|ref(?:erence)?|utr|txn(?:\s*id)?|transaction\s*id|a/c|acct|account|card\s+x{2,}|available\s+limit|avl\.?\s+limit|balance)\b.*$"""),
+            ""
+        )
         // Remove trailing reference numbers (common in bank SMS)
         result = result.replace(Regex("""\b(Ref|Txn|Order|Trf)#?\s*[\dA-Z]+""", RegexOption.IGNORE_CASE), "")
         // Remove "IN*" or "WWW*" prefixes common in credit card transactions
         result = result.replace(Regex("""^[A-Z]{2,4}\*"""), "")
         // Remove trailing dots, commas, colons
-        result = result.replace(Regex("""[.,:;]+$"""), "").trim()
-        return result
+        result = result.replace(Regex("""[:#-]?\d+$"""), "")
+        result = result.replace(Regex("""[.,:;|\-]+$"""), "").replace(Regex("""\s+"""), " ").trim()
+        val noise = result.lowercase()
+        if (result.length < 2 || noise.startsWith("using ") || noise in setOf(
+                "unknown", "bank", "bank card", "credit card", "debit card", "upi", "payment", "purchase"
+            )
+        ) return "Unknown merchant"
+        return result.take(64)
     }
 
     /**
@@ -92,6 +107,7 @@ object MerchantNormalizer {
      */
     private fun applyHeuristics(raw: String): String {
         // Capitalize first letter of each word
+        if (raw == "Unknown merchant") return raw
         val words = raw.split(" ").map { word ->
             if (word.length > 2 && word.all { it.isUpperCase() }) {
                 word.lowercase().replaceFirstChar { it.titlecaseChar() }

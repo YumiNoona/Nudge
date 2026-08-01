@@ -32,6 +32,9 @@ import com.nudge.android.ui.theme.DSSpace
 import com.nudge.android.ui.theme.DSTypography
 import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.MonoFamily
+import com.nudge.android.ui.theme.CategoryGlyph
+import com.nudge.android.ui.theme.NudgeHaptics
+import androidx.compose.ui.platform.LocalContext
 import com.nudge.model.TransactionType
 import kotlin.math.roundToLong
 
@@ -91,6 +94,8 @@ private fun AddTransactionSheetContent(
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var selectedAccountId by remember { mutableStateOf<String?>(null) }
     val selectableAccounts = remember(accounts) { accounts.filter { it.isActive && !it.isArchived } }
+    val localContext = LocalContext.current
+    val haptics = remember(localContext) { NudgeHaptics(localContext) }
 
     LaunchedEffect(selectableAccounts) {
         if (selectedAccountId == null) {
@@ -190,7 +195,7 @@ private fun AddTransactionSheetContent(
         val categoryType = if (selectedType == TransactionType.CREDIT) "income" else "expense"
         val expenseCats = categories.filter { it.type == categoryType }
         if (expenseCats.isNotEmpty()) {
-            expenseCats.chunked(4).forEach { rowCats ->
+            expenseCats.chunked(3).forEach { rowCats ->
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -205,14 +210,15 @@ private fun AddTransactionSheetContent(
                                 .background(if (isSel) DSBridge.accentBg() else DSBridge.background())
                                 .then(if (isSel) Modifier.border(1.5.dp, DSBridge.accent(), RoundedCornerShape(12.dp)) else Modifier)
                                 .clickable { selectedCategoryId = cat.id }
-                                .padding(vertical = 10.dp)
+                                .heightIn(min = 64.dp)
+                                .padding(horizontal = 6.dp, vertical = 10.dp)
                         ) {
-                            CategoryIcon(cat.name, if (isSel) DSBridge.accent() else DSBridge.inkSoft(), 18.dp)
+                            CategoryGlyph(cat.icon, cat.name, if (isSel) DSBridge.accent() else DSBridge.inkSoft(), Modifier.size(19.dp))
                             Spacer(Modifier.height(4.dp))
                             Text(cat.name, fontSize = 9.sp, color = if (isSel) DSBridge.accent() else DSBridge.inkSoft(), maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
-                    repeat(4 - rowCats.size) { Spacer(Modifier.weight(1f)) }
+                    repeat(3 - rowCats.size) { Spacer(Modifier.weight(1f)) }
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -270,11 +276,12 @@ private fun AddTransactionSheetContent(
                 val accountId = selectedAccountId
                 if (accountId != null) {
                     val description = merchant.trim().ifBlank { "Manual $typeLabel" }
+                    haptics.success()
                     onAdd(amountCents, selectedType, description, accountId, selectedCategoryId, note.ifBlank { null })
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(18.dp),
             colors = ButtonDefaults.buttonColors(containerColor = DSBridge.accent()),
             enabled = isValid
         ) {

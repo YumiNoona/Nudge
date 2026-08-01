@@ -12,6 +12,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
+import com.nudge.android.data.SavedSourceMessageEntity
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -46,6 +49,8 @@ fun HistoryScreen(
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
+    sources: List<SavedSourceMessageEntity>,
+    decryptSource: (SavedSourceMessageEntity?) -> String?,
     captureEnabled: Boolean,
     onSettings: () -> Unit,
     onReview: () -> Unit,
@@ -56,6 +61,7 @@ fun HistoryScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf("all") }
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
+    var viewingSource by remember { mutableStateOf<TransactionEntity?>(null) }
     val context = LocalContext.current
     val now = remember { Calendar.getInstance() }
     val currentMonth = transactions.filter { sameMonth(it.timestampEpoch, now) }
@@ -146,7 +152,8 @@ fun HistoryScreen(
                             txn,
                             categories.firstOrNull { it.id == txn.categoryId },
                             accounts.firstOrNull { it.id == txn.accountId },
-                            onClick = { editing = txn }
+                            onClick = { editing = txn },
+                            onSource = if (txn.source != "manual") ({ viewingSource = txn }) else null
                         )
                     }
                 }
@@ -179,9 +186,21 @@ fun HistoryScreen(
     }
 
     editing?.let { txn ->
-        TransactionEditSheet(txn, categories, accounts, onDismiss = { editing = null }, onSave = {
+        TransactionEditSheet(txn, categories, accounts, onDismiss = { editing = null }, onSource = if (txn.source != "manual") ({ editing = null; viewingSource = txn }) else null, onSave = {
             onUpdate(it); editing = null
         }, onDelete = { onDelete(txn.id); editing = null })
+    }
+
+    viewingSource?.let { txn ->
+        val source = sources.firstOrNull { it.transactionId == txn.id }
+        SourceMessageSheet(
+            txn,
+            source,
+            decryptSource(source),
+            accounts.firstOrNull { it.id == txn.accountId },
+            categories.firstOrNull { it.id == txn.categoryId },
+            onDismiss = { viewingSource = null }
+        )
     }
 }
 
@@ -193,7 +212,7 @@ private fun HistoryHeader(context: Context, enabled: Boolean, onSettings: () -> 
     val bitmap = remember(path) { path?.let { BitmapFactory.decodeFile(it) } }
     Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text("History", style = DSTypography.headlineLarge, color = DSBridge.ink())
+            Text("Transactions", style = DSTypography.headlineLarge, color = DSBridge.ink())
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(7.dp).clip(CircleShape).background(if (enabled) DS.Positive else DS.InkTertiary))
                 Spacer(Modifier.width(6.dp))
@@ -234,11 +253,14 @@ private fun MonthSummary(spent: Long, income: Long, delta: Int) {
 }
 
 @Composable
-private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, account: AccountEntity?, onClick: () -> Unit) {
+private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, account: AccountEntity?, onClick: () -> Unit, onSource: (() -> Unit)?) {
     val expense = txn.type == "debit"
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (expense) DS.Negative.copy(alpha = .1f) else DS.Positive.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
-            if (expense) Lucide.ShoppingCart(size = 19.dp, color = DS.Negative) else Lucide.TrendingUp(size = 19.dp, color = DS.Positive)
+            if (category != null) {
+                CategoryGlyph(category.icon, category.name, if (expense) DS.Negative else DS.Positive, Modifier.size(19.dp))
+            } else if (expense) Lucide.ShoppingCart(size = 19.dp, color = DS.Negative)
+            else Lucide.TrendingUp(size = 19.dp, color = DS.Positive)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -251,6 +273,10 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
         Column(horizontalAlignment = Alignment.End) {
             Text("${if (expense) "−" else "+"}${formatCents(txn.amountCents)}", fontFamily = MonoFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (expense) DSBridge.ink() else DS.Positive)
             Text(SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(txn.timestampEpoch)), fontSize = 9.sp, color = DSBridge.inkMute())
+        }
+        if (onSource != null) {
+            Spacer(Modifier.width(5.dp))
+            IconButton(onClick = onSource, modifier = Modifier.size(36.dp)) { Lucide.Message(size = 16.dp, color = DSBridge.inkMute()) }
         }
     }
 }
@@ -266,14 +292,20 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TransactionEditSheet(txn: TransactionEntity, categories: List<CategoryEntity>, accounts: List<AccountEntity>, onDismiss: () -> Unit, onSave: (TransactionEntity) -> Unit, onDelete: () -> Unit) {
+private fun TransactionEditSheet(txn: TransactionEntity, categories: List<CategoryEntity>, accounts: List<AccountEntity>, onDismiss: () -> Unit, onSource: (() -> Unit)?, onSave: (TransactionEntity) -> Unit, onDelete: () -> Unit) {
     var merchant by remember { mutableStateOf(txn.merchantRaw) }
     var amount by remember { mutableStateOf((txn.amountCents / 100.0).toString()) }
     var type by remember { mutableStateOf(txn.type) }
     var categoryId by remember { mutableStateOf(txn.categoryId) }
     var accountId by remember { mutableStateOf(txn.accountId) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val haptics = remember(context) { NudgeHaptics(context) }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DSBridge.surface(), shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 32.dp)) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 720.dp).verticalScroll(rememberScrollState()).imePadding()
+                .padding(horizontal = 22.dp).padding(bottom = 32.dp)
+        ) {
             Text("Edit transaction", style = DSTypography.headlineMedium, color = DSBridge.ink())
             Spacer(Modifier.height(16.dp))
             OutlinedTextField(amount, { amount = it.filter { ch -> ch.isDigit() || ch == '.' } }, label = { Text("Amount") }, prefix = { Text("₹ ") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -298,13 +330,42 @@ private fun TransactionEditSheet(txn: TransactionEntity, categories: List<Catego
                 }
             }
             Spacer(Modifier.height(16.dp))
+            if (onSource != null) {
+                OutlinedButton(onClick = onSource, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp)) {
+                    Lucide.Message(size = 18.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("View source message")
+                }
+                Spacer(Modifier.height(10.dp))
+            }
             Button(onClick = {
                 val cents = ((amount.toDoubleOrNull() ?: 0.0) * 100).roundToLong()
-                if (cents > 0 && merchant.isNotBlank()) onSave(txn.copy(amountCents = cents, merchantRaw = merchant.trim(), merchantNormalized = merchant.trim(), type = type, categoryId = categoryId, accountId = accountId, isReviewed = true))
-            }, modifier = Modifier.fillMaxWidth().height(50.dp), colors = ButtonDefaults.buttonColors(containerColor = DSBridge.accent())) { Text("Save changes") }
-            TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) { Text("Delete transaction", color = DS.Negative) }
+                if (cents > 0 && merchant.isNotBlank()) {
+                    haptics.success()
+                    onSave(txn.copy(amountCents = cents, merchantRaw = merchant.trim(), merchantNormalized = merchant.trim(), type = type, categoryId = categoryId, accountId = accountId, isReviewed = true))
+                }
+            }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = DSBridge.accent())) { Text("Save changes") }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = { confirmDelete = true },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = DS.Negative),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DS.Negative.copy(alpha = .38f))
+            ) {
+                Lucide.Trash2(size = 18.dp, color = DS.Negative)
+                Spacer(Modifier.width(8.dp))
+                Text("Delete transaction", color = DS.Negative)
+            }
         }
     }
+    if (confirmDelete) AlertDialog(
+        onDismissRequest = { confirmDelete = false },
+        title = { Text("Delete transaction?") },
+        text = { Text("The transaction and its linked source metadata will be removed. This cannot be undone.") },
+        confirmButton = { Button(onClick = { confirmDelete = false; onDelete() }, colors = ButtonDefaults.buttonColors(containerColor = DS.Negative)) { Text("Delete") } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+    )
 }
 
 private fun sameMonth(epoch: Long, target: Calendar): Boolean = Calendar.getInstance().apply { timeInMillis = epoch }.let {

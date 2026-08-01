@@ -6,8 +6,7 @@ import com.nudge.util.IdGenerator
 object DefaultsSeeder {
     suspend fun seedIfEmpty(db: NudgeDatabase) {
         val catCount = db.categoryDao().count()
-        if (catCount > 0) return
-
+        if (catCount == 0) {
         val defaultCategories = listOf(
             CategoryEntity(IdGenerator.generate(), "Food & Dining", "\uD83C\uDF54", DesignTokens.Colors.categoryColor(0), "expense", true, false, null, 0),
             CategoryEntity(IdGenerator.generate(), "Transport", "\uD83D\uDE97", DesignTokens.Colors.categoryColor(1), "expense", true, false, null, 1),
@@ -32,6 +31,7 @@ object DefaultsSeeder {
         )
 
         db.categoryDao().insertAll(defaultCategories)
+        }
 
         val acctCount = db.accountDao().count()
         if (acctCount == 0) {

@@ -62,6 +62,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    @Query("UPDATE transactions SET category_id = NULL WHERE category_id = :categoryId")
+    suspend fun clearCategory(categoryId: String)
+
     @Query("""
         SELECT category_id, SUM(amount_cents) as total
         FROM transactions 

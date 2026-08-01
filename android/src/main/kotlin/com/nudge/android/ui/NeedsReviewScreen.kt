@@ -1,9 +1,9 @@
 package com.nudge.android.ui
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -12,264 +12,341 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import kotlin.math.absoluteValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.nudge.android.data.CategoryEntity
-import com.nudge.android.data.TransactionEntity
-import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.Nc
-import com.nudge.android.ui.theme.MonoFamily
-import com.nudge.android.ui.theme.NudgeHaptics
+import com.nudge.android.data.*
+import com.nudge.android.ui.theme.*
+import com.nudge.model.CategoryType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.util.*
+import java.util.Locale
 
 @Composable
 fun NeedsReviewSwipeScreen(
     transactions: List<TransactionEntity>,
     categories: List<CategoryEntity>,
+    accounts: List<AccountEntity>,
+    sources: List<SavedSourceMessageEntity>,
     onCategorize: (transactionId: String, categoryId: String) -> Unit,
+    onCreateCategory: (transactionId: String, name: String, type: CategoryType, icon: String?, color: String?) -> Unit,
+    decryptSource: (SavedSourceMessageEntity?) -> String?,
     onDismiss: (transactionId: String) -> Unit,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
-    val haptics = remember { NudgeHaptics(context) }
-
-    if (transactions.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🎉", fontSize = 48.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("All caught up!", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-                Text("No transactions need review right now", fontSize = 14.sp, color = Nc.inkSoft)
-                Spacer(modifier = Modifier.height(16.dp))
-                TextButton(onClick = onBack) { Text("Back") }
-            }
-        }
-        return
-    }
-
-    var currentIndex by remember { mutableIntStateOf(0) }
-    val currentTxn = transactions.getOrNull(currentIndex)
-
-    if (currentTxn == null) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("✅", fontSize = 48.sp)
-                Spacer(modifier = Modifier.height(12.dp))
-                Text("All reviewed!", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-                TextButton(onClick = onBack) { Text("Done") }
-            }
-        }
-        return
-    }
-
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    val queue = remember { mutableStateListOf<TransactionEntity>().apply { addAll(transactions) } }
+    val seenIds = remember { transactions.mapTo(mutableSetOf()) { it.id } }
+    var totalCount by remember { mutableIntStateOf(transactions.size) }
+    var completedCount by remember { mutableIntStateOf(0) }
+    var transitionDirection by remember { mutableIntStateOf(-1) }
+    var processing by remember { mutableStateOf(false) }
     var showCategoryPicker by remember { mutableStateOf(false) }
+    var showCreateCategory by remember { mutableStateOf(false) }
+    var showSource by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val haptics = remember(context) { NudgeHaptics(context) }
 
-    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
-    val swipeThreshold = 120f
-    val rotation = (offsetX / 300f * 12f).coerceIn(-12f, 12f)
-    val bgAlpha = (offsetX.absoluteValue / swipeThreshold).coerceIn(0f, 0.15f)
-    val bgColor = if (offsetX > 0) Nc.accent.copy(alpha = bgAlpha)
-                  else if (offsetX < 0) Nc.negative.copy(alpha = bgAlpha)
-                  else Color.Transparent
-
-    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-        TextButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) {
-            Lucide.ChevronLeft(size = 18.dp, strokeWidth = 2.dp)
-            Text("Back", color = Nc.inkSoft)
-        }
-
-        Text(
-            "${currentIndex + 1} / ${transactions.size}",
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
-            fontSize = 13.sp,
-            color = Nc.inkMute
-        )
-
-        // Hints
-        if (offsetX < -40f) Text("Skip ←", modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp).swipeAlpha(offsetX.absoluteValue / 80f), color = Nc.negative, fontWeight = FontWeight.SemiBold)
-        if (offsetX > 40f) Text("Categorize →", modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp).swipeAlpha(offsetX / 80f), color = Nc.accent, fontWeight = FontWeight.SemiBold)
-
-        // Peek cards
-        if (currentIndex + 1 < transactions.size) {
-            Card(modifier = Modifier.align(Alignment.Center).fillMaxWidth(0.7f).offset(y = 16.dp).swipeAlpha(0.3f), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Nc.surface)) {
-                Box(modifier = Modifier.height(140.dp))
-            }
-        }
-
-        // Main swipe card
-        Card(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.82f)
-                .offset(x = offsetX.dp, y = offsetY.dp)
-                .rotate(rotation)
-                .pointerInput(currentTxn.id) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            if (offsetX > swipeThreshold) {
-                                haptics.confirm()
-                                showCategoryPicker = true
-                            } else if (offsetX < -swipeThreshold) {
-                                haptics.warning()
-                                onDismiss(currentTxn.id)
-                                currentIndex++
-                                offsetX = 0f; offsetY = 0f
-                            } else {
-                                offsetX = 0f; offsetY = 0f
-                            }
-                        },
-                        onDragCancel = { offsetX = 0f; offsetY = 0f },
-                        onHorizontalDrag = { _, drag ->
-                            offsetX += drag
-                            offsetY = (drag * -0.05f).coerceIn(-30f, 30f)
-                        }
-                    )
-                },
-            shape = RoundedCornerShape(28.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = Nc.surface)
-        ) {
-            Column(
-                modifier = Modifier.padding(28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                val amount = currentTxn.amountCents / 100.0
-                Text(
-                    "₹${fmt.format(amount)}",
-                    fontSize = 38.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = MonoFamily,
-                    color = if (currentTxn.type == "debit") Nc.negative else Nc.accent
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(currentTxn.merchantRaw, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-                if (currentTxn.sourceRawText != null) {
-                    Text(
-                        "\"${currentTxn.sourceRawText}\"",
-                        fontSize = 12.sp,
-                        color = Nc.inkMute,
-                        maxLines = 3,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-                if (currentTxn.confidenceScore < 0.7f) {
-                    Surface(shape = RoundedCornerShape(8.dp), color = Nc.amberBg, modifier = Modifier.padding(top = 8.dp)) {
-                        Text("Low confidence (${(currentTxn.confidenceScore * 100).toInt()}%)", modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 11.sp, color = Nc.warning)
-                    }
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                    // Skip
-                    Surface(
-                        modifier = Modifier.size(52.dp).clickable {
-                            haptics.warning(); onDismiss(currentTxn.id); currentIndex++; offsetX = 0f; offsetY = 0f
-                        },
-                        shape = CircleShape,
-                        color = Nc.coralBg
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Lucide.X(size = 22.dp, strokeWidth = 2.dp)
-                        }
-                    }
-                    // Categorize
-                    Surface(
-                        modifier = Modifier.size(52.dp).clickable {
-                            haptics.confirm(); showCategoryPicker = true
-                        },
-                        shape = CircleShape,
-                        color = Nc.accent
-                    ) {
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                            Lucide.Check(size = 22.dp, strokeWidth = 2.5.dp)
-                        }
-                    }
-                }
-            }
+    LaunchedEffect(transactions.map { it.id }) {
+        transactions.filter { seenIds.add(it.id) }.forEach {
+            queue.add(it)
+            totalCount++
         }
     }
 
-    if (showCategoryPicker && currentTxn != null) {
-        CategoryPickerDialog(
-            currentTxn = currentTxn,
+    val current = queue.firstOrNull()
+    fun advance(confirmed: Boolean, persist: () -> Unit) {
+        if (processing || current == null) return
+        processing = true
+        transitionDirection = if (confirmed) -1 else 1
+        persist()
+        scope.launch {
+            delay(190)
+            if (queue.firstOrNull()?.id == current.id) queue.removeAt(0)
+            completedCount++
+            showCategoryPicker = false
+            showCreateCategory = false
+            showSource = false
+            processing = false
+        }
+    }
+
+    if (current == null) {
+        ReviewComplete(onBack)
+        return
+    }
+
+    val source = sources.firstOrNull { it.transactionId == current.id }
+    val account = accounts.firstOrNull { it.id == current.accountId }
+    val category = categories.firstOrNull { it.id == current.categoryId }
+    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
+
+    Box(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onBack, modifier = Modifier.height(48.dp)) {
+                Lucide.ArrowLeft(size = 18.dp, color = DSBridge.inkSoft())
+                Spacer(Modifier.width(5.dp))
+                Text("Back", color = DSBridge.inkSoft())
+            }
+            Text(
+                "${completedCount + 1} / ${totalCount.coerceAtLeast(1)}",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                fontFamily = MonoFamily,
+                fontSize = 11.sp,
+                color = DSBridge.inkMute()
+            )
+            Spacer(Modifier.width(72.dp))
+        }
+
+        AnimatedContent(
+            targetState = current,
+            transitionSpec = {
+                (slideInHorizontally(spring(stiffness = 420f, dampingRatio = .82f)) { transitionDirection * -it / 3 } + fadeIn()) togetherWith
+                    (slideOutHorizontally { transitionDirection * it } + fadeOut())
+            },
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+            label = "reviewQueue"
+        ) { transaction ->
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+                shape = RoundedCornerShape(30.dp),
+                color = DSBridge.surface(),
+                shadowElevation = 10.dp
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "₹${fmt.format(transaction.amountCents / 100.0)}",
+                        fontFamily = MonoFamily,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (transaction.type == "debit") DS.Negative else DS.Positive
+                    )
+                    Spacer(Modifier.height(9.dp))
+                    Text(
+                        transaction.merchantRaw,
+                        style = DSTypography.headlineMedium,
+                        color = DSBridge.ink(),
+                        textAlign = TextAlign.Center,
+                        maxLines = 2
+                    )
+                    Text(
+                        listOfNotNull(account?.name, category?.name).joinToString(" · ").ifBlank { "Needs your confirmation" },
+                        style = DSTypography.bodySmall,
+                        color = DSBridge.inkMute(),
+                        textAlign = TextAlign.Center
+                    )
+                    if (transaction.confidenceScore < .7f) {
+                        Spacer(Modifier.height(12.dp))
+                        Surface(shape = RoundedCornerShape(50.dp), color = DSBridge.warningBg()) {
+                            Text(
+                                "LOW CONFIDENCE · ${(transaction.confidenceScore * 100).toInt()}%",
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                fontFamily = MonoFamily,
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = DS.Warning
+                            )
+                        }
+                    }
+
+                    if (transaction.source != "manual") {
+                        Spacer(Modifier.height(14.dp))
+                        OutlinedButton(
+                            onClick = { showSource = true },
+                            modifier = Modifier.height(48.dp),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Lucide.Message(size = 17.dp, color = DSBridge.accent())
+                            Spacer(Modifier.width(7.dp))
+                            Text("View source", fontSize = 11.sp)
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(30.dp)) {
+                        ReviewAction(
+                            label = "Reject",
+                            background = DS.Negative.copy(alpha = .13f),
+                            onClick = {
+                                haptics.warning()
+                                advance(false) { onDismiss(transaction.id) }
+                            }
+                        ) { Lucide.X(size = 25.dp, color = DS.Negative) }
+                        ReviewAction(
+                            label = "Confirm",
+                            background = DSBridge.accentBg(),
+                            onClick = {
+                                haptics.confirm()
+                                if (transaction.categoryId != null) {
+                                    advance(true) { onCategorize(transaction.id, transaction.categoryId) }
+                                } else showCategoryPicker = true
+                            }
+                        ) { Lucide.Check(size = 25.dp, color = DSBridge.accent()) }
+                    }
+                }
+            }
+        }
+
+        if (processing) {
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .05f)))
+        }
+    }
+
+    if (showCategoryPicker) {
+        ReviewCategoryPicker(
+            transaction = current,
             categories = categories,
             onSelect = { categoryId ->
-                onCategorize(currentTxn.id, categoryId)
-                showCategoryPicker = false
-                currentIndex++
-                offsetX = 0f; offsetY = 0f
+                haptics.success()
+                advance(true) { onCategorize(current.id, categoryId) }
             },
-            onDismiss = { showCategoryPicker = false; offsetX = 0f; offsetY = 0f }
+            onCreate = { showCategoryPicker = false; showCreateCategory = true },
+            onDismiss = { showCategoryPicker = false }
         )
+    }
+
+    if (showCreateCategory) {
+        val categoryType = if (current.type == "credit") CategoryType.INCOME else CategoryType.EXPENSE
+        CategoryEditorSheet(
+            category = null,
+            defaultType = categoryType.name.lowercase(),
+            onDismiss = { showCreateCategory = false; showCategoryPicker = true },
+            onSave = { name, type, icon, color ->
+                haptics.success()
+                advance(true) {
+                    onCreateCategory(
+                        current.id,
+                        name,
+                        if (type == "income") CategoryType.INCOME else CategoryType.EXPENSE,
+                        icon,
+                        color
+                    )
+                }
+            }
+        )
+    }
+
+    if (showSource) {
+        SourceMessageSheet(current, source, decryptSource(source), account, category, onDismiss = { showSource = false })
     }
 }
 
 @Composable
-fun CategoryPickerDialog(
-    currentTxn: TransactionEntity,
+private fun ReviewAction(
+    label: String,
+    background: Color,
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            onClick = onClick,
+            modifier = Modifier.size(58.dp).semantics { contentDescription = "$label transaction" },
+            shape = CircleShape,
+            color = background
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { icon() }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkMute())
+    }
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun ReviewCategoryPicker(
+    transaction: TransactionEntity,
     categories: List<CategoryEntity>,
-    onSelect: (categoryId: String) -> Unit,
+    onSelect: (String) -> Unit,
+    onCreate: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val fmt = remember { NumberFormat.getNumberInstance(Locale.getDefault()) }
-    AlertDialog(
+    val categoryType = if (transaction.type == "credit") "income" else "expense"
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Categorize ₹${fmt.format(currentTxn.amountCents / 100)}",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Nc.ink
-            )
-        },
-        text = {
-            Column {
-                Text(currentTxn.merchantRaw, fontSize = 14.sp, color = Nc.inkSoft)
-                Spacer(modifier = Modifier.height(16.dp))
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier.height(180.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(categories.filter { it.type == "expense" }) { cat ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Nc.background)
-                                .clickable { onSelect(cat.id) }
-                                .padding(8.dp)
-                        ) {
-                            Text(cat.icon ?: "📁", fontSize = 18.sp)
-                            Text(cat.name, fontSize = 10.sp, color = Nc.inkSoft, maxLines = 1, textAlign = TextAlign.Center)
-                        }
+        containerColor = DSBridge.surface(),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp).padding(bottom = 24.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Choose category", style = DSTypography.headlineMedium, color = DSBridge.ink())
+                    Text(transaction.merchantRaw, style = DSTypography.bodySmall, color = DSBridge.inkMute())
+                }
+                IconButton(onClick = onDismiss) { Lucide.X(size = 20.dp, color = DSBridge.inkSoft()) }
+            }
+            Spacer(Modifier.height(14.dp))
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(78.dp),
+                modifier = Modifier.heightIn(max = 360.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories.filter { it.type == categoryType }, key = { it.id }) { category ->
+                    Column(
+                        Modifier.height(74.dp).clip(RoundedCornerShape(17.dp)).background(DSBridge.background())
+                            .clickable { onSelect(category.id) }.padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CategoryGlyph(category.icon, category.name, DSBridge.accent(), Modifier.size(21.dp))
+                        Spacer(Modifier.height(6.dp))
+                        Text(category.name, style = DSTypography.labelSmall, color = DSBridge.inkSoft(), maxLines = 1, textAlign = TextAlign.Center)
+                    }
+                }
+                item(key = "new_category") {
+                    Column(
+                        Modifier.height(74.dp).clip(RoundedCornerShape(17.dp)).background(DS.Signal.copy(alpha = .14f))
+                            .clickable(onClick = onCreate).padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Lucide.Plus(size = 22.dp, color = DSBridge.accent())
+                        Spacer(Modifier.height(6.dp))
+                        Text("New category", style = DSTypography.labelSmall, color = DSBridge.accent(), maxLines = 1)
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", color = Nc.inkSoft) }
-        },
-        containerColor = Nc.surface,
-        shape = RoundedCornerShape(24.dp)
-    )
+        }
+    }
 }
 
-private fun Modifier.swipeAlpha(a: Float): Modifier = this.then(Modifier.graphicsLayer { alpha = a })
+@Composable
+private fun ReviewComplete(onBack: () -> Unit) {
+    var autoReturn by remember { mutableStateOf(true) }
+    LaunchedEffect(autoReturn) {
+        if (autoReturn) {
+            delay(1600)
+            onBack()
+        }
+    }
+    Column(
+        Modifier.fillMaxSize().background(DSBridge.background()).clickable { autoReturn = false },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(Modifier.size(64.dp).clip(RoundedCornerShape(22.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
+            Lucide.Check(size = 31.dp, color = DS.InkPrimary)
+        }
+        Spacer(Modifier.height(18.dp))
+        Text("All caught up", style = DSTypography.headlineLarge, color = DSBridge.ink())
+        Text("Every detected transaction is reviewed", style = DSTypography.bodySmall, color = DSBridge.inkMute())
+        Spacer(Modifier.height(22.dp))
+        Button(onClick = { autoReturn = false; onBack() }, modifier = Modifier.height(52.dp), shape = RoundedCornerShape(17.dp)) {
+            Text("Back to Transactions")
+        }
+    }
+}
