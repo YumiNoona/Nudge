@@ -6,6 +6,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalContext
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Money formatting helpers.
@@ -67,4 +68,24 @@ fun formatCentsPlain(cents: Long): String {
     fmt.maximumFractionDigits = 2
     fmt.minimumFractionDigits = if (cents % 100 == 0L) 0 else 2
     return fmt.format(value)
+}
+
+/** Compact plain amount for constrained chart centers: 2.4K, 1.2L, 3.1Cr. */
+fun formatCompactCentsPlain(cents: Long): String {
+    val value = cents / 100.0
+    val absolute = abs(value)
+    val (scaled, suffix) = when {
+        absolute >= 10_000_000 -> value / 10_000_000 to "Cr"
+        absolute >= 100_000 -> value / 100_000 to "L"
+        absolute >= 1_000 -> value / 1_000 to "K"
+        else -> return NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+            maximumFractionDigits = 2
+            minimumFractionDigits = if (cents % 100 == 0L) 0 else 2
+        }.format(value)
+    }
+    val decimals = if (abs(scaled) >= 10 || scaled % 1.0 == 0.0) 0 else 1
+    return NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+        maximumFractionDigits = decimals
+        minimumFractionDigits = 0
+    }.format(scaled) + suffix
 }

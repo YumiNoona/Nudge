@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
 import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import java.text.NumberFormat
@@ -55,9 +56,7 @@ fun EnvelopeBudgetScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) {
-                Text("← Back", color = Nc.inkSoft)
-            }
+            IconButton(onClick = onBack) { Lucide.ChevronLeft(size = 21.dp, color = Nc.inkSoft) }
             Text(
                 "Envelopes",
                 fontSize = 18.sp,

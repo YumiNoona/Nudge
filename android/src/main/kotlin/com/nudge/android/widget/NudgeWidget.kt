@@ -45,16 +45,16 @@ private data class WidgetCategory(
 
 private data class WidgetSnapshot(
     val spentCents: Long,
+    val previousSpentCents: Long,
     val categories: List<WidgetCategory>,
-    val needsReview: Int,
-    val captureOn: Boolean,
     val hideAmounts: Boolean
 )
 
 class NudgeWidget : GlanceAppWidget() {
     override val sizeMode: SizeMode = SizeMode.Responsive(
         setOf(
-            DpSize(180.dp, 110.dp), // compact
+            DpSize(180.dp, 76.dp),  // 2 x 1 quick glance
+            DpSize(250.dp, 140.dp), // 3 x 2 snapshot
             DpSize(180.dp, 280.dp), // portrait breakdown
             DpSize(320.dp, 160.dp)  // landscape dashboard
         )
@@ -66,8 +66,13 @@ class NudgeWidget : GlanceAppWidget() {
         val categories = database.categoryDao().getAllOnce().associateBy { it.id }
         val preferences = context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
         val sevenDaysAgo = System.currentTimeMillis() - 7L * 24L * 60L * 60L * 1000L
+        val fourteenDaysAgo = System.currentTimeMillis() - 14L * 24L * 60L * 60L * 1000L
         val recentExpenses = transactions.filter { it.type == "debit" && it.timestampEpoch >= sevenDaysAgo }
+        val previousExpenses = transactions.filter {
+            it.type == "debit" && it.timestampEpoch >= fourteenDaysAgo && it.timestampEpoch < sevenDaysAgo
+        }
         val total = recentExpenses.sumOf { it.amountCents }
+        val previousTotal = previousExpenses.sumOf { it.amountCents }
         val palette = listOf(0xFF42BCA3.toInt(), 0xFFDEFF67.toInt(), 0xFFFFCC7A.toInt(), 0xFF5B8DEF.toInt())
         val grouped = recentExpenses.groupBy { it.categoryId }.map { (categoryId, entries) ->
             (categories[categoryId]?.name ?: "Other") to entries.sumOf { it.amountCents }
@@ -83,34 +88,70 @@ class NudgeWidget : GlanceAppWidget() {
         }
         val snapshot = WidgetSnapshot(
             spentCents = total,
+            previousSpentCents = previousTotal,
             categories = top,
-            needsReview = transactions.count { !it.isReviewed },
-            captureOn = preferences.getBoolean("auto_capture_enabled", true),
             hideAmounts = preferences.getBoolean("hide_widget_amounts", false)
         )
         val donut = createDonutBitmap(top)
-        val openApp = Intent(context, MainActivity::class.java)
-        val quickAdd = Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_ADD, true)
-        val openReview = Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_REVIEW, true)
+        val openTransactions = Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_TRANSACTIONS, true)
 
         provideContent {
             val size = LocalSize.current
             when {
-                size.height >= 220.dp && size.height > size.width -> PortraitWidget(snapshot, donut, openApp, quickAdd)
-                size.width >= 270.dp -> LandscapeWidget(snapshot, donut, openApp, quickAdd, openReview)
-                else -> CompactWidget(snapshot, openApp, quickAdd)
+                size.height >= 200.dp -> PortraitWidget(snapshot, donut, openTransactions)
+                size.width >= 290.dp -> LandscapeWidget(snapshot, donut, openTransactions)
+                size.width >= 210.dp && size.height >= 100.dp -> SnapshotWidget(snapshot, donut, openTransactions)
+                else -> CompactWidget(snapshot, openTransactions)
             }
         }
     }
 }
 
 @androidx.compose.runtime.Composable
-private fun PortraitWidget(snapshot: WidgetSnapshot, donut: Bitmap, openApp: Intent, quickAdd: Intent) {
-    WidgetCard(openApp, padding = 14) {
+private fun SnapshotWidget(
+    snapshot: WidgetSnapshot,
+    donut: Bitmap,
+    openTransactions: Intent,
+) {
+    WidgetCard(openTransactions, padding = 12) {
+        Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+            Column(GlanceModifier.width(72.dp).fillMaxHeight()) {
+                StatusPill("EXPENSES")
+                Spacer(GlanceModifier.height(5.dp))
+                Text("Past 7 days", style = TextStyle(color = WidgetColors.primary, fontSize = 9.sp, fontWeight = FontWeight.Medium))
+                Text(
+                    widgetAmount(snapshot),
+                    style = TextStyle(color = WidgetColors.primary, fontSize = 23.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1
+                )
+                Spacer(GlanceModifier.defaultWeight())
+                TrendText(snapshot, compact = true)
+            }
+            Spacer(GlanceModifier.width(5.dp))
+            DonutAmount(
+                donut = donut,
+                amount = widgetAmount(snapshot),
+                modifier = GlanceModifier.size(68.dp),
+                amountSize = 13,
+                subtitle = "TOTAL",
+            )
+            Spacer(GlanceModifier.width(5.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                if (snapshot.categories.isEmpty()) {
+                    Text("No expenses yet", style = TextStyle(color = WidgetColors.secondary, fontSize = 8.sp))
+                } else {
+                    snapshot.categories.take(3).forEach { LegendRow(it, showAmount = false, compact = true) }
+                }
+            }
+        }
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun PortraitWidget(snapshot: WidgetSnapshot, donut: Bitmap, openTransactions: Intent) {
+    WidgetCard(openTransactions, padding = 14) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
             StatusPill("EXPENSES")
-            Spacer(GlanceModifier.defaultWeight())
-            AddButton(quickAdd, compact = true)
         }
         Spacer(GlanceModifier.height(5.dp))
         Text("In the past 7 days", style = TextStyle(color = WidgetColors.primary, fontSize = 12.sp, fontWeight = FontWeight.Medium))
@@ -134,11 +175,9 @@ private fun PortraitWidget(snapshot: WidgetSnapshot, donut: Bitmap, openApp: Int
 private fun LandscapeWidget(
     snapshot: WidgetSnapshot,
     donut: Bitmap,
-    openApp: Intent,
-    quickAdd: Intent,
-    openReview: Intent
+    openTransactions: Intent,
 ) {
-    WidgetCard(openApp, padding = 14) {
+    WidgetCard(openTransactions, padding = 14) {
         Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
             Column(GlanceModifier.width(132.dp).fillMaxHeight()) {
                 StatusPill("7 DAY SPEND")
@@ -152,16 +191,7 @@ private fun LandscapeWidget(
             }
             Spacer(GlanceModifier.width(15.dp))
             Column(GlanceModifier.defaultWeight().fillMaxHeight()) {
-                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Column(GlanceModifier.defaultWeight()) {
-                        Text("NUDGE", style = TextStyle(color = WidgetColors.secondary, fontSize = 9.sp, fontWeight = FontWeight.Bold))
-                        Text(
-                            if (snapshot.captureOn) "AUTO CAPTURE ON" else "AUTO CAPTURE OFF",
-                            style = TextStyle(color = if (snapshot.captureOn) WidgetColors.signal else WidgetColors.secondary, fontSize = 9.sp, fontWeight = FontWeight.Medium)
-                        )
-                    }
-                    AddButton(quickAdd, compact = true)
-                }
+                Text("TOP CATEGORIES", style = TextStyle(color = WidgetColors.secondary, fontSize = 8.sp, fontWeight = FontWeight.Bold))
                 Spacer(GlanceModifier.height(7.dp))
                 if (snapshot.categories.isEmpty()) {
                     EmptyBreakdown()
@@ -169,35 +199,38 @@ private fun LandscapeWidget(
                     snapshot.categories.take(3).forEach { LegendRow(it, showAmount = !snapshot.hideAmounts) }
                 }
                 Spacer(GlanceModifier.defaultWeight())
-                Text(
-                    when {
-                        snapshot.needsReview == 0 -> "ALL CAUGHT UP"
-                        snapshot.needsReview == 1 -> "1 ITEM TO REVIEW →"
-                        else -> "${snapshot.needsReview} ITEMS TO REVIEW →"
-                    },
-                    modifier = GlanceModifier.fillMaxWidth().padding(vertical = 4.dp).clickable(actionStartActivity(openReview)),
-                    style = TextStyle(
-                        color = if (snapshot.needsReview == 0) WidgetColors.secondary else WidgetColors.signal,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
+                TrendText(snapshot, compact = false)
             }
         }
     }
 }
 
 @androidx.compose.runtime.Composable
-private fun CompactWidget(snapshot: WidgetSnapshot, openApp: Intent, quickAdd: Intent) {
-    WidgetCard(openApp, padding = 14) {
+private fun CompactWidget(snapshot: WidgetSnapshot, openTransactions: Intent) {
+    WidgetCard(openTransactions, padding = 9) {
         Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-            Column(GlanceModifier.defaultWeight()) {
-                Text("NUDGE · ${if (snapshot.captureOn) "CAPTURE ON" else "CAPTURE OFF"}", style = TextStyle(color = WidgetColors.secondary, fontSize = 9.sp, fontWeight = FontWeight.Bold))
-                Spacer(GlanceModifier.height(6.dp))
-                Text(widgetAmount(snapshot), style = TextStyle(color = WidgetColors.primary, fontSize = 24.sp, fontWeight = FontWeight.Bold))
-                Text("past 7 days", style = TextStyle(color = WidgetColors.secondary, fontSize = 10.sp))
+            Column(GlanceModifier.width(82.dp).fillMaxHeight()) {
+                StatusPill("EXPENSES")
+                Spacer(GlanceModifier.height(2.dp))
+                Text("Past 7 days", style = TextStyle(color = WidgetColors.secondary, fontSize = 7.sp))
+                Text(
+                    widgetAmount(snapshot),
+                    style = TextStyle(color = WidgetColors.primary, fontSize = 20.sp, fontWeight = FontWeight.Bold),
+                    maxLines = 1
+                )
+                Spacer(GlanceModifier.defaultWeight())
+                TrendText(snapshot, compact = true)
             }
-            AddButton(quickAdd, compact = false)
+            Spacer(GlanceModifier.width(8.dp))
+            Box(GlanceModifier.width(1.dp).fillMaxHeight().background(WidgetColors.divider)) {}
+            Spacer(GlanceModifier.width(8.dp))
+            Column(GlanceModifier.defaultWeight()) {
+                if (snapshot.categories.isEmpty()) {
+                    Text("No expenses yet", style = TextStyle(color = WidgetColors.secondary, fontSize = 8.sp))
+                } else {
+                    snapshot.categories.take(3).forEach { LegendRow(it, showAmount = false, compact = true) }
+                }
+            }
         }
     }
 }
@@ -222,46 +255,59 @@ private fun StatusPill(label: String) {
 }
 
 @androidx.compose.runtime.Composable
-private fun AddButton(intent: Intent, compact: Boolean) {
-    Box(
-        GlanceModifier.size(if (compact) 38.dp else 48.dp).background(WidgetColors.signal)
-            .cornerRadius(if (compact) 13.dp else 16.dp).clickable(actionStartActivity(intent)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text("+", style = TextStyle(color = WidgetColors.onSignal, fontSize = if (compact) 20.sp else 25.sp, fontWeight = FontWeight.Bold))
-    }
-}
-
-@androidx.compose.runtime.Composable
-private fun DonutAmount(donut: Bitmap, amount: String, modifier: GlanceModifier, amountSize: Int) {
+private fun DonutAmount(
+    donut: Bitmap,
+    amount: String,
+    modifier: GlanceModifier,
+    amountSize: Int,
+    subtitle: String = "SPENT",
+) {
     Box(modifier, contentAlignment = Alignment.Center) {
         Image(ImageProvider(donut), contentDescription = "Spending categories", modifier = GlanceModifier.fillMaxSize(), contentScale = ContentScale.Fit)
         Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
             Text(amount, style = TextStyle(color = WidgetColors.primary, fontSize = amountSize.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-            Text("SPENT", style = TextStyle(color = WidgetColors.secondary, fontSize = 8.sp, fontWeight = FontWeight.Bold))
+            Text(subtitle, style = TextStyle(color = WidgetColors.secondary, fontSize = 7.sp, fontWeight = FontWeight.Bold))
         }
     }
 }
 
 @androidx.compose.runtime.Composable
-private fun LegendRow(category: WidgetCategory, showAmount: Boolean) {
-    Row(GlanceModifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Vertical.CenterVertically) {
-        Box(GlanceModifier.size(7.dp).background(ColorProvider(Color(category.color), Color(category.color))).cornerRadius(50.dp)) {}
-        Spacer(GlanceModifier.width(7.dp))
-        Text(category.name, style = TextStyle(color = WidgetColors.primary, fontSize = 10.sp, fontWeight = FontWeight.Medium), maxLines = 1, modifier = GlanceModifier.defaultWeight())
+private fun LegendRow(category: WidgetCategory, showAmount: Boolean, compact: Boolean = false) {
+    Row(GlanceModifier.fillMaxWidth().padding(vertical = if (compact) 2.dp else 3.dp), verticalAlignment = Alignment.Vertical.CenterVertically) {
+        Box(GlanceModifier.size(if (compact) 6.dp else 7.dp).background(ColorProvider(Color(category.color), Color(category.color))).cornerRadius(50.dp)) {}
+        Spacer(GlanceModifier.width(if (compact) 5.dp else 7.dp))
+        Text(category.name, style = TextStyle(color = WidgetColors.primary, fontSize = if (compact) 8.sp else 10.sp, fontWeight = FontWeight.Medium), maxLines = 1, modifier = GlanceModifier.defaultWeight())
         if (showAmount) {
             Text(formatCompactMoney(category.amountCents), style = TextStyle(color = WidgetColors.secondary, fontSize = 9.sp, fontWeight = FontWeight.Medium))
             Spacer(GlanceModifier.width(6.dp))
         }
-        Text("${category.percent}%", style = TextStyle(color = WidgetColors.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold))
+        Text("${category.percent}%", style = TextStyle(color = WidgetColors.primary, fontSize = if (compact) 8.sp else 10.sp, fontWeight = FontWeight.Bold))
     }
+}
+
+@androidx.compose.runtime.Composable
+private fun TrendText(snapshot: WidgetSnapshot, compact: Boolean) {
+    val previous = snapshot.previousSpentCents
+    val delta = if (previous > 0L) (((snapshot.spentCents - previous) * 100f) / previous).toInt() else null
+    val text = when {
+        delta == null -> "FIRST 7 DAYS"
+        delta > 0 -> "↑ ${delta}% VS PRIOR"
+        delta < 0 -> "↓ ${-delta}% VS PRIOR"
+        else -> "SAME AS PRIOR"
+    }
+    val color = when {
+        delta == null || delta == 0 -> WidgetColors.secondary
+        delta < 0 -> WidgetColors.positive
+        else -> WidgetColors.negative
+    }
+    Text(text, style = TextStyle(color = color, fontSize = if (compact) 7.sp else 9.sp, fontWeight = FontWeight.Bold), maxLines = 1)
 }
 
 @androidx.compose.runtime.Composable
 private fun EmptyBreakdown() {
     Column(GlanceModifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
         Text("NO EXPENSES YET", style = TextStyle(color = WidgetColors.secondary, fontSize = 9.sp, fontWeight = FontWeight.Bold))
-        Text("Tap + to add one", style = TextStyle(color = WidgetColors.primary, fontSize = 10.sp))
+        Text("Tap to open Transactions", style = TextStyle(color = WidgetColors.primary, fontSize = 10.sp))
     }
 }
 
@@ -271,9 +317,20 @@ private object WidgetColors {
     val secondary = ColorProvider(Color(0xFF939D96), Color(0xFF939D96))
     val signal = ColorProvider(Color(0xFFDEFF67), Color(0xFFDEFF67))
     val onSignal = ColorProvider(Color(0xFF111411), Color(0xFF111411))
+    val divider = ColorProvider(Color(0xFF303632), Color(0xFF303632))
+    val positive = ColorProvider(Color(0xFF42BCA3), Color(0xFF42BCA3))
+    val negative = ColorProvider(Color(0xFFF36B5D), Color(0xFFF36B5D))
 }
 
 class NudgeWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = NudgeWidget()
+}
+
+class NudgeCompactWidgetReceiver : GlanceAppWidgetReceiver() {
+    override val glanceAppWidget: GlanceAppWidget = NudgeWidget()
+}
+
+class NudgeSnapshotWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = NudgeWidget()
 }
 

@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.Nc
+import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeRadius
 import kotlinx.coroutines.launch
@@ -63,9 +64,9 @@ fun SyncSettingsScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) { Text("← Back", color = Nc.inkSoft) }
+            IconButton(onClick = onBack) { Lucide.ChevronLeft(size = 21.dp, color = Nc.inkSoft) }
             Text("Sync Settings", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-            Spacer(modifier = Modifier.width(64.dp))
+            Spacer(modifier = Modifier.width(48.dp))
         }
 
         Column(

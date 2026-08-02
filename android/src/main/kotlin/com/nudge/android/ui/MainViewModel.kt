@@ -1,6 +1,8 @@
 package com.nudge.android.ui
 
 import android.app.Application
+import android.content.ContentUris
+import android.net.Uri
 import android.provider.Telephony
 import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
@@ -117,17 +119,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val txn = db.transactionDao().getById(id) ?: return@launch
             db.transactionDao().update(txn.copy(categoryId = categoryId, isReviewed = true))
-            val merchant = txn.merchantNormalized ?: txn.merchantRaw
-            if (merchant.isNotBlank() && !merchant.equals("Unknown merchant", true) && categoryId.isNotBlank()) {
-                db.captureRuleDao().upsertAlias(
-                    MerchantAliasEntity(
-                        id = "learned_${merchant.lowercase().hashCode()}",
-                        rawPattern = Regex.escape(merchant),
-                        normalizedName = merchant,
-                        suggestedCategoryId = categoryId
-                    )
-                )
-            }
+            learnFromCorrection(txn, categoryId)
             awardXp(com.nudge.engine.GamificationMath.XP_REVIEW_TRANSACTION)
             refreshWidget()
         }
@@ -152,17 +144,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.categoryDao().insert(category)
             val transaction = db.transactionDao().getById(transactionId) ?: return@launch
             db.transactionDao().update(transaction.copy(categoryId = category.id, isReviewed = true, updatedAt = System.currentTimeMillis()))
-            val merchant = transaction.merchantNormalized ?: transaction.merchantRaw
-            if (merchant.isNotBlank() && !merchant.equals("Unknown merchant", true)) {
-                db.captureRuleDao().upsertAlias(
-                    MerchantAliasEntity(
-                        id = "learned_${merchant.lowercase().hashCode()}",
-                        rawPattern = Regex.escape(merchant),
-                        normalizedName = merchant,
-                        suggestedCategoryId = category.id
-                    )
-                )
-            }
+            learnFromCorrection(transaction, category.id)
             awardXp(com.nudge.engine.GamificationMath.XP_REVIEW_TRANSACTION)
             refreshWidget()
         }
@@ -192,14 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.transactionDao().update(transaction.copy(updatedAt = System.currentTimeMillis(), isReviewed = true))
             val merchant = transaction.merchantNormalized ?: transaction.merchantRaw
             transaction.categoryId?.takeIf { it.isNotBlank() && !merchant.equals("Unknown merchant", true) }?.let { categoryId ->
-                db.captureRuleDao().upsertAlias(
-                    MerchantAliasEntity(
-                        id = "learned_${merchant.lowercase().hashCode()}",
-                        rawPattern = Regex.escape(merchant),
-                        normalizedName = merchant,
-                        suggestedCategoryId = categoryId
-                    )
-                )
+                learnFromCorrection(transaction, categoryId)
             }
             refreshWidget()
         }
@@ -207,46 +182,177 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun scanHistoricalSms() {
         viewModelScope.launch {
-            _captureScanState.value = "Scanning financial messages…"
-            val result = withContext(Dispatchers.IO) {
-                var added = 0
-                var checked = 0
-                val resolver = getApplication<Application>().contentResolver
-                val projection = arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE)
-                resolver.query(Telephony.Sms.Inbox.CONTENT_URI, projection, null, null, "${Telephony.Sms.DATE} DESC")?.use { cursor ->
-                    val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
-                    val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
-                    val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
-                    val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
-                    val processor = TransactionCaptureProcessor(getApplication())
-                    while (cursor.moveToNext() && checked < 500) {
-                        checked++
-                        val body = cursor.getString(bodyIndex) ?: continue
-                        if (!looksFinancial(body)) continue
-                        val outcome = processor.process(
-                            rawText = body,
-                            sourceId = cursor.getString(addressIndex).orEmpty(),
-                            source = "sms_import",
-                            receivedAt = cursor.getLong(dateIndex),
-                            sourceMetadata = TransactionCaptureProcessor.SourceMetadata(
-                                sender = cursor.getString(addressIndex),
-                                originalMessageId = cursor.getLong(idIndex).toString(),
-                                originalMessageUri = "content://sms/${cursor.getLong(idIndex)}"
-                            )
-                        )
-                        if (outcome is TransactionCaptureProcessor.Outcome.Added) added++
-                    }
-                }
-                added
+            _captureScanState.value = "Scanning all accessible SMS & MMS…"
+            val result = withContext(Dispatchers.IO) { scanAccessibleMessageHistory() }
+            _captureScanState.value = buildString {
+                append("Checked ${result.checked} messages · added ${result.added}")
+                if (result.unreadable > 0) append(" · ${result.unreadable} unreadable")
             }
-            _captureScanState.value = "Added $result new transaction${if (result == 1) "" else "s"}"
         }
     }
 
-    private fun looksFinancial(text: String): Boolean {
-        val value = text.lowercase()
-        return listOf("debited", "credited", "paid", "spent", "received", "refund", "upi", "inr", "rs.", "₹")
-            .any(value::contains)
+    private data class MessageScanResult(var checked: Int = 0, var added: Int = 0, var unreadable: Int = 0)
+
+    private suspend fun scanAccessibleMessageHistory(): MessageScanResult {
+        val result = MessageScanResult()
+        val resolver = getApplication<Application>().contentResolver
+        val processor = TransactionCaptureProcessor(getApplication())
+        val smsProjection = arrayOf(
+            Telephony.Sms._ID,
+            Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY,
+            Telephony.Sms.DATE,
+            Telephony.Sms.TYPE,
+        )
+
+        runCatching {
+            resolver.query(
+                Telephony.Sms.CONTENT_URI,
+                smsProjection,
+                "${Telephony.Sms.TYPE} = ?",
+                arrayOf(Telephony.Sms.MESSAGE_TYPE_INBOX.toString()),
+                "${Telephony.Sms.DATE} DESC",
+            )
+        }.getOrNull()?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+            val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+            val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+            val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+            while (cursor.moveToNext()) {
+                result.checked++
+                publishScanProgress(result.checked)
+                val body = cursor.getString(bodyIndex)?.takeIf { it.isNotBlank() } ?: continue
+                try {
+                    val id = cursor.getLong(idIndex)
+                    val sender = cursor.getString(addressIndex).orEmpty()
+                    val outcome = processor.process(
+                        rawText = body,
+                        sourceId = sender,
+                        source = "sms_import",
+                        receivedAt = cursor.getLong(dateIndex),
+                        sourceMetadata = TransactionCaptureProcessor.SourceMetadata(
+                            sender = sender,
+                            originalMessageId = id.toString(),
+                            originalMessageUri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id).toString(),
+                        ),
+                    )
+                    if (outcome is TransactionCaptureProcessor.Outcome.Added) result.added++
+                } catch (_: Exception) {
+                    result.unreadable++
+                }
+            }
+        } ?: run { result.unreadable++ }
+
+        val mmsProjection = arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX)
+        runCatching {
+            resolver.query(
+                Telephony.Mms.CONTENT_URI,
+                mmsProjection,
+                "${Telephony.Mms.MESSAGE_BOX} = ?",
+                arrayOf(Telephony.Mms.MESSAGE_BOX_INBOX.toString()),
+                "${Telephony.Mms.DATE} DESC",
+            )
+        }.getOrNull()?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow(Telephony.Mms._ID)
+            val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Mms.DATE)
+            while (cursor.moveToNext()) {
+                result.checked++
+                publishScanProgress(result.checked)
+                val id = cursor.getLong(idIndex)
+                val body = readMmsText(id)
+                if (body.isBlank()) continue
+                try {
+                    val outcome = processor.process(
+                        rawText = body,
+                        sourceId = "mms",
+                        source = "mms_import",
+                        receivedAt = cursor.getLong(dateIndex).let { if (it < 10_000_000_000L) it * 1_000L else it },
+                        sourceMetadata = TransactionCaptureProcessor.SourceMetadata(
+                            originalMessageId = id.toString(),
+                            originalMessageUri = ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, id).toString(),
+                        ),
+                    )
+                    if (outcome is TransactionCaptureProcessor.Outcome.Added) result.added++
+                } catch (_: Exception) {
+                    result.unreadable++
+                }
+            }
+        }
+        return result
+    }
+
+    private fun publishScanProgress(checked: Int) {
+        if (checked % 100 == 0) _captureScanState.value = "Checked $checked messages…"
+    }
+
+    private fun readMmsText(messageId: Long): String {
+        val resolver = getApplication<Application>().contentResolver
+        val partsUri = Uri.parse("content://mms/part")
+        val parts = mutableListOf<String>()
+        runCatching {
+            resolver.query(
+                partsUri,
+                arrayOf("_id", "ct", "text", "_data"),
+                "mid = ?",
+                arrayOf(messageId.toString()),
+                "_id ASC",
+            )
+        }.getOrNull()?.use { cursor ->
+            val idIndex = cursor.getColumnIndexOrThrow("_id")
+            val typeIndex = cursor.getColumnIndexOrThrow("ct")
+            val textIndex = cursor.getColumnIndexOrThrow("text")
+            val dataIndex = cursor.getColumnIndexOrThrow("_data")
+            while (cursor.moveToNext()) {
+                if (cursor.getString(typeIndex) != "text/plain") continue
+                val directText = cursor.getString(textIndex)
+                if (!directText.isNullOrBlank()) {
+                    parts += directText
+                } else if (!cursor.getString(dataIndex).isNullOrBlank()) {
+                    val partUri = ContentUris.withAppendedId(partsUri, cursor.getLong(idIndex))
+                    runCatching { resolver.openInputStream(partUri)?.bufferedReader()?.use { it.readText() } }
+                        .getOrNull()?.takeIf { it.isNotBlank() }?.let(parts::add)
+                }
+            }
+        }
+        return parts.joinToString(" ")
+    }
+
+    private suspend fun learnFromCorrection(transaction: TransactionEntity, categoryId: String) {
+        val merchant = (transaction.merchantNormalized ?: transaction.merchantRaw).trim()
+        val canonical = CaptureLearning.canonicalMerchant(merchant)
+        if (canonical.isBlank() || canonical == "unknown merchant" || categoryId.isBlank()) return
+
+        db.captureRuleDao().getAliases()
+            .filter { CaptureLearning.isRejectedSuggestion(it.suggestedCategoryId) }
+            .filter { CaptureLearning.sameMerchant(it.normalizedName, merchant) }
+            .forEach { db.captureRuleDao().deleteAlias(it.id) }
+
+        db.captureRuleDao().upsertAlias(
+            MerchantAliasEntity(
+                id = CaptureLearning.learnedRuleId(merchant),
+                rawPattern = CaptureLearning.tolerantPattern(merchant),
+                normalizedName = merchant,
+                suggestedCategoryId = categoryId,
+            ),
+        )
+
+        // Apply one correction to matching pending captures immediately. This keeps
+        // the review queue from asking the same merchant question repeatedly.
+        db.transactionDao().getAllOnce()
+            .asSequence()
+            .filter { !it.isReviewed && it.id != transaction.id && it.type == transaction.type }
+            .filter { CaptureLearning.sameMerchant(it.merchantNormalized ?: it.merchantRaw, merchant) }
+            .forEach { pending ->
+                db.transactionDao().update(
+                    pending.copy(
+                        merchantNormalized = merchant,
+                        categoryId = categoryId,
+                        confidenceScore = maxOf(pending.confidenceScore, .96f),
+                        isReviewed = true,
+                        updatedAt = System.currentTimeMillis(),
+                    ),
+                )
+            }
     }
 
     fun addCategory(name: String, type: CategoryType, icon: String? = null, color: String? = null) {
@@ -329,6 +435,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteTransaction(id: String) {
         viewModelScope.launch { db.transactionDao().deleteById(id); refreshWidget() }
+    }
+
+    fun rejectTransaction(id: String) {
+        viewModelScope.launch {
+            val transaction = db.transactionDao().getById(id) ?: return@launch
+            if (transaction.source == "manual") {
+                db.transactionDao().deleteById(id)
+                refreshWidget()
+                return@launch
+            }
+
+            val source = db.savedSourceMessageDao().getByTransaction(id)
+            val sourceText = source?.encryptedBody?.let { runCatching { sourceCrypto.decrypt(it) }.getOrNull() }
+                ?: withContext(Dispatchers.IO) { readOriginalSmsBody(source?.originalMessageUri) }
+            val sender = source?.sender ?: source?.packageName
+            val merchant = (transaction.merchantNormalized ?: transaction.merchantRaw).trim()
+            val canonical = CaptureLearning.canonicalMerchant(merchant)
+
+            if (canonical.isNotBlank() && canonical != "unknown merchant") {
+                db.captureRuleDao().upsertAlias(
+                    MerchantAliasEntity(
+                        id = CaptureLearning.rejectedRuleId(sender, merchant),
+                        rawPattern = CaptureLearning.rejectionPattern(sender, sourceText, merchant),
+                        normalizedName = merchant,
+                        suggestedCategoryId = CaptureLearning.REJECTED_SUGGESTION,
+                    ),
+                )
+
+                // A rejection is feedback, so clear the same repeated pending noise now.
+                db.transactionDao().getAllOnce()
+                    .filter { !it.isReviewed && it.source != "manual" }
+                    .filter { CaptureLearning.sameMerchant(it.merchantNormalized ?: it.merchantRaw, merchant) }
+                    .forEach { db.transactionDao().deleteById(it.id) }
+            } else {
+                db.transactionDao().deleteById(id)
+            }
+            refreshWidget()
+        }
+    }
+
+    private fun readOriginalSmsBody(originalUri: String?): String? {
+        if (originalUri.isNullOrBlank()) return null
+        return runCatching {
+            getApplication<Application>().contentResolver.query(
+                Uri.parse(originalUri),
+                arrayOf(Telephony.Sms.BODY),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)) else null
+            }
+        }.getOrNull()
     }
 
     fun importTransaction(txn: TransactionEntity) {

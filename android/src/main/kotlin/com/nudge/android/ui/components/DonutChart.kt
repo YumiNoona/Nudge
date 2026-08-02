@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -99,9 +100,17 @@ fun DonutChart(
                 Text(
                     text = centerLabel,
                     color = Nc.ink,
-                    fontSize = 20.sp,
+                    fontSize = when {
+                        centerLabel.length <= 5 -> 21.sp
+                        centerLabel.length <= 7 -> 18.sp
+                        else -> 15.sp
+                    },
                     fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Clip,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = size * .23f)
                 )
                 if (centerSubtext != null) {
                     Text(

@@ -20,6 +20,9 @@ interface SavedSourceMessageDao {
     @Query("SELECT * FROM saved_source_messages WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): SavedSourceMessageEntity?
 
+    @Query("SELECT * FROM saved_source_messages WHERE original_message_uri = :uri LIMIT 1")
+    suspend fun getByOriginalMessageUri(uri: String): SavedSourceMessageEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(source: SavedSourceMessageEntity)
 

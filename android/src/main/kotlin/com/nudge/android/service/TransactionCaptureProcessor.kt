@@ -8,6 +8,7 @@ import com.nudge.android.data.TransactionEntity
 import com.nudge.android.data.SavedSourceMessageEntity
 import com.nudge.android.data.SourceMessageCrypto
 import com.nudge.android.data.SourceMessagePolicy
+import com.nudge.android.data.CaptureLearning
 import com.nudge.engine.DefaultSmsParserEngine
 import com.nudge.model.TransactionType
 import com.nudge.util.IdGenerator
@@ -44,6 +45,11 @@ class TransactionCaptureProcessor(context: Context) {
         sourceMetadata: SourceMetadata = SourceMetadata()
     ): Outcome {
         if (!prefs.getBoolean("auto_capture_enabled", true)) return Outcome.Ignored("Capture disabled")
+        sourceMetadata.originalMessageUri?.takeIf { it.isNotBlank() }?.let { uri ->
+            db.savedSourceMessageDao().getByOriginalMessageUri(uri)?.let { existing ->
+                return Outcome.Duplicate(existing.transactionId)
+            }
+        }
         if (looksFailedOrPending(rawText)) return Outcome.Ignored("Pending or failed event")
         if (!looksLikeCompletedMovement(rawText)) return Outcome.Ignored("No completed money movement")
 
@@ -51,7 +57,10 @@ class TransactionCaptureProcessor(context: Context) {
         if (parsed.amount <= 0L) return Outcome.Ignored("No valid amount")
 
         val aliases = db.captureRuleDao().getAliases()
-        val alias = findAlias(rawText, parsed.merchantNormalized, aliases)
+        val alias = findAlias(sourceId, rawText, parsed.merchantNormalized, aliases)
+        if (alias != null && CaptureLearning.isRejectedSuggestion(alias.suggestedCategoryId)) {
+            return Outcome.Ignored("Matches a learned rejection")
+        }
         val merchant = alias?.normalizedName
             ?: parsed.merchantNormalized?.takeUnless { it.equals("unknown", true) || it.equals("unknown merchant", true) }
             ?: "Unknown merchant"
@@ -158,12 +167,20 @@ class TransactionCaptureProcessor(context: Context) {
         return accounts.firstOrNull { it.isDefault } ?: accounts.firstOrNull()
     }
 
-    private fun findAlias(text: String, normalized: String?, aliases: List<MerchantAliasEntity>): MerchantAliasEntity? {
-        val haystack = "$text ${normalized.orEmpty()}"
-        return aliases.firstOrNull { alias ->
-            runCatching { Regex(alias.rawPattern, RegexOption.IGNORE_CASE).containsMatchIn(haystack) }
+    private fun findAlias(sourceId: String, text: String, normalized: String?, aliases: List<MerchantAliasEntity>): MerchantAliasEntity? {
+        val haystack = "$sourceId $text ${normalized.orEmpty()}"
+        return aliases.map { alias ->
+            val regexMatch = runCatching { Regex(alias.rawPattern, RegexOption.IGNORE_CASE).containsMatchIn(haystack) }
                 .getOrElse { haystack.contains(alias.rawPattern, true) }
-        }
+            val similarity = normalized?.let { CaptureLearning.similarity(it, alias.normalizedName) } ?: 0f
+            alias to if (regexMatch) 1f else similarity
+        }.filter { it.second >= .72f }
+            .maxWithOrNull(
+                compareBy<Pair<MerchantAliasEntity, Float>> {
+                    if (CaptureLearning.isRejectedSuggestion(it.first.suggestedCategoryId)) 1 else 0
+                }.thenBy { it.second }
+            )
+            ?.first
     }
 
     private fun categoryMatchesHint(name: String, hint: String): Boolean {
@@ -192,7 +209,11 @@ class TransactionCaptureProcessor(context: Context) {
 
     private fun looksLikeCompletedMovement(text: String): Boolean {
         val lower = text.lowercase()
-        return listOf("debited", "credited", "paid", "spent", "sent", "received", "deposited", "withdrawn", "refund", "reversal", "purchase", "transferred")
+        return listOf(
+            "debited", "credited", "paid", "spent", "sent", "received", "deposited", "deposit",
+            "withdrawn", "withdrawal", "refund", "reversal", "purchase", "transferred", "added",
+            "loaded", "money in", "money out"
+        )
             .any(lower::contains)
     }
 

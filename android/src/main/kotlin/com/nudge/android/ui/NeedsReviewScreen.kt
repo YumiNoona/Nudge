@@ -57,6 +57,8 @@ fun NeedsReviewSwipeScreen(
     val haptics = remember(context) { NudgeHaptics(context) }
 
     LaunchedEffect(transactions.map { it.id }) {
+        val activeIds = transactions.mapTo(hashSetOf()) { it.id }
+        queue.removeAll { it.id !in activeIds }
         transactions.filter { seenIds.add(it.id) }.forEach {
             queue.add(it)
             totalCount++
@@ -81,7 +83,7 @@ fun NeedsReviewSwipeScreen(
     }
 
     if (current == null) {
-        ReviewComplete(onBack)
+        LaunchedEffect(Unit) { onBack() }
         return
     }
 
@@ -95,10 +97,8 @@ fun NeedsReviewSwipeScreen(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack, modifier = Modifier.height(48.dp)) {
-                Lucide.ArrowLeft(size = 18.dp, color = DSBridge.inkSoft())
-                Spacer(Modifier.width(5.dp))
-                Text("Back", color = DSBridge.inkSoft())
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                Lucide.ChevronLeft(size = 21.dp, color = DSBridge.inkSoft())
             }
             Text(
                 "${completedCount + 1} / ${totalCount.coerceAtLeast(1)}",
@@ -108,7 +108,7 @@ fun NeedsReviewSwipeScreen(
                 fontSize = 11.sp,
                 color = DSBridge.inkMute()
             )
-            Spacer(Modifier.width(72.dp))
+            Spacer(Modifier.width(48.dp))
         }
 
         AnimatedContent(
@@ -320,33 +320,6 @@ private fun ReviewCategoryPicker(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ReviewComplete(onBack: () -> Unit) {
-    var autoReturn by remember { mutableStateOf(true) }
-    LaunchedEffect(autoReturn) {
-        if (autoReturn) {
-            delay(1600)
-            onBack()
-        }
-    }
-    Column(
-        Modifier.fillMaxSize().background(DSBridge.background()).clickable { autoReturn = false },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Box(Modifier.size(64.dp).clip(RoundedCornerShape(22.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
-            Lucide.Check(size = 31.dp, color = DS.InkPrimary)
-        }
-        Spacer(Modifier.height(18.dp))
-        Text("All caught up", style = DSTypography.headlineLarge, color = DSBridge.ink())
-        Text("Every detected transaction is reviewed", style = DSTypography.bodySmall, color = DSBridge.inkMute())
-        Spacer(Modifier.height(22.dp))
-        Button(onClick = { autoReturn = false; onBack() }, modifier = Modifier.height(52.dp), shape = RoundedCornerShape(17.dp)) {
-            Text("Back to Transactions")
         }
     }
 }

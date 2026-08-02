@@ -7,12 +7,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,13 +63,10 @@ fun SavedMessagesScreen(
     val storageBytes = saved.sumOf { it.encryptedBody?.length?.toLong() ?: 0L }
 
     Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Lucide.ArrowLeft(size = 22.dp, color = DSBridge.inkSoft()) }
-            Column(Modifier.weight(1f)) {
-                Text("Saved messages", style = DSTypography.headlineLarge, color = DSBridge.ink())
-                Text("Only sources linked to captured transactions", style = DSTypography.bodySmall, color = DSBridge.inkMute())
-            }
-            if (saved.isNotEmpty()) IconButton(onClick = { confirmClear = true }) { Lucide.Trash2(size = 19.dp, color = DS.Negative) }
+        Box(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp)) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
+            Text("Saved messages", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
+            if (saved.isNotEmpty()) IconButton(onClick = { confirmClear = true }, modifier = Modifier.size(48.dp).align(Alignment.CenterEnd)) { Lucide.Trash2(size = 19.dp, color = DS.Negative) }
         }
 
         Surface(Modifier.fillMaxWidth().padding(horizontal = 18.dp), shape = RoundedCornerShape(22.dp), color = DS.AccentDeep) {
@@ -81,15 +82,36 @@ fun SavedMessagesScreen(
             }
         }
 
-        OutlinedTextField(
-            value = query,
-            onValueChange = { query = it },
-            leadingIcon = { Lucide.Search(size = 18.dp, color = DSBridge.inkMute()) },
-            placeholder = { Text("Search sender, merchant or message") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
-            shape = RoundedCornerShape(16.dp)
-        )
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 9.dp).height(42.dp),
+            shape = RoundedCornerShape(13.dp),
+            color = DSBridge.surface(),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .14f)),
+        ) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Lucide.Search(size = 16.dp, color = DSBridge.inkMute())
+                Spacer(Modifier.width(9.dp))
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    textStyle = DSTypography.bodySmall.copy(color = DSBridge.ink()),
+                    cursorBrush = SolidColor(DSBridge.accent()),
+                    decorationBox = { field ->
+                        Box {
+                            if (query.isBlank()) Text("Search saved messages", style = DSTypography.bodySmall, color = DSBridge.inkMute())
+                            field()
+                        }
+                    },
+                )
+                if (query.isNotBlank()) {
+                    Box(Modifier.size(25.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
+                        Lucide.X(size = 14.dp, color = DSBridge.inkMute())
+                    }
+                }
+            }
+        }
 
         Row(Modifier.padding(horizontal = 18.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
             listOf("all" to "All", "sms" to "SMS", "notification" to "Notifications").forEach { (id, label) ->

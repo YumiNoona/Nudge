@@ -40,22 +40,17 @@ fun CategoryManagerScreen(
     var typeFilter by remember { mutableStateOf("expense") }
 
     Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) { Lucide.ArrowLeft(size = 22.dp, color = DSBridge.inkSoft()) }
-            Column(Modifier.weight(1f)) {
-                Text("Categories", style = DSTypography.headlineLarge, color = DSBridge.ink())
-                Text("Teach Nudge how you spend", style = DSTypography.bodySmall, color = DSBridge.inkMute())
-            }
+        Box(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp)) {
+            IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
+            Text("Categories", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
             Button(
                 onClick = { creating = true },
-                modifier = Modifier.height(48.dp),
-                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.height(40.dp).align(Alignment.CenterEnd),
+                shape = RoundedCornerShape(13.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DS.Signal, contentColor = DS.InkPrimary),
-                contentPadding = PaddingValues(horizontal = 16.dp)
+                contentPadding = PaddingValues(horizontal = 11.dp)
             ) {
-                Lucide.Plus(size = 18.dp, color = DS.InkPrimary)
-                Spacer(Modifier.width(7.dp))
-                Text("Add", fontWeight = FontWeight.Bold)
+                Lucide.Plus(size = 17.dp, color = DS.InkPrimary)
             }
         }
 

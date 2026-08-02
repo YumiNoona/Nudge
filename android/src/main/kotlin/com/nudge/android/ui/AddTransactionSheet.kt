@@ -234,26 +234,47 @@ private fun AddTransactionSheetContent(
                 fontSize = 12.sp, color = DSBridge.inkMute()
             )
         } else {
-            selectableAccounts.forEach { a ->
-                val isSel = selectedAccountId == a.id
+            selectableAccounts.chunked(3).forEach { rowAccounts ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isSel) DSBridge.accentBg() else DSBridge.background())
-                        .then(if (isSel) Modifier.border(1.5.dp, DSBridge.accent(), RoundedCornerShape(12.dp)) else Modifier)
-                        .clickable { selectedAccountId = a.id }
-                        .padding(horizontal = 12.dp, vertical = 10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    AccountTypeIcon(a.accountType, if (isSel) DSBridge.accent() else DSBridge.inkSoft(), 16.dp)
-                    Spacer(Modifier.width(8.dp))
-                    Text(a.name, fontSize = 13.sp, fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal, color = if (isSel) DSBridge.accent() else DSBridge.ink(), modifier = Modifier.weight(1f))
-                    if (a.isDefault) {
-                        Text("Default", fontSize = 10.sp, color = DSBridge.inkMute())
+                    rowAccounts.forEach { a ->
+                        val isSel = selectedAccountId == a.id
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 68.dp)
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(if (isSel) DSBridge.accentBg() else DSBridge.background())
+                                .then(if (isSel) Modifier.border(1.5.dp, DSBridge.accent(), RoundedCornerShape(13.dp)) else Modifier)
+                                .clickable {
+                                    haptics.impactLight()
+                                    selectedAccountId = a.id
+                                }
+                                .padding(horizontal = 6.dp, vertical = 9.dp)
+                        ) {
+                            AccountTypeIcon(a.accountType, if (isSel) DSBridge.accent() else DSBridge.inkSoft(), 20.dp)
+                            Spacer(Modifier.height(5.dp))
+                            Text(
+                                a.name,
+                                fontSize = 9.sp,
+                                fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (isSel) DSBridge.accent() else DSBridge.inkSoft(),
+                                maxLines = 1,
+                                textAlign = TextAlign.Center,
+                            )
+                            if (a.isDefault) {
+                                Text("DEFAULT", fontSize = 6.sp, color = DSBridge.inkMute(), letterSpacing = .5.sp)
+                            }
+                        }
                     }
+                    repeat(3 - rowAccounts.size) { Spacer(Modifier.weight(1f)) }
                 }
-                Spacer(Modifier.height(6.dp))
+                Spacer(Modifier.height(8.dp))
             }
         }
         Spacer(modifier = Modifier.height(DSSpace.sm))

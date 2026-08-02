@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.DS
+import com.nudge.android.ui.theme.DSBridge
 import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeHaptics
 
@@ -47,16 +48,20 @@ fun BottomDock(
     val actionIndex = if (onFabClick != null) items.size / 2 else -1
     val localContext = LocalContext.current
     val haptics = remember(localContext) { NudgeHaptics(localContext) }
+    val dockBackground = DSBridge.surface()
+    val dockInactive = DSBridge.inkMute()
+    val dockActive = DSBridge.accent()
+    val activeBackground = DSBridge.accentBg()
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .height(76.dp)
-            .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = Color.Black.copy(alpha = 0.28f))
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFF161A17))
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .height(70.dp)
+            .shadow(14.dp, RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.14f))
+            .clip(RoundedCornerShape(22.dp))
+            .background(dockBackground)
+            .padding(horizontal = 8.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -71,7 +76,7 @@ fun BottomDock(
                 label = "dockPress"
             )
             val tint by animateColorAsState(
-                targetValue = if (active) DS.Signal else Color(0xFF929A94),
+                targetValue = if (active) dockActive else dockInactive,
                 label = "dockTint"
             )
 
@@ -80,8 +85,8 @@ fun BottomDock(
                     .weight(1f)
                     .fillMaxHeight()
                     .scale(scale)
-                    .clip(RoundedCornerShape(16.dp))
-                    .then(if (active) Modifier.background(Color.White.copy(alpha = 0.06f)) else Modifier)
+                    .clip(RoundedCornerShape(15.dp))
+                    .then(if (active) Modifier.background(activeBackground) else Modifier)
                     .clickable(interactionSource = interaction, indication = null) {
                         if (isAction) haptics.impactMedium() else haptics.impactLight()
                         if (isAction) onFabClick?.invoke() else onSelect(item.id)
@@ -111,9 +116,9 @@ fun BottomDock(
                         Spacer(Modifier.height(3.dp))
                         Text(
                             text = item.label.uppercase(),
-                            color = if (active) DS.Signal else Color(0xFF929A94),
+                            color = if (active) dockActive else dockInactive,
                             fontFamily = MonoFamily,
-                            fontSize = 8.sp,
+                            fontSize = 7.sp,
                             lineHeight = 10.sp,
                             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                             letterSpacing = 0.4.sp,

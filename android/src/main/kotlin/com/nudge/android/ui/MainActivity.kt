@@ -73,13 +73,15 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_ADD = "com.nudge.android.OPEN_ADD"
         const val EXTRA_OPEN_REVIEW = "com.nudge.android.OPEN_REVIEW"
+        const val EXTRA_OPEN_TRANSACTIONS = "com.nudge.android.OPEN_TRANSACTIONS"
     }
 }
 
-private enum class WidgetAction { NONE, ADD, REVIEW }
+private enum class WidgetAction { NONE, ADD, REVIEW, TRANSACTIONS }
 private fun Intent?.toWidgetAction(): WidgetAction = when {
     this?.getBooleanExtra(MainActivity.EXTRA_OPEN_ADD, false) == true -> WidgetAction.ADD
     this?.getBooleanExtra(MainActivity.EXTRA_OPEN_REVIEW, false) == true -> WidgetAction.REVIEW
+    this?.getBooleanExtra(MainActivity.EXTRA_OPEN_TRANSACTIONS, false) == true -> WidgetAction.TRANSACTIONS
     else -> WidgetAction.NONE
 }
 
@@ -128,6 +130,7 @@ private fun ExpenseNavHost(
         when (requestedAction) {
             WidgetAction.ADD -> showAdd = true
             WidgetAction.REVIEW -> push(NavScreen.Review)
+            WidgetAction.TRANSACTIONS -> root(NavScreen.Transactions)
             WidgetAction.NONE -> Unit
         }
         if (requestedAction != WidgetAction.NONE) onActionConsumed()
@@ -165,7 +168,7 @@ private fun ExpenseNavHost(
                     onUpdate = viewModel::updateTransaction,
                     onDelete = viewModel::deleteTransaction
                 )
-                NavScreen.Charts -> ChartsScreen(transactions, categories, onBack = { root(NavScreen.Transactions) })
+                NavScreen.Charts -> ChartsScreen(transactions, categories)
                 NavScreen.Settings, NavScreen.More -> ExpenseSettingsScreen(
                     isDark = isDark,
                     captureEnabled = captureEnabled,
@@ -194,7 +197,7 @@ private fun ExpenseNavHost(
                     onCategorize = viewModel::reviewTransaction,
                     onCreateCategory = viewModel::createCategoryForTransaction,
                     decryptSource = viewModel::decryptSourceBody,
-                    onDismiss = { viewModel.deleteTransaction(it) },
+                    onDismiss = viewModel::rejectTransaction,
                     onBack = ::back
                 )
                 NavScreen.Accounts, NavScreen.Wallet -> ManageAccountsScreen(
@@ -230,7 +233,7 @@ private fun ExpenseNavHost(
                 items = listOf(
                     DockItem("transactions", { Lucide.ListTodo(size = 23.dp, color = it) }, "Transactions", transactions.count { !it.isReviewed }),
                     DockItem("add", { Lucide.Plus(size = 24.dp, color = it) }, "Add"),
-                    DockItem("charts", { Lucide.ChartBar(size = 23.dp, color = it) }, "Charts")
+                    DockItem("charts", { Lucide.ChartBar(size = 23.dp, color = it) }, "Analytics")
                 ),
                 activeId = if (current == NavScreen.Charts) "charts" else "transactions",
                 onSelect = { if (it == "charts") root(NavScreen.Charts) else root(NavScreen.Transactions) },

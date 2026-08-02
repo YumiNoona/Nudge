@@ -89,9 +89,9 @@ fun BackupScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onBack) { Text("← Back", color = Nc.inkSoft) }
+            IconButton(onClick = onBack) { Lucide.ChevronLeft(size = 21.dp, color = Nc.inkSoft) }
             Text("Data & Backup", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
-            Spacer(modifier = Modifier.width(64.dp))
+            Spacer(modifier = Modifier.width(48.dp))
         }
 
         Column(
@@ -104,24 +104,20 @@ fun BackupScreen(
             // Stats card
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
-                colors = CardDefaults.cardColors(containerColor = DS.AccentDeep)
+                colors = CardDefaults.cardColors(containerColor = Nc.accentBg)
             ) {
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("LOCAL DATA VAULT", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.2.sp, color = Color.White.copy(alpha = .55f))
-                            Text("Everything stays yours", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        }
-                        Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .08f)), contentAlignment = Alignment.Center) {
-                            Lucide.Shield(size = 20.dp, color = DS.Signal)
-                        }
-                    }
-                    Spacer(Modifier.height(18.dp))
+                Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 17.dp)) {
+                    Text("LOCAL DATA", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.2.sp, color = Nc.inkMute)
+                    Text("Your Nudge archive", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Nc.ink)
+                    Text("Ready to export or restore whenever you need it", fontSize = 10.sp, color = Nc.inkSoft)
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = Nc.inkMute.copy(alpha = .12f))
+                    Spacer(Modifier.height(13.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        StatItem("${transactions.size}", "Transactions", Color.White, Color.White.copy(alpha = .55f))
-                        StatItem("${categories.size}", "Categories", Color.White, Color.White.copy(alpha = .55f))
-                        StatItem("${accounts.size}", "Accounts", Color.White, Color.White.copy(alpha = .55f))
-                        StatItem("${budgets.size}", "Budgets", Color.White, Color.White.copy(alpha = .55f))
+                        StatItem("${transactions.size}", "Transactions")
+                        StatItem("${categories.size}", "Categories")
+                        StatItem("${accounts.size}", "Accounts")
+                        StatItem("${budgets.size}", "Budgets")
                     }
                 }
             }
@@ -151,7 +147,6 @@ fun BackupScreen(
                         Text("Export as JSON", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
                         Text("Standard unencrypted backup file", fontSize = 12.sp, color = Nc.inkMute)
                     }
-                    Text("↓", fontSize = 20.sp, color = Nc.accent)
                 }
             }
 
@@ -180,7 +175,6 @@ fun BackupScreen(
                         Text("Import from backup", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Nc.ink)
                         Text("Restore from a JSON backup file. Merges with existing data.", fontSize = 12.sp, color = Nc.inkMute)
                     }
-                    Text("↑", fontSize = 20.sp, color = Nc.accent)
                 }
             }
 

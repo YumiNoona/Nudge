@@ -47,7 +47,7 @@ object Lucide {
     @Composable fun PiggyBank(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Savings, modifier, color, size)
     @Composable fun Check(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Check, modifier, color, size)
     @Composable fun X(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Close, modifier, color, size)
-    @Composable fun ArrowLeft(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.ArrowBack, modifier, color, size)
+    @Composable fun ArrowLeft(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.ChevronLeft, modifier, color, size)
     @Composable fun ChevronLeft(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.ChevronLeft, modifier, color, size)
     @Composable fun ChevronRight(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.ChevronRight, modifier, color, size)
     @Composable fun Settings(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Settings, modifier, color, size)

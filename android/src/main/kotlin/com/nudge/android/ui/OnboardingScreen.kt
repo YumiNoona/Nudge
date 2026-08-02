@@ -7,11 +7,8 @@ import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,15 +27,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.nudge.android.R
 import com.nudge.android.ui.theme.*
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -71,11 +73,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(DS.AccentDeep), contentAlignment = Alignment.Center) {
-                Text("N", color = DS.Signal, fontWeight = FontWeight.Black, fontSize = 15.sp)
-            }
-            Spacer(Modifier.width(9.dp))
-            Text("Nudge", color = DSBridge.ink(), fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text("${pager.currentPage + 1} / 4", fontFamily = MonoFamily, color = DSBridge.inkMute(), fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
             if (pager.currentPage < 3) {
                 Text(
@@ -92,13 +90,16 @@ fun OnboardingScreen(onDone: () -> Unit) {
             modifier = Modifier.weight(1f),
             userScrollEnabled = true
         ) { page ->
-            AnimatedContent(
-                targetState = page,
-                transitionSpec = { fadeIn(tween(300)) togetherWith fadeOut(tween(180)) },
-                label = "onboardingPage",
-                modifier = Modifier.fillMaxSize()
-            ) { current ->
-                when (current) {
+            val pageOffset = ((pager.currentPage - page) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+            Box(
+                Modifier.fillMaxSize().graphicsLayer {
+                    alpha = 1f - (pageOffset * .24f)
+                    scaleX = 1f - (pageOffset * .045f)
+                    scaleY = 1f - (pageOffset * .045f)
+                    translationY = pageOffset * 18.dp.toPx()
+                }
+            ) {
+                when (page) {
                     0 -> WelcomePage()
                     1 -> CapturePage(
                         smsGranted = smsGranted,
@@ -106,7 +107,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                         onNotifications = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
                     )
                     2 -> PersonalizePage(name, { name = it }, currency, { currency = it })
-                    else -> ReadyPage(name.trim().ifBlank { "You" })
+                    else -> ReadyPage()
                 }
             }
         }
@@ -134,10 +135,12 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 color = DS.AccentDeep,
                 shadowElevation = 6.dp
             ) {
-                Row(Modifier.padding(horizontal = 20.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(start = 20.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (pager.currentPage == 3) "Start tracking" else "Continue", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(12.dp))
-                    Text("→", color = DS.Signal, fontSize = 18.sp)
+                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(10.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
+                        Lucide.ChevronRight(size = 17.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
+                    }
                 }
             }
         }
@@ -148,40 +151,33 @@ fun OnboardingScreen(onDone: () -> Unit) {
 @Composable
 private fun WelcomePage() {
     OnboardingFrame(
-        eyebrow = "PRIVATE BY DESIGN",
-        title = "Every expense,\nsettled quietly.",
-        body = "Nudge turns bank and UPI alerts into a clean money timeline—right on your phone."
+        eyebrow = "EFFORTLESS EXPENSES",
+        title = "Your money,\nin one calm place.",
+        body = "Bank and UPI alerts become a clean expense timeline—privately, right on your phone."
     ) {
-        Box(Modifier.fillMaxWidth().height(260.dp), contentAlignment = Alignment.Center) {
+        val motion = rememberInfiniteTransition(label = "welcomeIllustrationMotion")
+        val floatY by motion.animateFloat(
+            initialValue = -3f,
+            targetValue = 4f,
+            animationSpec = infiniteRepeatable(tween(2400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "welcomeIllustrationFloat"
+        )
+        Box(Modifier.fillMaxWidth().height(258.dp), contentAlignment = Alignment.Center) {
             Surface(
-                modifier = Modifier.width(278.dp).shadow(18.dp, RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = .12f)),
+                modifier = Modifier.fillMaxWidth().height(250.dp).shadow(16.dp, RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = .10f)),
                 shape = RoundedCornerShape(30.dp),
-                color = DS.AccentDeep
+                color = Color(0xFFF5F1E8)
             ) {
-                Column(Modifier.padding(22.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("This month", color = Color.White.copy(alpha = .62f), fontSize = 10.sp)
-                        Spacer(Modifier.weight(1f))
-                        Box(Modifier.size(8.dp).clip(CircleShape).background(DS.Signal))
+                Image(
+                    painter = painterResource(R.drawable.onboarding_finance_story_v2),
+                    contentDescription = "A person comfortably reviewing expenses on their phone",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().graphicsLayer {
+                        scaleX = 1.04f
+                        scaleY = 1.04f
+                        translationY = floatY.dp.toPx()
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Text("₹24,860", color = Color.White, fontFamily = MonoFamily, fontSize = 31.sp, fontWeight = FontWeight.Bold)
-                    Text("12% less than last month", color = DS.Signal, fontSize = 10.sp)
-                    Spacer(Modifier.height(22.dp))
-                    Surface(shape = RoundedCornerShape(18.dp), color = Color.White.copy(alpha = .1f)) {
-                        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(38.dp).clip(CircleShape).background(DS.Signal), contentAlignment = Alignment.Center) {
-                                Lucide.Check(size = 18.dp, strokeWidth = 2.dp, color = DS.InkPrimary)
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text("Swiggy", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                                Text("Food · captured now", color = Color.White.copy(alpha = .55f), fontSize = 9.sp)
-                            }
-                            Text("−₹640", color = Color.White, fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
-                }
+                )
             }
         }
     }
@@ -194,7 +190,19 @@ private fun CapturePage(smsGranted: Boolean, onSms: () -> Unit, onNotifications:
         title = "Your spending finds\nits own way in.",
         body = "Read only transaction alerts. Processing happens on-device and message content is never uploaded."
     ) {
-        Column(Modifier.fillMaxWidth().padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(176.dp),
+                shape = RoundedCornerShape(28.dp),
+                color = Color(0xFFF5F1E8),
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.onboarding_auto_capture_v2),
+                    contentDescription = "A private transaction alert becoming an organized expense",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             PermissionCard(
                 icon = { color -> Lucide.Shield(size = 20.dp, strokeWidth = 1.7.dp, color = color) },
                 title = "Bank & UPI SMS",
@@ -226,9 +234,9 @@ private fun PermissionCard(
     enabled: Boolean,
     onClick: () -> Unit
 ) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(20.dp), color = DSBridge.surface()) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (enabled) DS.Signal else DSBridge.accentBg()), contentAlignment = Alignment.Center) {
+    Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = DSBridge.surface()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(if (enabled) DS.Signal else DSBridge.accentBg()), contentAlignment = Alignment.Center) {
                 icon(if (enabled) DS.InkPrimary else DSBridge.accent())
             }
             Spacer(Modifier.width(12.dp))
@@ -246,42 +254,61 @@ private fun PersonalizePage(name: String, onName: (String) -> Unit, currency: St
     OnboardingFrame(
         eyebrow = "MAKE IT YOURS",
         title = "A money space\nthat feels personal.",
-        body = "Choose what Nudge calls you and how amounts appear. You can change these later."
+        body = "Choose your display name and how amounts appear. You can change both later."
     ) {
-        Column(Modifier.fillMaxWidth().padding(top = 22.dp)) {
-            Text("YOUR NAME", fontSize = 9.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute())
-            Spacer(Modifier.height(8.dp))
-            Surface(shape = RoundedCornerShape(17.dp), color = DSBridge.surface()) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Surface(shape = RoundedCornerShape(25.dp), color = DS.AccentDeep) {
+                Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
+                        Text(name.trim().take(1).ifBlank { "Y" }.uppercase(), color = DS.InkPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(13.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("YOUR MONEY SPACE", color = Color.White.copy(alpha = .52f), fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = .8.sp)
+                        Text(name.trim().ifBlank { "Make it yours" }, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text("Amounts shown in $currency", color = DS.Signal, fontSize = 9.sp)
+                    }
+                }
+            }
+            Surface(shape = RoundedCornerShape(19.dp), color = DSBridge.surface()) {
                 BasicTextField(
                     value = name,
                     onValueChange = onName,
                     singleLine = true,
                     textStyle = TextStyle(color = DSBridge.ink(), fontSize = 14.sp, fontWeight = FontWeight.Medium),
                     cursorBrush = SolidColor(DSBridge.accent()),
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     decorationBox = { field ->
-                        if (name.isBlank()) Text("What should we call you?", color = DSBridge.inkMute(), fontSize = 13.sp)
-                        field()
+                        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(DSBridge.accentBg()), contentAlignment = Alignment.Center) {
+                                Lucide.User(size = 17.dp, color = DSBridge.accent())
+                            }
+                            Spacer(Modifier.width(11.dp))
+                            Box(Modifier.weight(1f)) {
+                                if (name.isBlank()) Text("Your name", color = DSBridge.inkMute(), fontSize = 13.sp)
+                                field()
+                            }
+                        }
                     }
                 )
             }
-            Spacer(Modifier.height(18.dp))
-            Text("CURRENCY", fontSize = 9.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute())
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("DISPLAY CURRENCY", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(start = 3.dp, top = 4.dp))
+            Surface(shape = RoundedCornerShape(19.dp), color = DSBridge.surface()) {
+                Row(Modifier.fillMaxWidth().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£").forEach { (code, symbol) ->
                     val selected = code == currency
                     Surface(
                         onClick = { onCurrency(code) },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (selected) DS.AccentDeep else DSBridge.surface()
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) DS.Signal else Color.Transparent
                     ) {
-                        Column(Modifier.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(symbol, color = if (selected) DS.Signal else DSBridge.ink(), fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                            Text(code, color = if (selected) Color.White else DSBridge.inkMute(), fontSize = 9.sp)
+                        Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(symbol, color = if (selected) DS.InkPrimary else DSBridge.ink(), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text(code, color = if (selected) DS.InkPrimary else DSBridge.inkMute(), fontSize = 8.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
                         }
                     }
+                }
                 }
             }
         }
@@ -289,18 +316,23 @@ private fun PersonalizePage(name: String, onName: (String) -> Unit, currency: St
 }
 
 @Composable
-private fun ReadyPage(name: String) {
+private fun ReadyPage() {
     OnboardingFrame(
         eyebrow = "READY WHEN YOU ARE",
-        title = "Welcome home,\n$name.",
-        body = "Add your first expense or let Nudge capture the next one. Everything stays editable."
+        title = "Everything is ready.\nStart with clarity.",
+        body = "Add your first expense or let automatic capture handle the next one. Everything stays editable."
     ) {
-        Box(Modifier.fillMaxWidth().height(240.dp), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(118.dp).clip(CircleShape).background(DS.AccentSoft), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(82.dp).clip(CircleShape).background(DS.Signal), contentAlignment = Alignment.Center) {
-                    Lucide.Check(size = 36.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
-                }
-            }
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(250.dp).shadow(14.dp, RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = .09f)),
+            shape = RoundedCornerShape(30.dp),
+            color = Color(0xFFF5F1E8),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.onboarding_ready_v2),
+                contentDescription = "A person calmly reviewing an organized expense overview",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
@@ -309,14 +341,14 @@ private fun ReadyPage(name: String) {
 private fun OnboardingFrame(eyebrow: String, title: String, body: String, visual: @Composable () -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { visual() }
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { visual() }
         Text(eyebrow, color = DSBridge.accent(), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
         Spacer(Modifier.height(10.dp))
-        Text(title, color = DSBridge.ink(), fontSize = 34.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, letterSpacing = (-1).sp)
+        Text(title, color = DSBridge.ink(), fontSize = 34.sp, lineHeight = 36.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Start, letterSpacing = (-1).sp)
         Spacer(Modifier.height(12.dp))
-        Text(body, color = DSBridge.inkSoft(), fontSize = 13.sp, lineHeight = 20.sp, textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 330.dp))
+        Text(body, color = DSBridge.inkSoft(), fontSize = 13.sp, lineHeight = 20.sp, textAlign = TextAlign.Start, modifier = Modifier.widthIn(max = 330.dp))
         Spacer(Modifier.height(24.dp))
     }
 }

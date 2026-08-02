@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -23,13 +26,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.theme.Lucide
@@ -39,6 +46,7 @@ import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.DS
 import com.nudge.android.ui.theme.formatCents
 import java.util.Calendar
+import kotlin.math.absoluteValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,49 +212,70 @@ fun ManageAccountsScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AccountStackPreview(
     accounts: List<AccountEntity>,
     balanceFor: (String) -> Long,
     onOpen: (AccountEntity) -> Unit
 ) {
-    val stack = accounts.take(3)
-    Box(Modifier.fillMaxWidth().height(170.dp).padding(horizontal = 20.dp, vertical = 8.dp)) {
-        stack.mapIndexed { index, account -> index to account }.asReversed().forEach { (index, account) ->
+    val pagerState = rememberPagerState(pageCount = { accounts.size })
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalPager(
+            state = pagerState,
+            contentPadding = PaddingValues(horizontal = 30.dp),
+            pageSpacing = 11.dp,
+            modifier = Modifier.fillMaxWidth().height(176.dp),
+        ) { page ->
+            val account = accounts[page]
+            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+            val depth = pageOffset.absoluteValue.coerceIn(0f, 1f)
             val tint = NudgeColors.parse(account.color, DS.Accent)
-            val isTop = index == 0
-            Surface(
-                onClick = { if (isTop) onOpen(account) },
-                enabled = isTop,
-                modifier = Modifier.fillMaxWidth().height(132.dp)
-                    .offset(y = (index * 13).dp)
-                    .scale(1f - index * .038f)
-                    .rotate(if (index == 1) -1.1f else if (index == 2) 1.1f else 0f)
-                    .alpha(1f - index * .18f),
-                shape = RoundedCornerShape(24.dp),
-                color = if (isTop) tint else DS.AccentDeep,
-                shadowElevation = if (isTop) 12.dp else 2.dp
-            ) {
-                Box(Modifier.fillMaxSize().padding(20.dp)) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AccountIcon(account.accountType, Color.White, 20.dp)
-                            Spacer(Modifier.width(9.dp))
-                            Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                            Spacer(Modifier.weight(1f))
-                            if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text(
-                            listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
-                            fontFamily = MonoFamily,
-                            fontSize = 9.sp,
-                            color = Color.White.copy(alpha = .64f)
-                        )
+            Box(
+                Modifier.fillMaxWidth().height(146.dp).padding(top = 7.dp)
+                    .zIndex(1f - depth)
+                    .graphicsLayer {
+                        scaleX = 1f - depth * .075f
+                        scaleY = 1f - depth * .075f
+                        rotationY = pageOffset * -8f
+                        rotationZ = pageOffset * -1.3f
+                        translationY = depth * 13.dp.toPx()
+                        alpha = 1f - depth * .22f
+                        cameraDistance = 18f * density
                     }
-                    Text("TAP TO EDIT", fontFamily = MonoFamily, fontSize = 8.sp, color = Color.White.copy(alpha = .45f), modifier = Modifier.align(Alignment.BottomEnd))
+                    .shadow(16.dp, RoundedCornerShape(24.dp), spotColor = tint.copy(alpha = .24f))
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Brush.linearGradient(listOf(tint.copy(alpha = .94f), DS.AccentDeep)))
+                    .clickable { onOpen(account) }
+                    .padding(19.dp),
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        AccountIcon(account.accountType, Color.White, 20.dp)
+                        Spacer(Modifier.width(9.dp))
+                        Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                        Spacer(Modifier.weight(1f))
+                        if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
+                        fontFamily = MonoFamily,
+                        fontSize = 9.sp,
+                        color = Color.White.copy(alpha = .64f),
+                    )
                 }
+                Text("SWIPE · TAP TO EDIT", fontFamily = MonoFamily, fontSize = 7.sp, color = Color.White.copy(alpha = .46f), modifier = Modifier.align(Alignment.BottomEnd))
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+            accounts.indices.forEach { index ->
+                val selected = pagerState.currentPage == index
+                Box(
+                    Modifier.padding(horizontal = 3.dp).width(if (selected) 18.dp else 6.dp).height(5.dp)
+                        .clip(CircleShape).background(if (selected) Nc.accent else Nc.inkMute.copy(alpha = .25f)),
+                )
             }
         }
     }
