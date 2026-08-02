@@ -1,12 +1,6 @@
 package com.nudge.android.ui
 
-import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -36,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import com.nudge.android.R
 import com.nudge.android.ui.theme.*
 import kotlinx.coroutines.launch
@@ -51,14 +44,6 @@ fun OnboardingScreen(onDone: () -> Unit) {
     val pager = rememberPagerState(pageCount = { 4 })
     var name by remember { mutableStateOf(preferences.getString("display_name", "") ?: "") }
     var currency by remember { mutableStateOf(preferences.getString("currency_code", "INR") ?: "INR") }
-    var smsGranted by remember {
-        mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED)
-    }
-
-    val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        smsGranted = result.values.all { it }
-    }
-
     fun finish() {
         preferences.edit()
             .putBoolean("onboarding_complete", true)
@@ -101,11 +86,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             ) {
                 when (page) {
                     0 -> WelcomePage()
-                    1 -> CapturePage(
-                        smsGranted = smsGranted,
-                        onSms = { smsPermission.launch(arrayOf(Manifest.permission.RECEIVE_SMS, Manifest.permission.READ_SMS)) },
-                        onNotifications = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
-                    )
+                    1 -> CapturePage()
                     2 -> PersonalizePage(name, { name = it }, currency, { currency = it })
                     else -> ReadyPage()
                 }
@@ -184,67 +165,24 @@ private fun WelcomePage() {
 }
 
 @Composable
-private fun CapturePage(smsGranted: Boolean, onSms: () -> Unit, onNotifications: () -> Unit) {
+private fun CapturePage() {
     OnboardingFrame(
         eyebrow = "AUTOMATIC CAPTURE",
         title = "Your spending finds\nits own way in.",
-        body = "Read only transaction alerts. Processing happens on-device and message content is never uploaded."
+        body = "Read-only transaction alerts. Processing happens on-device and message content is never uploaded."
     ) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().height(176.dp),
-                shape = RoundedCornerShape(28.dp),
-                color = Color(0xFFF5F1E8),
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.onboarding_auto_capture_v2),
-                    contentDescription = "A private transaction alert becoming an organized expense",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            PermissionCard(
-                icon = { color -> Lucide.Shield(size = 20.dp, strokeWidth = 1.7.dp, color = color) },
-                title = "Bank & UPI SMS",
-                detail = if (smsGranted) "Ready to capture" else "Detect debits and credits",
-                enabled = smsGranted,
-                onClick = onSms
+        Surface(
+            modifier = Modifier.fillMaxWidth().height(292.dp)
+                .shadow(16.dp, RoundedCornerShape(30.dp), spotColor = Color.Black.copy(alpha = .10f)),
+            shape = RoundedCornerShape(30.dp),
+            color = Color(0xFFF5F1E8),
+        ) {
+            Image(
+                painter = painterResource(R.drawable.onboarding_auto_capture_v2),
+                contentDescription = "A private transaction alert becoming an organized expense",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
             )
-            PermissionCard(
-                icon = { color -> Lucide.Bell(size = 20.dp, strokeWidth = 1.7.dp, color = color) },
-                title = "Payment notifications",
-                detail = "GPay, PhonePe, Paytm and banks",
-                enabled = false,
-                onClick = onNotifications
-            )
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                Lucide.Shield(size = 14.dp, strokeWidth = 1.7.dp, color = DSBridge.inkMute())
-                Spacer(Modifier.width(6.dp))
-                Text("No account required · works offline", color = DSBridge.inkMute(), fontSize = 10.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PermissionCard(
-    icon: @Composable (Color) -> Unit,
-    title: String,
-    detail: String,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(onClick = onClick, shape = RoundedCornerShape(18.dp), color = DSBridge.surface()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(if (enabled) DS.Signal else DSBridge.accentBg()), contentAlignment = Alignment.Center) {
-                icon(if (enabled) DS.InkPrimary else DSBridge.accent())
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, color = DSBridge.ink(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(detail, color = DSBridge.inkMute(), fontSize = 10.sp)
-            }
-            Text(if (enabled) "Ready" else "Enable", color = if (enabled) DSBridge.positive() else DSBridge.accent(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -256,59 +194,66 @@ private fun PersonalizePage(name: String, onName: (String) -> Unit, currency: St
         title = "A money space\nthat feels personal.",
         body = "Choose your display name and how amounts appear. You can change both later."
     ) {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Surface(shape = RoundedCornerShape(25.dp), color = DS.AccentDeep) {
-                Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
-                        Text(name.trim().take(1).ifBlank { "Y" }.uppercase(), color = DS.InkPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
+        Surface(
+            modifier = Modifier.fillMaxWidth().shadow(14.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = .08f)),
+            shape = RoundedCornerShape(28.dp),
+            color = DSBridge.surface(),
+        ) {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp)).background(DSBridge.accentBg()), contentAlignment = Alignment.Center) {
+                        Text(name.trim().take(1).ifBlank { "Y" }.uppercase(), color = DSBridge.accent(), fontSize = 21.sp, fontWeight = FontWeight.Bold)
                     }
-                    Spacer(Modifier.width(13.dp))
+                    Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("YOUR MONEY SPACE", color = Color.White.copy(alpha = .52f), fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = .8.sp)
-                        Text(name.trim().ifBlank { "Make it yours" }, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        Text("Amounts shown in $currency", color = DS.Signal, fontSize = 9.sp)
+                        Text("DISPLAY NAME", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.sp, color = DSBridge.inkMute())
+                        Spacer(Modifier.height(6.dp))
+                        BasicTextField(
+                            value = name,
+                            onValueChange = { onName(it.take(32)) },
+                            singleLine = true,
+                            textStyle = TextStyle(color = DSBridge.ink(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+                            cursorBrush = SolidColor(DSBridge.accent()),
+                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(DSBridge.background()).padding(horizontal = 12.dp, vertical = 10.dp),
+                            decorationBox = { field ->
+                                Box {
+                                    if (name.isBlank()) Text("Your name", color = DSBridge.inkMute(), fontSize = 14.sp)
+                                    field()
+                                }
+                            },
+                        )
                     }
                 }
-            }
-            Surface(shape = RoundedCornerShape(19.dp), color = DSBridge.surface()) {
-                BasicTextField(
-                    value = name,
-                    onValueChange = onName,
-                    singleLine = true,
-                    textStyle = TextStyle(color = DSBridge.ink(), fontSize = 14.sp, fontWeight = FontWeight.Medium),
-                    cursorBrush = SolidColor(DSBridge.accent()),
-                    modifier = Modifier.fillMaxWidth(),
-                    decorationBox = { field ->
-                        Row(Modifier.fillMaxWidth().padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(DSBridge.accentBg()), contentAlignment = Alignment.Center) {
-                                Lucide.User(size = 17.dp, color = DSBridge.accent())
-                            }
-                            Spacer(Modifier.width(11.dp))
-                            Box(Modifier.weight(1f)) {
-                                if (name.isBlank()) Text("Your name", color = DSBridge.inkMute(), fontSize = 13.sp)
-                                field()
+                Spacer(Modifier.height(17.dp))
+                androidx.compose.material3.HorizontalDivider(color = DSBridge.inkMute().copy(alpha = .12f))
+                Spacer(Modifier.height(15.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Column(Modifier.weight(1f)) {
+                        Text("DISPLAY CURRENCY", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.sp, color = DSBridge.inkMute())
+                        Text("Used across your totals", fontSize = 10.sp, color = DSBridge.inkSoft())
+                    }
+                    Text(currency, fontFamily = MonoFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DSBridge.accent())
+                }
+                Spacer(Modifier.height(11.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£").forEach { (code, symbol) ->
+                        val selected = code == currency
+                        Surface(
+                            onClick = { onCurrency(code) },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (selected) DSBridge.accentBg() else DSBridge.background(),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (selected) DSBridge.accent().copy(alpha = .42f) else Color.Transparent,
+                            ),
+                        ) {
+                            Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(symbol, color = if (selected) DSBridge.accent() else DSBridge.ink(), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                                Text(code, color = if (selected) DSBridge.accent() else DSBridge.inkMute(), fontSize = 8.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
-                )
-            }
-            Text("DISPLAY CURRENCY", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(start = 3.dp, top = 4.dp))
-            Surface(shape = RoundedCornerShape(19.dp), color = DSBridge.surface()) {
-                Row(Modifier.fillMaxWidth().padding(6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£").forEach { (code, symbol) ->
-                    val selected = code == currency
-                    Surface(
-                        onClick = { onCurrency(code) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (selected) DS.Signal else Color.Transparent
-                    ) {
-                        Column(Modifier.padding(vertical = 9.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(symbol, color = if (selected) DS.InkPrimary else DSBridge.ink(), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            Text(code, color = if (selected) DS.InkPrimary else DSBridge.inkMute(), fontSize = 8.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
-                }
                 }
             }
         }

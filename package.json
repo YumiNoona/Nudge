@@ -3,14 +3,13 @@
   "private": true,
   "description": "Local-first, privacy-first personal finance tracker",
   "scripts": {
-    "dev": "cd web && npm run dev",
-    "build": "cd web && npm run build",
-    "landing": "cd web && npx serve public",
-    "web:dev": "cd web && npm run dev",
-    "web:build": "cd web && npm run build",
-    "web:install": "cd web && npm install",
-    "server:dev": "cd server && npm run dev",
-    "server:install": "cd server && npm install",
-    "install:all": "cd web && npm install && cd ../server && npm install"
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build",
+    "web:typecheck": "npm --prefix web run typecheck",
+    "server:dev": "npm --prefix server run dev",
+    "server:build": "npm --prefix server run build",
+    "install:all": "npm --prefix web install && npm --prefix server install"
   }
 }

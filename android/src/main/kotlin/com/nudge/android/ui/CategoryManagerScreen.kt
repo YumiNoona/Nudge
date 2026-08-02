@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -43,15 +46,6 @@ fun CategoryManagerScreen(
         Box(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp)) {
             IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
             Text("Categories", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
-            Button(
-                onClick = { creating = true },
-                modifier = Modifier.height(40.dp).align(Alignment.CenterEnd),
-                shape = RoundedCornerShape(13.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = DS.Signal, contentColor = DS.InkPrimary),
-                contentPadding = PaddingValues(horizontal = 11.dp)
-            ) {
-                Lucide.Plus(size = 17.dp, color = DS.InkPrimary)
-            }
         }
 
         Row(Modifier.padding(horizontal = 18.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -61,6 +55,7 @@ fun CategoryManagerScreen(
         }
 
         LazyColumn(
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -85,7 +80,28 @@ fun CategoryManagerScreen(
                     }
                 }
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            item { Spacer(Modifier.height(12.dp)) }
+        }
+
+        Box(
+            Modifier.fillMaxWidth().navigationBarsPadding().height(82.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(58.dp).offset(y = 4.dp).clip(RoundedCornerShape(17.dp))
+                    .background(DS.AccentDeep.copy(alpha = .88f))
+            )
+            Box(
+                Modifier.size(58.dp)
+                    .shadow(12.dp, RoundedCornerShape(17.dp), spotColor = DS.Signal.copy(alpha = .35f))
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(Brush.verticalGradient(listOf(Color(0xFFE8FF76), DS.Signal)))
+                    .border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape(17.dp))
+                    .clickable { creating = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Lucide.Plus(size = 23.dp, strokeWidth = 2.4.dp, color = DS.InkPrimary)
+            }
         }
     }
 

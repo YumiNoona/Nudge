@@ -32,6 +32,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.nudge.android.service.ExpenseReminderWorker
@@ -116,9 +117,6 @@ fun ExpenseSettingsScreen(
                     ) {
                         if (profileBitmap != null) Image(profileBitmap.asImageBitmap(), "Profile photo", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                         else Text(name.take(1).uppercase(), fontWeight = FontWeight.Bold, color = DSBridge.accent())
-                        Box(Modifier.align(Alignment.BottomEnd).size(20.dp).clip(CircleShape).background(DS.Signal), contentAlignment = Alignment.Center) {
-                            Lucide.Camera(size = 12.dp, color = DS.InkPrimary)
-                        }
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(
@@ -248,7 +246,7 @@ fun ExpenseSettingsScreen(
             SettingsGroup {
                 Row(Modifier.fillMaxWidth().clickable(onClick = onToggleTheme).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (isDark) Lucide.Moon(size = 18.dp, color = DSBridge.accent()) else Lucide.Sun(size = 18.dp, color = DSBridge.accent())
-                    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("Theme", color = DSBridge.ink()); Text(if (isDark) "Dark" else "Light", fontSize = 10.sp, color = DSBridge.inkMute()) }; Lucide.ChevronRight(size = 17.dp, color = DSBridge.inkMute())
+                    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("Theme", color = DSBridge.ink()); Text(if (isDark) "Dark" else "Light", fontSize = 10.sp, color = DSBridge.inkMute()) }
                 }
             }
             Text("Nudge parses locally. Source bodies are Keystore-encrypted when saving is enabled and are excluded from normal backup exports.", fontSize = 10.sp, lineHeight = 15.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(8.dp))
@@ -267,14 +265,14 @@ fun ExpenseSettingsScreen(
                 if (photoPath != null) TextButton(onClick = {
                     runCatching { File(photoPath!!).delete() }
                     photoPath = null
-                    prefs.edit().remove("profile_photo_path").commit()
+                    prefs.edit().remove("profile_photo_path").apply()
                 }) { Lucide.Trash2(size = 17.dp, color = DS.Negative); Spacer(Modifier.width(7.dp)); Text("Remove photo", color = DS.Negative) }
             }
         },
         confirmButton = {
             Button(onClick = {
                 name = nameDraft.trim().ifBlank { "You" }
-                prefs.edit().putString("display_name", name).commit()
+                prefs.edit().putString("display_name", name).apply()
                 editName = false
             }) { Text("Save") }
         },
@@ -306,7 +304,7 @@ private fun CompactSwitch(checked: Boolean, onCheckedChange: (Boolean) -> Unit) 
             .clickable { onCheckedChange(!checked) },
     ) {
         Box(
-            Modifier.offset(x = thumbOffset, y = 3.dp).size(20.dp).clip(CircleShape)
+            Modifier.offset { IntOffset(thumbOffset.roundToPx(), 3.dp.roundToPx()) }.size(20.dp).clip(CircleShape)
                 .background(if (checked) MaterialTheme.colorScheme.onPrimary else DSBridge.surface()),
         )
     }

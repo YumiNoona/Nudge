@@ -1,18 +1,13 @@
 package com.nudge.android.ui
 
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -130,44 +123,26 @@ fun ManageAccountsScreen(
                 }
             }
         } else {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
-                    Text("YOUR ACCOUNTS", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = Nc.inkMute, modifier = Modifier.padding(vertical = 4.dp))
-                }
-                items(visibleAccounts, key = { it.id }) { account ->
-                    val balance = accountBalance(account.id)
-                    AccountCard(
-                        account = account,
-                        balance = balance,
-                        onClick = {
-                            editingAccount = account
-                            showSheet = true
-                        }
-                    )
-                }
-                item { Spacer(Modifier.height(80.dp)) }
-            }
+            Spacer(Modifier.weight(1f))
         }
 
-        Button(
-            onClick = {
-                editingAccount = null
-                showSheet = true
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = DS.Signal, contentColor = DS.InkPrimary)
-        ) {
-            Lucide.Plus(size = 18.dp, strokeWidth = 2.dp, color = DS.InkPrimary)
-            Spacer(Modifier.width(8.dp))
-            Text("Add Account", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.fillMaxWidth().padding(bottom = 18.dp), contentAlignment = Alignment.Center) {
+            Surface(
+                onClick = {
+                    editingAccount = null
+                    showSheet = true
+                },
+                shape = RoundedCornerShape(16.dp),
+                color = DS.Signal,
+                contentColor = DS.InkPrimary,
+                shadowElevation = 8.dp,
+            ) {
+                Row(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Lucide.Plus(size = 18.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
+                    Spacer(Modifier.width(7.dp))
+                    Text("Add account", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 
@@ -223,50 +198,66 @@ private fun AccountStackPreview(
     Column(Modifier.fillMaxWidth()) {
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 30.dp),
-            pageSpacing = 11.dp,
-            modifier = Modifier.fillMaxWidth().height(176.dp),
+            contentPadding = PaddingValues(horizontal = 38.dp),
+            pageSpacing = 14.dp,
+            modifier = Modifier.fillMaxWidth().height(194.dp),
         ) { page ->
             val account = accounts[page]
             val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
             val depth = pageOffset.absoluteValue.coerceIn(0f, 1f)
             val tint = NudgeColors.parse(account.color, DS.Accent)
-            Box(
-                Modifier.fillMaxWidth().height(146.dp).padding(top = 7.dp)
-                    .zIndex(1f - depth)
-                    .graphicsLayer {
-                        scaleX = 1f - depth * .075f
-                        scaleY = 1f - depth * .075f
-                        rotationY = pageOffset * -8f
-                        rotationZ = pageOffset * -1.3f
-                        translationY = depth * 13.dp.toPx()
-                        alpha = 1f - depth * .22f
-                        cameraDistance = 18f * density
-                    }
-                    .shadow(16.dp, RoundedCornerShape(24.dp), spotColor = tint.copy(alpha = .24f))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Brush.linearGradient(listOf(tint.copy(alpha = .94f), DS.AccentDeep)))
-                    .clickable { onOpen(account) }
-                    .padding(19.dp),
-            ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AccountIcon(account.accountType, Color.White, 20.dp)
-                        Spacer(Modifier.width(9.dp))
-                        Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-                        Spacer(Modifier.weight(1f))
-                        if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text(
-                        listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
-                        fontFamily = MonoFamily,
-                        fontSize = 9.sp,
-                        color = Color.White.copy(alpha = .64f),
+            Box(Modifier.fillMaxWidth().height(184.dp).padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
+                val backCount = minOf(2, accounts.size - 1)
+                for (stackDepth in backCount downTo 1) {
+                    val backAccount = accounts[(page + stackDepth).mod(accounts.size)]
+                    val backTint = NudgeColors.parse(backAccount.color, DS.Accent)
+                    Box(
+                        Modifier.fillMaxWidth().height(146.dp)
+                            .padding(horizontal = (stackDepth * 10).dp)
+                            .offset(y = (stackDepth * 11).dp)
+                            .scale(1f - stackDepth * .035f)
+                            .zIndex((2 - stackDepth).toFloat())
+                            .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = backTint.copy(alpha = .18f))
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Brush.linearGradient(listOf(backTint.copy(alpha = .82f), DS.AccentDeep)))
                     )
                 }
-                Text("SWIPE · TAP TO EDIT", fontFamily = MonoFamily, fontSize = 7.sp, color = Color.White.copy(alpha = .46f), modifier = Modifier.align(Alignment.BottomEnd))
+                Box(
+                    Modifier.fillMaxWidth().height(146.dp)
+                        .zIndex(3f)
+                        .graphicsLayer {
+                            scaleX = 1f - depth * .07f
+                            scaleY = 1f - depth * .07f
+                            rotationY = pageOffset * -9f
+                            rotationZ = pageOffset * -1.8f
+                            translationY = depth * 12.dp.toPx()
+                            alpha = 1f - depth * .20f
+                            cameraDistance = 18f * density
+                        }
+                        .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = tint.copy(alpha = .26f))
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Brush.linearGradient(listOf(tint.copy(alpha = .96f), DS.AccentDeep)))
+                        .clickable { onOpen(account) }
+                        .padding(19.dp),
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AccountIcon(account.accountType, Color.White, 20.dp)
+                            Spacer(Modifier.width(9.dp))
+                            Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+                            Spacer(Modifier.weight(1f))
+                            if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
+                            fontFamily = MonoFamily,
+                            fontSize = 9.sp,
+                            color = Color.White.copy(alpha = .64f),
+                        )
+                    }
+                }
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -275,74 +266,6 @@ private fun AccountStackPreview(
                 Box(
                     Modifier.padding(horizontal = 3.dp).width(if (selected) 18.dp else 6.dp).height(5.dp)
                         .clip(CircleShape).background(if (selected) Nc.accent else Nc.inkMute.copy(alpha = .25f)),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountCard(
-    account: AccountEntity,
-    balance: Long,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(if (isPressed) 0.97f else 1f, label = "press")
-
-    val tint = if (account.color.equals("#6366F1", true)) Color(0xFF3E6F8E)
-        else NudgeColors.parse(account.color, Nc.accent)
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Nc.surface)
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(tint.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center
-            ) {
-                AccountIcon(account.accountType, tint, 22.dp)
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    account.name,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Nc.ink
-                )
-                Text(
-                    account.accountType.replace("_", " ").replaceFirstChar { it.uppercase() },
-                    fontSize = 12.sp,
-                    color = Nc.inkSoft
-                )
-                if (account.isDefault) {
-                    Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Nc.accent)
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    "₹${String.format("%,.2f", balance / 100.0)}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (balance >= 0) Nc.accent else Nc.negative
-                )
-                Text(
-                    "balance",
-                    fontSize = 10.sp,
-                    color = Nc.inkMute
                 )
             }
         }

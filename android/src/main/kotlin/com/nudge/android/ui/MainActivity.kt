@@ -85,8 +85,16 @@ private fun Intent?.toWidgetAction(): WidgetAction = when {
     else -> WidgetAction.NONE
 }
 
-// Legacy values remain temporarily so old, disconnected screens still compile.
-enum class NavScreen { History, Charts, Settings, Review, Accounts, Categories, Backup, SavedMessages, Permissions, Home, More, Transactions, Wallet, Achievements, Challenges, Goals, Subscriptions, Budget, Envelope, Sync }
+private enum class NavScreen {
+    Transactions,
+    Charts,
+    Settings,
+    Review,
+    Accounts,
+    Categories,
+    Backup,
+    SavedMessages,
+}
 
 @Composable
 private fun ExpenseNavHost(
@@ -155,7 +163,7 @@ private fun ExpenseNavHost(
             label = "expenseDestination"
         ) { screen ->
             when (screen) {
-                NavScreen.History, NavScreen.Home, NavScreen.Transactions -> HistoryScreen(
+                NavScreen.Transactions -> HistoryScreen(
                     transactions = transactions,
                     categories = categories,
                     accounts = accounts,
@@ -169,7 +177,7 @@ private fun ExpenseNavHost(
                     onDelete = viewModel::deleteTransaction
                 )
                 NavScreen.Charts -> ChartsScreen(transactions, categories)
-                NavScreen.Settings, NavScreen.More -> ExpenseSettingsScreen(
+                NavScreen.Settings -> ExpenseSettingsScreen(
                     isDark = isDark,
                     captureEnabled = captureEnabled,
                     notificationEnabled = notificationEnabled,
@@ -200,7 +208,7 @@ private fun ExpenseNavHost(
                     onDismiss = viewModel::rejectTransaction,
                     onBack = ::back
                 )
-                NavScreen.Accounts, NavScreen.Wallet -> ManageAccountsScreen(
+                NavScreen.Accounts -> ManageAccountsScreen(
                     accounts, transactions,
                     onAdd = viewModel::saveAccount,
                     onUpdate = viewModel::saveAccount,
@@ -220,15 +228,10 @@ private fun ExpenseNavHost(
                     onRetentionChanged = viewModel::applySourceRetention,
                     onBack = ::back
                 )
-                else -> HistoryScreen(
-                    transactions, categories, accounts, sources, viewModel::decryptSourceBody, captureEnabled,
-                    { push(NavScreen.Settings) }, { push(NavScreen.Review) }, { showAdd = true },
-                    viewModel::updateTransaction, viewModel::deleteTransaction
-                )
             }
         }
 
-        if (current == NavScreen.History || current == NavScreen.Charts || current == NavScreen.Home || current == NavScreen.Transactions) {
+        if (current == NavScreen.Charts || current == NavScreen.Transactions) {
             BottomDock(
                 items = listOf(
                     DockItem("transactions", { Lucide.ListTodo(size = 23.dp, color = it) }, "Transactions", transactions.count { !it.isReviewed }),

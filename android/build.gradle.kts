@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     kotlin("android")
@@ -8,6 +10,9 @@ plugins {
 
 kotlin {
     jvmToolchain(17)
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 java {
@@ -43,10 +48,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -88,9 +89,6 @@ dependencies {
     // Security
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // DataStore
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
-
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
@@ -102,16 +100,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
 
-    // Haze — backdrop blur
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
-
-    // ML Kit — on-device text recognition (receipt scanning)
+    // ML Kit — on-device card-number recognition
     implementation("com.google.mlkit:text-recognition:16.0.1")
-
-    // CameraX — receipt capture
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

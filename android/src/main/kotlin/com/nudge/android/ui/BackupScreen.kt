@@ -60,6 +60,8 @@ fun BackupScreen(
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteText by remember { mutableStateOf("") }
+    val exportActionColor = Color(0xFF149A8B)
+    val importActionColor = Color(0xFFE38B42)
 
     // File saver for export
     val exportLauncher = rememberLauncherForActivityResult(
@@ -128,6 +130,7 @@ fun BackupScreen(
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
                 colors = CardDefaults.cardColors(containerColor = Nc.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, exportActionColor.copy(alpha = .20f)),
                 modifier = Modifier.clickable {
                     exportLauncher.launch("nudge-backup-${java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())}.json")
                 }
@@ -139,8 +142,8 @@ fun BackupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Nc.accentBg), contentAlignment = Alignment.Center) {
-                        Lucide.Download(size = 20.dp, color = Nc.accent)
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(exportActionColor.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                        Lucide.Download(size = 20.dp, color = exportActionColor)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -156,6 +159,7 @@ fun BackupScreen(
             Card(
                 shape = RoundedCornerShape(NudgeRadius.LG),
                 colors = CardDefaults.cardColors(containerColor = Nc.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, importActionColor.copy(alpha = .20f)),
                 modifier = Modifier.clickable {
                     importLauncher.launch(arrayOf("application/json", "*/*"))
                 }
@@ -167,8 +171,8 @@ fun BackupScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Nc.accentBg), contentAlignment = Alignment.Center) {
-                        Lucide.Database(size = 20.dp, color = Nc.accent)
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(importActionColor.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                        Lucide.Database(size = 20.dp, color = importActionColor)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -206,7 +210,7 @@ fun BackupScreen(
                         OutlinedButton(
                             onClick = { showDeleteConfirm = true },
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Nc.negative),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                                 brush = androidx.compose.ui.graphics.SolidColor(Nc.negative)
                             )
                         ) {
@@ -346,6 +350,13 @@ private suspend fun exportToUri(
     }
 }
 
+private fun JSONObject.optionalString(key: String): String? =
+    opt(key)
+        ?.takeUnless { it == JSONObject.NULL }
+        ?.toString()
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+
 private suspend fun importFromUri(
     context: Context,
     uri: Uri,
@@ -368,12 +379,12 @@ private suspend fun importFromUri(
                     amountCents = obj.optLong("amountCents", 0),
                     type = obj.optString("type", "debit"),
                     merchantRaw = obj.optString("merchantRaw", "Imported"),
-                    merchantNormalized = obj.optString("merchantNormalized", null).ifEmpty { null },
-                    categoryId = obj.optString("categoryId", null).ifEmpty { null },
+                    merchantNormalized = obj.optionalString("merchantNormalized"),
+                    categoryId = obj.optionalString("categoryId"),
                     accountId = obj.optString("accountId", ""),
                     source = obj.optString("source", "csv_import"),
                     isReviewed = obj.optBoolean("isReviewed", true),
-                    note = obj.optString("note", null).ifEmpty { null },
+                    note = obj.optionalString("note"),
                     timestampEpoch = obj.optLong("timestampEpoch", System.currentTimeMillis()),
                     confidenceScore = obj.optDouble("confidenceScore", 1.0).toFloat()
                 )
@@ -389,8 +400,8 @@ private suspend fun importFromUri(
                 val cat = CategoryEntity(
                     id = obj.optString("id", com.nudge.util.IdGenerator.generate()),
                     name = obj.optString("name", "Imported"),
-                    icon = obj.optString("icon", null).ifEmpty { null },
-                    color = obj.optString("color", null).ifEmpty { null },
+                    icon = obj.optionalString("icon"),
+                    color = obj.optionalString("color"),
                     type = obj.optString("type", "expense"),
                     monthlyBudgetCents = obj.optLong("monthlyBudgetCents", 0).takeIf { it > 0 }
                 )
@@ -406,10 +417,10 @@ private suspend fun importFromUri(
                     AccountEntity(
                         id = obj.optString("id", com.nudge.util.IdGenerator.generate()),
                         name = obj.optString("name", "Imported account"),
-                        bankName = obj.optString("bankName", "").ifEmpty { null },
+                        bankName = obj.optionalString("bankName"),
                         accountType = obj.optString("accountType", "cash"),
-                        last4Digits = obj.optString("last4Digits", "").ifEmpty { null },
-                        color = obj.optString("color", "").ifEmpty { null },
+                        last4Digits = obj.optionalString("last4Digits"),
+                        color = obj.optionalString("color"),
                         isDefault = obj.optBoolean("isDefault", false),
                         isArchived = obj.optBoolean("isArchived", false),
                         balanceCents = if (obj.isNull("balanceCents")) null else obj.optLong("balanceCents")
@@ -425,7 +436,7 @@ private suspend fun importFromUri(
                 viewModel.importBudget(
                     BudgetEntity(
                         id = obj.optString("id", com.nudge.util.IdGenerator.generate()),
-                        categoryId = obj.optString("categoryId", "").ifEmpty { null },
+                        categoryId = obj.optionalString("categoryId"),
                         amountCents = obj.optLong("amountCents", 0),
                         period = obj.optString("period", "monthly"),
                         rolloverEnabled = obj.optBoolean("rolloverEnabled", false),

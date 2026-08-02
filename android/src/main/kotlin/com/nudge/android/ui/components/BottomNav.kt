@@ -42,8 +42,8 @@ fun BottomDock(
     items: List<DockItem>,
     activeId: String,
     onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
     onFabClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier
 ) {
     val actionIndex = if (onFabClick != null) items.size / 2 else -1
     val localContext = LocalContext.current

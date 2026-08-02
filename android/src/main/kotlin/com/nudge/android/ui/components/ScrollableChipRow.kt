@@ -8,11 +8,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.nudge.android.ui.theme.Nc
 
 @Composable
@@ -49,29 +46,4 @@ fun <T> ScrollableChipRow(
             )
         }
     }
-}
-
-// Convenience for simple string-labeled chips
-@Composable
-fun StringChipRow(
-    items: List<String>,
-    selected: String,
-    onSelect: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ScrollableChipRow(
-        items = items,
-        selected = selected,
-        onSelect = onSelect,
-        modifier = modifier,
-        label = { item ->
-            Text(
-                item,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                textAlign = TextAlign.Center
-            )
-        }
-    )
 }

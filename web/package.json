@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "npx vite build",
     "typecheck": "npx tsc --noEmit",
-    "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx"
+    "preview": "vite preview"
   },
   "dependencies": {
     "dexie": "^4.0.1",
