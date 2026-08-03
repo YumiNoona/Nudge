@@ -9,6 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
+    <img src="https://img.shields.io/badge/Version-1.0.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 1.0.0" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -19,7 +20,7 @@
 
 Nudge is a personal expense manager built around one idea: routine transaction logging should require almost no effort. The Android app can read bank SMS messages and payment-app notifications, parse transaction details on the device, reject duplicates, learn from review decisions, and place the result into a focused transaction timeline.
 
-The mobile app is the primary product in this repository. The `web/` dashboard and `server/` relay are experimental companion surfaces and are not currently required by, or feature-equivalent to, the Android app.
+Nudge is an Android-only product. The repository contains the mobile application plus its internal shared Kotlin parsing module; there are no web dashboards, browser bundles, or relay services.
 
 ## Highlights
 
@@ -29,7 +30,7 @@ The mobile app is the primary product in this repository. The `web/` dashboard a
 | Local parsing | Bundled bank/payment templates, heuristic fallback parsing, merchant normalization, and confidence scoring |
 | Smart review | Confirm, correct, categorize, or reject uncertain captures; local rules remember merchant corrections and repeated rejection patterns |
 | Duplicate protection | Source IDs, message fingerprints, time/amount matching, and learned identities prevent rescanned messages from creating the same transaction again |
-| Manual entry | Haptic numeric keypad, expense/income/refund types, category grid, account grid, merchant, and notes |
+| Manual entry | Haptic numeric keypad, expense/income/refund types, horizontal category grid, account grid, and merchant |
 | Transaction timeline | Search, type filters, smart-capture filter, editable entries, source-message access, and swipe-dismiss capture feedback |
 | Analytics | Monthly expense mix, category shares, and daily money-in/money-out rhythm |
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
@@ -40,6 +41,9 @@ The mobile app is the primary product in this repository. The `web/` dashboard a
 | Widgets | Compact, snapshot, and expanded home-screen widgets with responsive layouts |
 | Polish | Dark/light themes, JetBrains Mono typography, Lucide-style icons, semantic haptics, and Compose micro-interactions |
 | Reminders | Optional daily expense check-ins with rotating copy and Android notification-permission handling |
+| Guided start | A replayable seven-step product tour covering entry, capture, review, analytics, privacy, and customization |
+| Updates | Automatic daily and manual GitHub Release checks with an update-available prompt and APK/release link |
+| Support | An optional UPI donation screen with a scannable QR, copyable ID, and UPI deep link |
 
 ## Product flow
 
@@ -74,10 +78,10 @@ Manual transactions enter the same local database and therefore appear everywher
 
 ## Privacy and security
 
-Nudge is designed to operate without a user account or a mobile network connection.
+Nudge is designed to operate without a user account. Expense tracking, parsing, learning, and storage continue to work offline.
 
 - SMS and notification text is parsed on the Android device.
-- The Android app has no internet permission in its current mobile configuration.
+- Internet access is used only to read public release metadata from `api.github.com` when checking for app updates. Financial data is never included in that request.
 - Transaction data is stored in a local Room database.
 - Android system backup is disabled for the application.
 - A source message body is retained only when **Save transaction messages** is enabled.
@@ -94,6 +98,7 @@ Nudge is designed to operate without a user account or a mobile network connecti
 | Notification access | Read transaction notifications from payment and banking apps | Optional; required for notification capture |
 | Camera | Scan limited card metadata while creating a card account | Optional |
 | Notifications | Show user-enabled expense reminders | Optional |
+| Internet | Check the public Nudge GitHub Releases feed for a newer app version | Optional; expense tracking remains offline |
 | Vibration | Haptic feedback for keypad and important actions | Optional experience enhancement |
 
 All permission controls remain available from the app's Settings screen.
@@ -144,6 +149,9 @@ Transactions <-> Analytics
              +-> Categories
              +-> Data & backup
              +-> Saved messages
+             +-> App tour
+             +-> Check for updates
+             +-> Support Nudge
 ```
 
 ## Shared parsing module
@@ -168,11 +176,6 @@ Keeping parsing and classification logic outside the Compose layer makes it test
 - JDK 17
 - Android device or emulator running Android 8.0 / API 26 or newer
 - Windows PowerShell or Command Prompt for the included `gradlew.bat`
-
-### Optional web/server work
-
-- Node.js 18 or newer
-- npm
 
 ## Build and run
 
@@ -203,6 +206,19 @@ android/build/outputs/apk/debug/android-debug.apk
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
 
+## Publishing an Android update
+
+The app checks `https://api.github.com/repos/YumiNoona/Nudge/releases/latest` at most once every 24 hours while it is opened. Users can also run an immediate check from **Settings → Check for updates**.
+
+For each public update:
+
+1. Increase both `versionCode` and `versionName` in `android/build.gradle.kts`. Android requires every installable update to have a higher `versionCode`.
+2. Build and verify the release APK.
+3. Create a public GitHub Release with a semantic tag such as `v1.0.1`.
+4. Attach an `.apk` file to that release.
+
+Nudge compares the release tag with its installed `versionName`. If the tag is newer, the app presents the release notes and links directly to the attached APK; when no APK is attached, it opens the GitHub Release page instead. Installation remains an explicit user action.
+
 ## Verification commands
 
 Run the Android and shared unit tests:
@@ -224,31 +240,6 @@ Run the complete local verification used before producing an APK:
 ```
 
 The lint report is generated at `android/build/reports/lint-results-debug.html`.
-
-## Optional companion projects
-
-### Web prototype
-
-The React/Vite project is an experimental interface and should not be treated as mobile feature parity.
-
-```powershell
-cd web
-npm install
-npm run typecheck
-npm run build
-npm run dev
-```
-
-### Sync relay prototype
-
-The Express/sql.js relay is experimental and is not connected to the current Android build.
-
-```powershell
-cd server
-npm install
-npm run build
-npm run dev
-```
 
 ## Data import and export
 

@@ -4,6 +4,8 @@ import com.nudge.model.TransactionType
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DefaultSmsParserEngineTest {
     private val parser = DefaultSmsParserEngine()
@@ -56,5 +58,35 @@ class DefaultSmsParserEngineTest {
         )
 
         assertEquals("Anomaly", result.merchantNormalized)
+    }
+
+    @Test
+    fun ignoresIciciCreditCardStatementDueNotice() {
+        val result = parser.parse(
+            "ICICI Bank Credit Card XX4008 Statement is sent to ru**************01@gmail.com. " +
+                "Total of Rs 77,336.90 or minimum of Rs 22,760.00 is due by 12-AUG-26.",
+            "AX-ICICIT-S",
+        )
+
+        assertNull(result)
+        assertTrue(parser.isWhitelisted("AX-ICICIT-S"))
+    }
+
+    @Test
+    fun ignoresCreditCardStatementAndMinimumDueVariants() {
+        assertNull(parser.parse("Your credit card statement is generated. Total amount due INR 18,200 by 05 Aug.", "HDFCBK"))
+        assertNull(parser.parse("Credit card ending 4008 has minimum amount due Rs 2,000. Payment due by 12-AUG-26.", "ICICIT"))
+    }
+
+    @Test
+    fun stillParsesRealIciciCardSpendAndCredit() {
+        val spend = assertNotNull(
+            parser.parse("INR 1,003.99 spent using ICICI Bank Card XX4008 on 25-Jul-2026 on SWIGGY.", "AX-ICICIT-S"),
+        )
+        val credit = assertNotNull(parser.parse("Rs 5,000 credited to your a/c XX4008", "AX-ICICIT-S"))
+
+        assertEquals(TransactionType.DEBIT, spend.type)
+        assertEquals("Swiggy", spend.merchantNormalized)
+        assertEquals(TransactionType.CREDIT, credit.type)
     }
 }

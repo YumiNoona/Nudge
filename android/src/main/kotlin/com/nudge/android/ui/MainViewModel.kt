@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.nudge.android.service.TransactionCaptureProcessor
 import com.nudge.engine.MerchantNormalizer
+import com.nudge.engine.TransactionMessageGuard
 import com.nudge.android.widget.NudgeWidget
 import androidx.glance.appwidget.updateAll
 
@@ -54,6 +55,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         // Seed defaults on first run
         viewModelScope.launch {
             DefaultsSeeder.seedIfEmpty(db)
+            removeInvalidCapturedStatements()
             repairCapturedMerchantNames()
         }
 
@@ -584,6 +586,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
         }
+    }
+
+    private suspend fun removeInvalidCapturedStatements() {
+        db.transactionDao().getAllOnce()
+            .filter { transaction ->
+                transaction.source != "manual" && !transaction.isReviewed && transaction.confidenceScore < .72f
+            }
+            .forEach { transaction ->
+                val savedSource = db.savedSourceMessageDao().getByTransaction(transaction.id)
+                val sourceText = savedSource?.encryptedBody?.let { encrypted ->
+                    runCatching { sourceCrypto.decrypt(encrypted) }.getOrNull()
+                }
+                val isStatement = sourceText?.let(TransactionMessageGuard::isNonTransaction) == true ||
+                    TransactionMessageGuard.isStatementExtractionArtifact(transaction.merchantRaw)
+                if (isStatement) db.transactionDao().deleteById(transaction.id)
+            }
     }
 
     private fun getUserId(): String {

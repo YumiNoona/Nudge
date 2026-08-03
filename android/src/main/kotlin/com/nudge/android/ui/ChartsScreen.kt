@@ -32,6 +32,7 @@ import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.components.DonutChart
 import com.nudge.android.ui.components.DonutSegment
+import com.nudge.android.ui.components.NudgeHeroCard
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -294,11 +295,8 @@ private fun InsightCard(label: String, value: String, subtext: String, color: Co
 
 @Composable
 private fun CategoryAnalyticsCard(categorySpending: List<Triple<String, Color, Long>>, totalSpend: Long) {
-    Surface(
+    NudgeHeroCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(25.dp),
-        color = DSBridge.accentBg(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.accent().copy(alpha = .12f)),
     ) {
         Column(Modifier.padding(18.dp)) {
             Surface(shape = RoundedCornerShape(50), color = DS.Signal) {

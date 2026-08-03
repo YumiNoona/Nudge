@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.nudge.android.BuildConfig
 import com.nudge.android.service.ExpenseReminderWorker
 import com.nudge.android.ui.theme.*
 import com.nudge.android.widget.NudgeWidgetReceiver
@@ -59,7 +60,11 @@ fun ExpenseSettingsScreen(
     onAccounts: () -> Unit,
     onCategories: () -> Unit,
     onBackup: () -> Unit,
-    onSavedMessages: () -> Unit
+    onSavedMessages: () -> Unit,
+    onDonate: () -> Unit,
+    onAppTour: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    updateStatus: String?,
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
@@ -250,6 +255,21 @@ fun ExpenseSettingsScreen(
                 }
             }
             Text("Nudge parses locally. Source bodies are Keystore-encrypted when saving is enabled and are excluded from normal backup exports.", fontSize = 10.sp, lineHeight = 15.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(8.dp))
+
+            Text("ABOUT", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
+            SettingsGroup {
+                SettingsRow({ m, c, s, sw -> Lucide.Info(m, c, s, sw) }, "App tour", "Replay the 7-step guide", true, onAppTour)
+                HorizontalDivider(color = DSBridge.background())
+                SettingsRow(
+                    { m, c, s, sw -> Lucide.RefreshCw(m, c, s, sw) },
+                    "Check for updates",
+                    updateStatus ?: "Version ${BuildConfig.VERSION_NAME}",
+                    true,
+                    onCheckUpdates,
+                )
+                HorizontalDivider(color = DSBridge.background())
+                SettingsRow({ m, c, s, sw -> Lucide.QrCode(m, c, s, sw) }, "Support Nudge", "Donate with any UPI app", true, onDonate)
+            }
             Spacer(Modifier.height(30.dp))
         }
     }

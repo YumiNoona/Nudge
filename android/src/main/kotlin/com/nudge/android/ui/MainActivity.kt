@@ -4,8 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -28,10 +30,15 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import com.nudge.android.BuildConfig
 import com.nudge.android.ui.components.BottomDock
 import com.nudge.android.ui.components.DockItem
 import com.nudge.android.ui.theme.Lucide
 import com.nudge.android.ui.theme.NudgeTheme
+import com.nudge.android.update.GitHubRelease
+import com.nudge.android.update.GitHubUpdateChecker
+import com.nudge.android.update.UpdateCheckResult
 
 class MainActivity : ComponentActivity() {
     private val pendingAction = MutableStateFlow(WidgetAction.NONE)
@@ -45,19 +52,82 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
             var dark by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
             var onboardingDone by remember { mutableStateOf(prefs.getBoolean("onboarding_complete", false)) }
+            var tourDone by remember { mutableStateOf(prefs.getBoolean("product_tour_v1_complete", false)) }
+            var availableUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
+            var updateStatus by remember { mutableStateOf<String?>(null) }
+            var checkingUpdates by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
             val widgetAction by pendingAction.collectAsState()
+
+            fun checkForUpdates(manual: Boolean) {
+                if (checkingUpdates) return
+                checkingUpdates = true
+                updateStatus = "Checking GitHub…"
+                scope.launch {
+                    when (val result = GitHubUpdateChecker.check(BuildConfig.VERSION_NAME)) {
+                        is UpdateCheckResult.Available -> {
+                            availableUpdate = result.release
+                            updateStatus = "Version ${result.release.version} available"
+                        }
+                        is UpdateCheckResult.Current -> {
+                            updateStatus = "Version ${BuildConfig.VERSION_NAME} · up to date"
+                            if (manual) Toast.makeText(this@MainActivity, "Nudge is up to date", Toast.LENGTH_SHORT).show()
+                        }
+                        is UpdateCheckResult.Failed -> {
+                            updateStatus = "Version ${BuildConfig.VERSION_NAME}"
+                            if (manual) Toast.makeText(this@MainActivity, result.message, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    checkingUpdates = false
+                }
+            }
+
+            LaunchedEffect(onboardingDone, tourDone) {
+                if (onboardingDone && tourDone) {
+                    val lastCheck = prefs.getLong("last_update_check_epoch", 0L)
+                    if (System.currentTimeMillis() - lastCheck >= 24L * 60L * 60L * 1_000L) {
+                        prefs.edit().putLong("last_update_check_epoch", System.currentTimeMillis()).apply()
+                        checkForUpdates(manual = false)
+                    }
+                }
+            }
             NudgeTheme(isDark = dark) {
-                Surface(Modifier.fillMaxSize()) {
-                    if (!onboardingDone) {
-                        OnboardingScreen(onDone = {
-                            prefs.edit().putBoolean("onboarding_complete", true).apply()
-                            onboardingDone = true
-                        })
-                    } else {
-                        ExpenseNavHost(vm, dark, requestedAction = widgetAction, onActionConsumed = { pendingAction.value = WidgetAction.NONE }, onToggleTheme = {
-                            dark = !dark
-                            prefs.edit().putBoolean("dark_mode", dark).apply()
-                        })
+                Box(Modifier.fillMaxSize()) {
+                    Surface(Modifier.fillMaxSize()) {
+                        when {
+                            !onboardingDone -> OnboardingScreen(onDone = {
+                                prefs.edit().putBoolean("onboarding_complete", true).apply()
+                                onboardingDone = true
+                            })
+                            !tourDone -> ProductTourScreen(onDone = {
+                                prefs.edit().putBoolean("product_tour_v1_complete", true).apply()
+                                tourDone = true
+                            })
+                            else -> ExpenseNavHost(
+                                viewModel = vm,
+                                isDark = dark,
+                                requestedAction = widgetAction,
+                                onActionConsumed = { pendingAction.value = WidgetAction.NONE },
+                                onToggleTheme = {
+                                    dark = !dark
+                                    prefs.edit().putBoolean("dark_mode", dark).apply()
+                                },
+                                onShowTour = { tourDone = false },
+                                onCheckUpdates = { checkForUpdates(manual = true) },
+                                updateStatus = updateStatus,
+                            )
+                        }
+                    }
+                    availableUpdate?.let { release ->
+                        UpdateAvailableDialog(
+                            release = release,
+                            onDismiss = { availableUpdate = null },
+                            onOpen = {
+                                val url = release.apkUrl ?: release.pageUrl
+                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                availableUpdate = null
+                            },
+                        )
                     }
                 }
             }
@@ -94,6 +164,7 @@ private enum class NavScreen {
     Categories,
     Backup,
     SavedMessages,
+    Donate,
 }
 
 @Composable
@@ -102,7 +173,10 @@ private fun ExpenseNavHost(
     isDark: Boolean,
     requestedAction: WidgetAction,
     onActionConsumed: () -> Unit,
-    onToggleTheme: () -> Unit
+    onToggleTheme: () -> Unit,
+    onShowTour: () -> Unit,
+    onCheckUpdates: () -> Unit,
+    updateStatus: String?,
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
@@ -198,7 +272,11 @@ private fun ExpenseNavHost(
                     onAccounts = { push(NavScreen.Accounts) },
                     onCategories = { push(NavScreen.Categories) },
                     onBackup = { push(NavScreen.Backup) },
-                    onSavedMessages = { push(NavScreen.SavedMessages) }
+                    onSavedMessages = { push(NavScreen.SavedMessages) },
+                    onDonate = { push(NavScreen.Donate) },
+                    onAppTour = onShowTour,
+                    onCheckUpdates = onCheckUpdates,
+                    updateStatus = updateStatus,
                 )
                 NavScreen.Review -> NeedsReviewSwipeScreen(
                     transactions.filter { !it.isReviewed }, categories, accounts, sources,
@@ -228,6 +306,7 @@ private fun ExpenseNavHost(
                     onRetentionChanged = viewModel::applySourceRetention,
                     onBack = ::back
                 )
+                NavScreen.Donate -> DonateScreen(onBack = ::back)
             }
         }
 
@@ -250,4 +329,31 @@ private fun ExpenseNavHost(
         viewModel.addTransaction(amount, type, merchant, account, category, note)
         showAdd = false
     }
+}
+
+@Composable
+private fun UpdateAvailableDialog(
+    release: GitHubRelease,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Lucide.Download(size = 25.dp) },
+        title = { androidx.compose.material3.Text("Update ${release.version} available") },
+        text = {
+            androidx.compose.material3.Text(
+                release.notes.take(500).ifBlank { "A newer version of Nudge is ready on GitHub Releases." },
+                maxLines = 9,
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.Button(onClick = onOpen) {
+                androidx.compose.material3.Text(if (release.apkUrl != null) "Download APK" else "View release")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("Later") }
+        },
+    )
 }

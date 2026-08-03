@@ -40,6 +40,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
         // even when an OEM/SMS provider changes text encoding.
         val cleaned = rawText.trim().replace("\u20B9", "Rs.")
         if (cleaned.isEmpty()) return null
+        if (TransactionMessageGuard.isNonTransaction(cleaned)) return null
 
         // Step 1: Identify the bank
         val bankName = identifyBank(senderId)
@@ -304,6 +305,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
                 // Filter out dates, ref numbers, amounts
                 if (!extracted.matches(Regex("""\d{1,2}[-/]\d{1,2}[-/]\d{2,4}""")) &&
                     !extracted.matches(Regex("""[\d,]+\.?\d*""")) &&
+                    !Regex("""[A-Za-z0-9._%+*\-]+@[A-Za-z0-9.*\-]+\.[A-Za-z]{2,}""").containsMatchIn(extracted) &&
                     !extracted.matches(Regex("""Ref|Txn#?\s*[\dA-Z]+""", RegexOption.IGNORE_CASE))
                 ) {
                     return extracted.trim()

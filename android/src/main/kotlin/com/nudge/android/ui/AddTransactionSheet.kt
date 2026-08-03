@@ -5,6 +5,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -69,7 +72,7 @@ fun AddTransactionSheet(
             )
         }
     ) {
-        AddTransactionSheetContent(categories, accounts, onDismiss, onAdd)
+        AddTransactionSheetContent(categories, accounts, onAdd)
     }
 }
 
@@ -77,7 +80,6 @@ fun AddTransactionSheet(
 private fun AddTransactionSheetContent(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
-    onDismiss: () -> Unit,
     onAdd: (
         amountCents: Long,
         type: TransactionType,
@@ -89,11 +91,14 @@ private fun AddTransactionSheetContent(
 ) {
     var amountStr by remember { mutableStateOf("") }
     var merchant by remember { mutableStateOf("") }
-    var note by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf(TransactionType.DEBIT) }
     var selectedCategoryId by remember { mutableStateOf<String?>(null) }
     var selectedAccountId by remember { mutableStateOf<String?>(null) }
-    val selectableAccounts = remember(accounts) { accounts.filter { it.isActive && !it.isArchived } }
+    val selectableAccounts = remember(accounts) {
+        accounts.filter {
+            it.isActive && !it.isArchived && !it.accountType.contains("saving", ignoreCase = true)
+        }
+    }
     val localContext = LocalContext.current
     val haptics = remember(localContext) { NudgeHaptics(localContext) }
 
@@ -117,19 +122,13 @@ private fun AddTransactionSheetContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .fillMaxHeight(.70f)
             .verticalScroll(rememberScrollState())
             .imePadding()
             .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp)
     ) {
-        // Title
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Add Transaction", style = DSTypography.headlineMedium, color = DSBridge.ink(), modifier = Modifier.weight(1f))
-            IconButton(onClick = onDismiss) {
-                Lucide.X(size = 18.dp, strokeWidth = 2.dp, color = DSBridge.inkMute())
-            }
-        }
-        Spacer(modifier = Modifier.height(DSSpace.md))
+        Spacer(modifier = Modifier.height(DSSpace.sm))
 
         // Amount — read-only display + custom keypad below
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -184,7 +183,7 @@ private fun AddTransactionSheetContent(
             singleLine = true,
             modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(DSBridge.background())
                 .padding(horizontal = 14.dp, vertical = 12.dp),
-            decorationBox = { inner -> if (merchant.isEmpty()) Text("What was this for? (optional)", fontSize = 15.sp, color = DSBridge.inkMute()); inner() }
+            decorationBox = { inner -> if (merchant.isEmpty()) Text("What was this for?", fontSize = 15.sp, color = DSBridge.inkMute()); inner() }
         )
         Spacer(modifier = Modifier.height(DSSpace.md))
 
@@ -195,32 +194,37 @@ private fun AddTransactionSheetContent(
         val categoryType = if (selectedType == TransactionType.CREDIT) "income" else "expense"
         val expenseCats = categories.filter { it.type == categoryType }
         if (expenseCats.isNotEmpty()) {
-            expenseCats.chunked(3).forEach { rowCats ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val categoryWidth = (maxWidth - 16.dp) / 3
+                LazyHorizontalGrid(
+                    rows = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxWidth().height(142.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    rowCats.forEach { cat ->
+                    items(expenseCats, key = { it.id }) { cat ->
                         val isSel = selectedCategoryId == cat.id
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
                             modifier = Modifier
-                                .weight(1f)
+                                .width(categoryWidth)
+                                .fillMaxHeight()
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (isSel) DSBridge.accentBg() else DSBridge.background())
                                 .then(if (isSel) Modifier.border(1.5.dp, DSBridge.accent(), RoundedCornerShape(12.dp)) else Modifier)
-                                .clickable { selectedCategoryId = cat.id }
-                                .heightIn(min = 64.dp)
-                                .padding(horizontal = 6.dp, vertical = 10.dp)
+                                .clickable {
+                                    haptics.impactLight()
+                                    selectedCategoryId = cat.id
+                                }
+                                .padding(horizontal = 6.dp, vertical = 8.dp)
                         ) {
                             CategoryGlyph(cat.icon, cat.name, if (isSel) DSBridge.accent() else DSBridge.inkSoft(), Modifier.size(19.dp))
                             Spacer(Modifier.height(4.dp))
                             Text(cat.name, fontSize = 9.sp, color = if (isSel) DSBridge.accent() else DSBridge.inkSoft(), maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
-                    repeat(3 - rowCats.size) { Spacer(Modifier.weight(1f)) }
                 }
-                Spacer(Modifier.height(8.dp))
             }
         }
         Spacer(modifier = Modifier.height(DSSpace.sm))
@@ -279,17 +283,7 @@ private fun AddTransactionSheetContent(
         }
         Spacer(modifier = Modifier.height(DSSpace.sm))
 
-        // Note
-        BasicTextField(
-            value = note, onValueChange = { note = it },
-            textStyle = TextStyle(fontSize = 13.sp, color = DSBridge.ink()),
-            cursorBrush = SolidColor(DSBridge.accent()),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(DSBridge.background())
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            decorationBox = { inner -> if (note.isEmpty()) Text("Add a note (optional)", fontSize = 13.sp, color = DSBridge.inkMute()); inner() }
-        )
-        Spacer(modifier = Modifier.height(DSSpace.lg))
+        Spacer(modifier = Modifier.height(DSSpace.md))
 
         // Submit
         Button(
@@ -298,7 +292,7 @@ private fun AddTransactionSheetContent(
                 if (accountId != null) {
                     val description = merchant.trim().ifBlank { "Manual $typeLabel" }
                     haptics.success()
-                    onAdd(amountCents, selectedType, description, accountId, selectedCategoryId, note.ifBlank { null })
+                    onAdd(amountCents, selectedType, description, accountId, selectedCategoryId, null)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(56.dp),

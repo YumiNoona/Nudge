@@ -439,6 +439,7 @@ object BundledRulePack {
             // India — Banks
             SenderWhitelist("wl-in-hdfc", "HDFCBK", "HDFC Bank", "IN"),
             SenderWhitelist("wl-in-icici", "ICICIB", "ICICI Bank", "IN"),
+            SenderWhitelist("wl-in-icici-cards", "ICICIT", "ICICI Bank", "IN"),
             SenderWhitelist("wl-in-sbi", "SBIINB", "SBI", "IN"),
             SenderWhitelist("wl-in-axis", "AXISBK", "Axis Bank", "IN"),
             SenderWhitelist("wl-in-kotak", "KOTAKB", "Kotak Mahindra", "IN"),

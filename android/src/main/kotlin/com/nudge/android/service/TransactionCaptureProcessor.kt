@@ -10,6 +10,7 @@ import com.nudge.android.data.SourceMessageCrypto
 import com.nudge.android.data.SourceMessagePolicy
 import com.nudge.android.data.CaptureLearning
 import com.nudge.engine.DefaultSmsParserEngine
+import com.nudge.engine.TransactionMessageGuard
 import com.nudge.model.TransactionType
 import com.nudge.util.IdGenerator
 import com.nudge.android.widget.NudgeWidget
@@ -50,6 +51,7 @@ class TransactionCaptureProcessor(context: Context) {
                 return Outcome.Duplicate(existing.transactionId)
             }
         }
+        if (TransactionMessageGuard.isNonTransaction(rawText)) return Outcome.Ignored("Statement or due notice")
         if (looksFailedOrPending(rawText)) return Outcome.Ignored("Pending or failed event")
         if (!looksLikeCompletedMovement(rawText)) return Outcome.Ignored("No completed money movement")
 
@@ -210,7 +212,7 @@ class TransactionCaptureProcessor(context: Context) {
     private fun looksLikeCompletedMovement(text: String): Boolean {
         val lower = text.lowercase()
         return listOf(
-            "debited", "credited", "paid", "spent", "sent", "received", "deposited", "deposit",
+            "debited", "credited", "paid", "spent", "money sent", "sent to", "received", "deposited", "deposit",
             "withdrawn", "withdrawal", "refund", "reversal", "purchase", "transferred", "added",
             "loaded", "money in", "money out"
         )

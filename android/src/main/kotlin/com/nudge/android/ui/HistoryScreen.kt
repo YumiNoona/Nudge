@@ -44,6 +44,7 @@ import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.data.SavedSourceMessageEntity
+import com.nudge.android.ui.components.NudgeHeroCard
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -329,11 +330,8 @@ private fun CompactHeaderAction(active: Boolean, onClick: () -> Unit, icon: @Com
 @Composable
 private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, count: Int) {
     val netFlow = income + refunds - spent
-    Surface(
+    NudgeHeroCard(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp),
-        shape = RoundedCornerShape(24.dp),
-        color = DSBridge.accentBg(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.accent().copy(alpha = .12f)),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
