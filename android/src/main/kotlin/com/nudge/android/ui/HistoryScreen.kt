@@ -45,6 +45,7 @@ import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.data.SavedSourceMessageEntity
 import com.nudge.android.ui.components.NudgeHeroCard
+import com.nudge.android.ui.components.NudgeHeroStyle
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -158,7 +159,7 @@ fun HistoryScreen(
                     )
                 }
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 5.dp),
+                    Modifier.fillMaxWidth().tourTarget(TourTarget.TransactionFilters).horizontalScroll(rememberScrollState()).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
                     listOf("all" to "All", "debit" to "Expenses", "credit" to "Income", "refund" to "Refunds", "smart" to "Smart").forEach { (id, label) ->
@@ -298,7 +299,7 @@ private fun HistoryHeader(
     val bitmap = remember(path) { path?.let { BitmapFactory.decodeFile(it) } }
     Box(Modifier.fillMaxWidth().height(66.dp).padding(horizontal = 18.dp)) {
         Box(
-            Modifier.size(40.dp).align(Alignment.CenterStart).clip(CircleShape).background(DSBridge.accentBg()).clickable(onClick = onSettings),
+            Modifier.size(40.dp).align(Alignment.CenterStart).tourTarget(TourTarget.Profile).clip(CircleShape).background(DSBridge.accentBg()).clickable(onClick = onSettings),
             contentAlignment = Alignment.Center
         ) {
             if (bitmap != null) Image(bitmap.asImageBitmap(), "Profile", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -331,13 +332,14 @@ private fun CompactHeaderAction(active: Boolean, onClick: () -> Unit, icon: @Com
 private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, count: Int) {
     val netFlow = income + refunds - spent
     NudgeHeroCard(
-        Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 18.dp).tourTarget(TourTarget.MonthSummary),
+        style = NudgeHeroStyle.CashFlow,
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = DSBridge.inkMute())
-                    Text(SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()), fontSize = 11.sp, color = DSBridge.inkSoft())
+                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .55f))
+                    Text(SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()), fontSize = 11.sp, color = Color.White.copy(alpha = .78f))
                 }
                 Surface(shape = RoundedCornerShape(9.dp), color = if (delta <= 0) DS.Positive.copy(alpha = .10f) else DS.Negative.copy(alpha = .10f)) {
                     Text(
@@ -357,33 +359,33 @@ private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, c
                     fontFamily = MonoFamily,
                     fontSize = 29.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (value < 0) DS.Negative else DSBridge.ink(),
+                    color = if (value < 0) DS.Negative else Color.White,
                 )
             }
             Text(
                 if (netFlow < 0) "expenses exceeded money in · $count entries" else "money retained · $count entries",
-                color = DSBridge.inkMute(),
+                color = Color.White.copy(alpha = .52f),
                 fontSize = 9.sp,
             )
             Spacer(Modifier.height(13.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryPill("MONEY IN", formatCents(income), DS.Positive, Modifier.weight(1f))
-                SummaryPill("SPENT", formatCents(spent), DS.Negative, Modifier.weight(1f))
-                SummaryPill("REFUNDS", formatCents(refunds), DS.Warning, Modifier.weight(1f))
+                SummaryPill("MONEY IN", formatCents(income), DS.Positive, Modifier.weight(1f), onDark = true)
+                SummaryPill("SPENT", formatCents(spent), DS.Negative, Modifier.weight(1f), onDark = true)
+                SummaryPill("REFUNDS", formatCents(refunds), DS.Warning, Modifier.weight(1f), onDark = true)
             }
         }
     }
 }
 
-@Composable private fun SummaryPill(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
+@Composable private fun SummaryPill(label: String, value: String, color: Color, modifier: Modifier = Modifier, onDark: Boolean = false) {
     Column(modifier.clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = .08f)).padding(horizontal = 9.dp, vertical = 9.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(color))
             Spacer(Modifier.width(5.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute(), maxLines = 1)
+            Text(label, fontFamily = MonoFamily, fontSize = 7.sp, color = if (onDark) Color.White.copy(alpha = .50f) else DSBridge.inkMute(), maxLines = 1)
         }
         Spacer(Modifier.height(4.dp))
-        Text(value, fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
+        Text(value, fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (onDark) Color.White else DSBridge.ink(), maxLines = 1)
     }
 }
 

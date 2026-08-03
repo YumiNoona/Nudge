@@ -33,6 +33,7 @@ import com.nudge.android.data.TransactionEntity
 import com.nudge.android.ui.components.DonutChart
 import com.nudge.android.ui.components.DonutSegment
 import com.nudge.android.ui.components.NudgeHeroCard
+import com.nudge.android.ui.components.NudgeHeroStyle
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -167,7 +168,7 @@ private fun CashFlowOverview(
     spendDelta: Int,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().tourTarget(TourTarget.AnalyticsHero),
         shape = RoundedCornerShape(25.dp),
         color = DSBridge.surface(),
         border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .11f)),
@@ -297,6 +298,7 @@ private fun InsightCard(label: String, value: String, subtext: String, color: Co
 private fun CategoryAnalyticsCard(categorySpending: List<Triple<String, Color, Long>>, totalSpend: Long) {
     NudgeHeroCard(
         modifier = Modifier.fillMaxWidth(),
+        style = NudgeHeroStyle.Analytics,
     ) {
         Column(Modifier.padding(18.dp)) {
             Surface(shape = RoundedCornerShape(50), color = DS.Signal) {
@@ -307,8 +309,20 @@ private fun CategoryAnalyticsCard(categorySpending: List<Triple<String, Color, L
             Text("Share of this month's spending", style = DSTypography.bodySmall, color = DSBridge.inkMute())
             Spacer(Modifier.height(15.dp))
             if (categorySpending.isEmpty()) {
-                Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
-                    Text("No expense data for this month", style = DSTypography.bodySmall, color = DSBridge.inkMute())
+                Row(
+                    Modifier.fillMaxWidth().height(82.dp).clip(RoundedCornerShape(18.dp))
+                        .background(DSBridge.background().copy(alpha = .62f)).padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(DSBridge.accentBg()),
+                        contentAlignment = Alignment.Center,
+                    ) { Lucide.ChartPie(size = 21.dp, color = DSBridge.accent()) }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("No spending yet", style = DSTypography.labelMedium, color = DSBridge.ink())
+                        Text("Your category mix will build automatically", style = DSTypography.bodySmall, color = DSBridge.inkMute())
+                    }
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically) {

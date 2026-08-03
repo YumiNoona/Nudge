@@ -63,6 +63,7 @@ object Lucide {
     @Composable fun LayoutDashboard(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Dashboard, modifier, color, size)
     @Composable fun Download(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Download, modifier, color, size)
     @Composable fun Star(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Star, modifier, color, size)
+    @Composable fun Heart(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Favorite, modifier, color, size)
     @Composable fun ShoppingCart(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.ShoppingCart, modifier, color, size)
     @Composable fun Bell(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Notifications, modifier, color, size)
     @Composable fun User(modifier: Modifier = Modifier, color: Color = Color.Unspecified, size: Dp = Dp.Unspecified, strokeWidth: Dp = Dp.Unspecified) = Render(Icons.Rounded.Person, modifier, color, size)

@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-1.0.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 1.0.0" />
+    <img src="https://img.shields.io/badge/Version-4.0.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.0.0" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -41,7 +41,7 @@ Nudge is an Android-only product. The repository contains the mobile application
 | Widgets | Compact, snapshot, and expanded home-screen widgets with responsive layouts |
 | Polish | Dark/light themes, JetBrains Mono typography, Lucide-style icons, semantic haptics, and Compose micro-interactions |
 | Reminders | Optional daily expense check-ins with rotating copy and Android notification-permission handling |
-| Guided start | A replayable seven-step product tour covering entry, capture, review, analytics, privacy, and customization |
+| Guided start | A first-run seven-step coach-mark tour over the real Transactions and Analytics screens |
 | Updates | Automatic daily and manual GitHub Release checks with an update-available prompt and APK/release link |
 | Support | An optional UPI donation screen with a scannable QR, copyable ID, and UPI deep link |
 
@@ -201,7 +201,7 @@ Build the Android debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/debug/android-debug.apk
+android/build/outputs/apk/debug/Nudge-v4.0.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
@@ -213,11 +213,21 @@ The app checks `https://api.github.com/repos/YumiNoona/Nudge/releases/latest` at
 For each public update:
 
 1. Increase both `versionCode` and `versionName` in `android/build.gradle.kts`. Android requires every installable update to have a higher `versionCode`.
-2. Build and verify the release APK.
-3. Create a public GitHub Release with a semantic tag such as `v1.0.1`.
-4. Attach an `.apk` file to that release.
+2. Build and verify the signed release APK.
+3. Create a public GitHub Release with the matching semantic tag, such as `v4.0.0`.
+4. Attach `android/build/outputs/apk/release/Nudge-v4.0.0.apk` to that release.
 
-Nudge compares the release tag with its installed `versionName`. If the tag is newer, the app presents the release notes and links directly to the attached APK; when no APK is attached, it opens the GitHub Release page instead. Installation remains an explicit user action.
+Nudge compares the release tag with its installed `versionName`. If the tag is newer, it downloads the attached release APK inside the app, verifies its package name, version, version code and signing certificate, then hands it to Android's secure package installer. Android may show one final system confirmation before replacing the existing app. If no APK is attached, Nudge falls back to the GitHub Release page.
+
+### Release signing
+
+Release builds read private credentials from the ignored `keystore.properties` file. Copy `keystore.properties.example`, point it at your private `.jks` file, and never commit either the populated properties file or signing key.
+
+```powershell
+.\gradlew.bat :android:assembleRelease
+```
+
+Back up the release keystore and its passwords in at least two secure locations. Every future update must use the same key; losing it permanently prevents Android from updating existing installations. A device currently running an old debug-signed build needs a one-time export, uninstall, V4 release install and data import. Release-signed V4 and later builds update in place.
 
 ## Verification commands
 

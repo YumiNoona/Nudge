@@ -42,16 +42,27 @@ object GitHubUpdateChecker {
                 val tag = json.optString("tag_name").trim().removePrefix("v").removePrefix("V")
                 if (tag.isBlank()) return@withContext UpdateCheckResult.Failed("The latest release has no version tag")
                 val assets = json.optJSONArray("assets")
-                var apkUrl: String? = null
+                val apkAssets = mutableListOf<Pair<String, String>>()
                 if (assets != null) {
                     for (index in 0 until assets.length()) {
                         val asset = assets.optJSONObject(index) ?: continue
-                        if (asset.optString("name").endsWith(".apk", ignoreCase = true)) {
-                            apkUrl = asset.optString("browser_download_url").takeIf(String::isNotBlank)
-                            break
+                        val name = asset.optString("name")
+                        val url = asset.optString("browser_download_url")
+                        if (name.endsWith(".apk", ignoreCase = true) && url.isNotBlank()) {
+                            apkAssets += name to url
                         }
                     }
                 }
+                val apkUrl = apkAssets
+                    .sortedWith(
+                        compareBy<Pair<String, String>>(
+                            { it.first.contains("debug", ignoreCase = true) },
+                            { !it.first.contains(tag, ignoreCase = true) },
+                            { it.first },
+                        ),
+                    )
+                    .firstOrNull()
+                    ?.second
                 val release = GitHubRelease(
                     version = tag,
                     title = json.optString("name").takeIf(String::isNotBlank) ?: "Nudge $tag",

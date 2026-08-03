@@ -21,11 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -62,7 +64,6 @@ fun ExpenseSettingsScreen(
     onBackup: () -> Unit,
     onSavedMessages: () -> Unit,
     onDonate: () -> Unit,
-    onAppTour: () -> Unit,
     onCheckUpdates: () -> Unit,
     updateStatus: String?,
 ) {
@@ -106,10 +107,27 @@ fun ExpenseSettingsScreen(
         }
     }
 
+    val themeRotation by animateFloatAsState(if (isDark) 180f else 0f, label = "themeRotation")
+
     Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp)) {
             IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
             Text("Settings", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
+            Surface(
+                onClick = onToggleTheme,
+                modifier = Modifier.size(40.dp).align(Alignment.CenterEnd),
+                shape = CircleShape,
+                color = DSBridge.surface(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .12f)),
+            ) {
+                Box(
+                    Modifier.fillMaxSize().graphicsLayer { rotationZ = themeRotation },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isDark) Lucide.Moon(size = 18.dp, color = DSBridge.accent())
+                    else Lucide.Sun(size = 18.dp, color = DSBridge.accent())
+                }
+            }
         }
 
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -247,19 +265,9 @@ fun ExpenseSettingsScreen(
                 }
             }
 
-            Text("PRIVACY & APPEARANCE", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
-            SettingsGroup {
-                Row(Modifier.fillMaxWidth().clickable(onClick = onToggleTheme).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (isDark) Lucide.Moon(size = 18.dp, color = DSBridge.accent()) else Lucide.Sun(size = 18.dp, color = DSBridge.accent())
-                    Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("Theme", color = DSBridge.ink()); Text(if (isDark) "Dark" else "Light", fontSize = 10.sp, color = DSBridge.inkMute()) }
-                }
-            }
             Text("Nudge parses locally. Source bodies are Keystore-encrypted when saving is enabled and are excluded from normal backup exports.", fontSize = 10.sp, lineHeight = 15.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(8.dp))
 
-            Text("ABOUT", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
             SettingsGroup {
-                SettingsRow({ m, c, s, sw -> Lucide.Info(m, c, s, sw) }, "App tour", "Replay the 7-step guide", true, onAppTour)
-                HorizontalDivider(color = DSBridge.background())
                 SettingsRow(
                     { m, c, s, sw -> Lucide.RefreshCw(m, c, s, sw) },
                     "Check for updates",
@@ -268,8 +276,16 @@ fun ExpenseSettingsScreen(
                     onCheckUpdates,
                 )
                 HorizontalDivider(color = DSBridge.background())
-                SettingsRow({ m, c, s, sw -> Lucide.QrCode(m, c, s, sw) }, "Support Nudge", "Donate with any UPI app", true, onDonate)
+                SettingsRow({ m, c, s, sw -> Lucide.Heart(m, c, s, sw) }, "Support Nudge", "Donate with any UPI app", true, onDonate)
             }
+            Text(
+                "Made With 💙Veil",
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontFamily = MonoFamily,
+                fontSize = 11.sp,
+                color = DSBridge.inkMute(),
+            )
             Spacer(Modifier.height(30.dp))
         }
     }

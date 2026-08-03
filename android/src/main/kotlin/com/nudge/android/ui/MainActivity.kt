@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -31,6 +32,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.nudge.android.BuildConfig
 import com.nudge.android.ui.components.BottomDock
 import com.nudge.android.ui.components.DockItem
@@ -39,6 +42,7 @@ import com.nudge.android.ui.theme.NudgeTheme
 import com.nudge.android.update.GitHubRelease
 import com.nudge.android.update.GitHubUpdateChecker
 import com.nudge.android.update.UpdateCheckResult
+import com.nudge.android.update.InAppUpdateInstaller
 
 class MainActivity : ComponentActivity() {
     private val pendingAction = MutableStateFlow(WidgetAction.NONE)
@@ -52,12 +56,24 @@ class MainActivity : ComponentActivity() {
             val prefs = remember { getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
             var dark by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
             var onboardingDone by remember { mutableStateOf(prefs.getBoolean("onboarding_complete", false)) }
-            var tourDone by remember { mutableStateOf(prefs.getBoolean("product_tour_v1_complete", false)) }
+            var tourDone by remember { mutableStateOf(prefs.getBoolean("product_tour_v2_complete", false)) }
             var availableUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
             var updateStatus by remember { mutableStateOf<String?>(null) }
             var checkingUpdates by remember { mutableStateOf(false) }
+            var updateProgress by remember { mutableStateOf<Float?>(null) }
+            var pendingInstallPermission by remember { mutableStateOf<GitHubRelease?>(null) }
+            var queuedUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
             val scope = rememberCoroutineScope()
             val widgetAction by pendingAction.collectAsState()
+            val installPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                val release = pendingInstallPermission
+                pendingInstallPermission = null
+                if (release != null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || packageManager.canRequestPackageInstalls())) {
+                    queuedUpdate = release
+                } else if (release != null) {
+                    Toast.makeText(this@MainActivity, "Allow Nudge to install updates, then try again", Toast.LENGTH_LONG).show()
+                }
+            }
 
             fun checkForUpdates(manual: Boolean) {
                 if (checkingUpdates) return
@@ -91,6 +107,21 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+            LaunchedEffect(queuedUpdate) {
+                val release = queuedUpdate ?: return@LaunchedEffect
+                updateProgress = 0f
+                val result = InAppUpdateInstaller.downloadAndVerify(this@MainActivity, release) { progress ->
+                    withContext(Dispatchers.Main.immediate) { updateProgress = progress }
+                }
+                updateProgress = null
+                queuedUpdate = null
+                result.onSuccess { apk ->
+                    runCatching { InAppUpdateInstaller.install(this@MainActivity, apk) }
+                        .onFailure { Toast.makeText(this@MainActivity, it.message ?: "Unable to start installation", Toast.LENGTH_LONG).show() }
+                }.onFailure { error ->
+                    Toast.makeText(this@MainActivity, error.message ?: "Update download failed", Toast.LENGTH_LONG).show()
+                }
+            }
             NudgeTheme(isDark = dark) {
                 Box(Modifier.fillMaxSize()) {
                     Surface(Modifier.fillMaxSize()) {
@@ -98,10 +129,6 @@ class MainActivity : ComponentActivity() {
                             !onboardingDone -> OnboardingScreen(onDone = {
                                 prefs.edit().putBoolean("onboarding_complete", true).apply()
                                 onboardingDone = true
-                            })
-                            !tourDone -> ProductTourScreen(onDone = {
-                                prefs.edit().putBoolean("product_tour_v1_complete", true).apply()
-                                tourDone = true
                             })
                             else -> ExpenseNavHost(
                                 viewModel = vm,
@@ -112,7 +139,11 @@ class MainActivity : ComponentActivity() {
                                     dark = !dark
                                     prefs.edit().putBoolean("dark_mode", dark).apply()
                                 },
-                                onShowTour = { tourDone = false },
+                                tourActive = !tourDone,
+                                onTourComplete = {
+                                    prefs.edit().putBoolean("product_tour_v2_complete", true).apply()
+                                    tourDone = true
+                                },
                                 onCheckUpdates = { checkForUpdates(manual = true) },
                                 updateStatus = updateStatus,
                             )
@@ -123,12 +154,21 @@ class MainActivity : ComponentActivity() {
                             release = release,
                             onDismiss = { availableUpdate = null },
                             onOpen = {
-                                val url = release.apkUrl ?: release.pageUrl
-                                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                if (release.apkUrl == null) {
+                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.pageUrl)))
+                                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                                    pendingInstallPermission = release
+                                    installPermissionLauncher.launch(
+                                        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")),
+                                    )
+                                } else {
+                                    queuedUpdate = release
+                                }
                                 availableUpdate = null
                             },
                         )
                     }
+                    updateProgress?.let { progress -> UpdateDownloadDialog(progress) }
                 }
             }
         }
@@ -174,7 +214,8 @@ private fun ExpenseNavHost(
     requestedAction: WidgetAction,
     onActionConsumed: () -> Unit,
     onToggleTheme: () -> Unit,
-    onShowTour: () -> Unit,
+    tourActive: Boolean,
+    onTourComplete: () -> Unit,
     onCheckUpdates: () -> Unit,
     updateStatus: String?,
 ) {
@@ -183,6 +224,7 @@ private fun ExpenseNavHost(
     val stack = remember { mutableStateListOf(NavScreen.Transactions) }
     val current = stack.last()
     var showAdd by remember { mutableStateOf(false) }
+    var tourStep by remember { mutableIntStateOf(0) }
     var captureEnabled by remember { mutableStateOf(prefs.getBoolean("auto_capture_enabled", true)) }
     var notificationEnabled by remember(current) { mutableStateOf(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) }
     var smsGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) }
@@ -218,8 +260,24 @@ private fun ExpenseNavHost(
         if (requestedAction != WidgetAction.NONE) onActionConsumed()
     }
 
-    BackHandler(enabled = showAdd || stack.size > 1 || current != NavScreen.Transactions) {
-        if (showAdd) showAdd = false else back()
+    LaunchedEffect(tourActive) {
+        if (tourActive) {
+            showAdd = false
+            tourStep = 0
+            root(NavScreen.Transactions)
+        }
+    }
+
+    BackHandler(enabled = tourActive || showAdd || stack.size > 1 || current != NavScreen.Transactions) {
+        when {
+            tourActive && tourStep > 0 -> {
+                tourStep--
+                if (tourStep < 6) root(NavScreen.Transactions)
+            }
+            tourActive -> onTourComplete()
+            showAdd -> showAdd = false
+            else -> back()
+        }
     }
 
     val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
@@ -227,6 +285,8 @@ private fun ExpenseNavHost(
         prefs.edit().putBoolean("sms_granted", smsGranted).apply()
     }
 
+    val tourTargetRegistry = remember { TourTargetRegistry() }
+    CompositionLocalProvider(LocalTourTargetRegistry provides tourTargetRegistry) {
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = current,
@@ -274,7 +334,6 @@ private fun ExpenseNavHost(
                     onBackup = { push(NavScreen.Backup) },
                     onSavedMessages = { push(NavScreen.SavedMessages) },
                     onDonate = { push(NavScreen.Donate) },
-                    onAppTour = onShowTour,
                     onCheckUpdates = onCheckUpdates,
                     updateStatus = updateStatus,
                 )
@@ -323,6 +382,29 @@ private fun ExpenseNavHost(
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding()
             )
         }
+
+        if (tourActive) {
+            AppTourOverlay(
+                step = tourStep,
+                targetRegistry = tourTargetRegistry,
+                onBack = {
+                    if (tourStep > 0) {
+                        tourStep--
+                        if (tourStep < 6) root(NavScreen.Transactions)
+                    }
+                },
+                onNext = {
+                    if (tourStep == 6) {
+                        onTourComplete()
+                    } else {
+                        tourStep++
+                        if (tourStep == 6) root(NavScreen.Charts)
+                    }
+                },
+                onSkip = onTourComplete,
+            )
+        }
+    }
     }
 
     if (showAdd) AddTransactionSheet(categories, accounts, onDismiss = { showAdd = false }) { amount, type, merchant, account, category, note ->
@@ -349,11 +431,33 @@ private fun UpdateAvailableDialog(
         },
         confirmButton = {
             androidx.compose.material3.Button(onClick = onOpen) {
-                androidx.compose.material3.Text(if (release.apkUrl != null) "Download APK" else "View release")
+                androidx.compose.material3.Text(if (release.apkUrl != null) "Download & install" else "View release")
             }
         },
         dismissButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) { androidx.compose.material3.Text("Later") }
         },
+    )
+}
+
+@Composable
+private fun UpdateDownloadDialog(progress: Float) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { },
+        icon = { Lucide.Download(size = 25.dp) },
+        title = { androidx.compose.material3.Text("Preparing update") },
+        text = {
+            Column {
+                androidx.compose.material3.Text("Downloading and verifying the signed Nudge APK…")
+                Spacer(Modifier.height(14.dp))
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { progress.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(7.dp))
+                androidx.compose.material3.Text("${(progress * 100).toInt()}%", style = androidx.compose.material3.MaterialTheme.typography.labelSmall)
+            }
+        },
+        confirmButton = { },
     )
 }

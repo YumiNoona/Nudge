@@ -1,15 +1,15 @@
 package com.nudge.android.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -18,8 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -39,7 +39,8 @@ import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.DS
 import com.nudge.android.ui.theme.formatCents
 import java.util.Calendar
-import kotlin.math.absoluteValue
+import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -187,24 +188,46 @@ fun ManageAccountsScreen(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AccountStackPreview(
     accounts: List<AccountEntity>,
     balanceFor: (String) -> Long,
     onOpen: (AccountEntity) -> Unit
 ) {
-    val pagerState = rememberPagerState(pageCount = { accounts.size })
+    var frontIndex by remember(accounts.map { it.id }) { mutableIntStateOf(0) }
+    val dragX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxWidth()) {
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 38.dp),
-            pageSpacing = 14.dp,
-            modifier = Modifier.fillMaxWidth().height(194.dp),
-        ) { page ->
+        Box(
+            modifier = Modifier.fillMaxWidth().height(194.dp).padding(horizontal = 34.dp)
+                .pointerInput(accounts.map { it.id }, frontIndex) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            scope.launch {
+                                val threshold = 54.dp.toPx()
+                                if (abs(dragX.value) > threshold) {
+                                    val direction = if (dragX.value < 0f) 1 else -1
+                                    val exit = if (dragX.value < 0f) -size.width * 1.1f else size.width * 1.1f
+                                    dragX.animateTo(exit, spring(stiffness = 520f, dampingRatio = .86f))
+                                    frontIndex = (frontIndex + direction).mod(accounts.size)
+                                    dragX.snapTo(0f)
+                                } else {
+                                    dragX.animateTo(0f, spring(stiffness = 620f, dampingRatio = .74f))
+                                }
+                            }
+                        },
+                        onDragCancel = { scope.launch { dragX.animateTo(0f) } },
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            scope.launch { dragX.snapTo((dragX.value + amount).coerceIn(-size.width * .62f, size.width * .62f)) }
+                        },
+                    )
+                },
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            val page = frontIndex
             val account = accounts[page]
-            val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val depth = pageOffset.absoluteValue.coerceIn(0f, 1f)
+            val depth = (abs(dragX.value) / 280f).coerceIn(0f, 1f)
             val tint = NudgeColors.parse(account.color, DS.Accent)
             Box(Modifier.fillMaxWidth().height(184.dp).padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
                 val backCount = minOf(2, accounts.size - 1)
@@ -213,9 +236,12 @@ private fun AccountStackPreview(
                     val backTint = NudgeColors.parse(backAccount.color, DS.Accent)
                     Box(
                         Modifier.fillMaxWidth().height(146.dp)
-                            .padding(horizontal = (stackDepth * 10).dp)
-                            .offset(y = (stackDepth * 11).dp)
-                            .scale(1f - stackDepth * .035f)
+                            .graphicsLayer {
+                                val animatedDepth = (stackDepth - depth).coerceAtLeast(0f)
+                                scaleX = 1f - animatedDepth * .035f
+                                scaleY = 1f - animatedDepth * .035f
+                                translationY = animatedDepth * 11.dp.toPx()
+                            }
                             .zIndex((2 - stackDepth).toFloat())
                             .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = backTint.copy(alpha = .18f))
                             .clip(RoundedCornerShape(24.dp))
@@ -228,11 +254,10 @@ private fun AccountStackPreview(
                         .graphicsLayer {
                             scaleX = 1f - depth * .07f
                             scaleY = 1f - depth * .07f
-                            rotationY = pageOffset * -9f
-                            rotationZ = pageOffset * -1.8f
-                            translationY = depth * 12.dp.toPx()
-                            alpha = 1f - depth * .20f
-                            cameraDistance = 18f * density
+                            translationX = dragX.value
+                            rotationZ = dragX.value / 95f
+                            translationY = depth * 5.dp.toPx()
+                            alpha = 1f - depth * .10f
                         }
                         .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = tint.copy(alpha = .26f))
                         .clip(RoundedCornerShape(24.dp))
@@ -262,7 +287,7 @@ private fun AccountStackPreview(
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             accounts.indices.forEach { index ->
-                val selected = pagerState.currentPage == index
+                val selected = frontIndex == index
                 Box(
                     Modifier.padding(horizontal = 3.dp).width(if (selected) 18.dp else 6.dp).height(5.dp)
                         .clip(CircleShape).background(if (selected) Nc.accent else Nc.inkMute.copy(alpha = .25f)),

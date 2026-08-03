@@ -28,6 +28,8 @@ import com.nudge.android.ui.theme.DS
 import com.nudge.android.ui.theme.DSBridge
 import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeHaptics
+import com.nudge.android.ui.TourTarget
+import com.nudge.android.ui.tourTarget
 
 data class DockItem(
     val id: String,
@@ -55,13 +57,13 @@ fun BottomDock(
 
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .fillMaxWidth(.82f)
+            .padding(vertical = 8.dp)
             .height(70.dp)
-            .shadow(14.dp, RoundedCornerShape(22.dp), spotColor = Color.Black.copy(alpha = 0.14f))
-            .clip(RoundedCornerShape(22.dp))
+            .shadow(12.dp, RoundedCornerShape(20.dp), spotColor = Color.Black.copy(alpha = 0.14f))
+            .clip(RoundedCornerShape(20.dp))
             .background(dockBackground)
-            .padding(horizontal = 8.dp, vertical = 7.dp),
+            .padding(horizontal = 6.dp, vertical = 5.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -84,6 +86,14 @@ fun BottomDock(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .then(
+                        when {
+                            isAction -> Modifier.tourTarget(TourTarget.AddButton)
+                            item.id == "transactions" -> Modifier.tourTarget(TourTarget.TransactionsTab)
+                            item.id == "charts" -> Modifier.tourTarget(TourTarget.AnalyticsTab)
+                            else -> Modifier
+                        }
+                    )
                     .scale(scale)
                     .clip(RoundedCornerShape(15.dp))
                     .then(if (active) Modifier.background(activeBackground) else Modifier)
@@ -97,9 +107,10 @@ fun BottomDock(
                 if (isAction) {
                     Box(
                         modifier = Modifier
-                            .size(52.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = DS.Signal.copy(alpha = 0.26f))
-                            .clip(RoundedCornerShape(16.dp))
+                            .offset(y = (-5).dp)
+                            .size(46.dp)
+                            .shadow(8.dp, RoundedCornerShape(15.dp), spotColor = DS.Signal.copy(alpha = 0.26f))
+                            .clip(RoundedCornerShape(15.dp))
                             .background(DS.Signal),
                         contentAlignment = Alignment.Center
                     ) {

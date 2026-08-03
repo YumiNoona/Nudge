@@ -65,11 +65,16 @@ fun AddTransactionSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             Box(
-                Modifier
-                    .width(36.dp).height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(DSBridge.inkMute().copy(alpha = 0.4f))
-            )
+                Modifier.fillMaxWidth().padding(top = 13.dp, bottom = 9.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .width(38.dp).height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(DSBridge.inkMute().copy(alpha = 0.38f))
+                )
+            }
         }
     ) {
         AddTransactionSheetContent(categories, accounts, onAdd)

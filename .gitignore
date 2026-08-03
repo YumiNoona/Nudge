@@ -24,6 +24,7 @@ output-metadata.json
 *.pem
 *.key
 secrets.properties
+keystore.properties
 google-services.json
 
 # IntelliJ IDEA and Android Studio

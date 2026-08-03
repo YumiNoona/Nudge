@@ -11,7 +11,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -20,12 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,14 +38,10 @@ fun OnboardingScreen(onDone: () -> Unit) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
-    val pager = rememberPagerState(pageCount = { 4 })
-    var name by remember { mutableStateOf(preferences.getString("display_name", "") ?: "") }
-    var currency by remember { mutableStateOf(preferences.getString("currency_code", "INR") ?: "INR") }
+    val pager = rememberPagerState(pageCount = { 3 })
     fun finish() {
         preferences.edit()
             .putBoolean("onboarding_complete", true)
-            .putString("display_name", name.trim().ifBlank { "You" })
-            .putString("currency_code", currency)
             .apply()
         onDone()
     }
@@ -58,9 +51,9 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("${pager.currentPage + 1} / 4", fontFamily = MonoFamily, color = DSBridge.inkMute(), fontSize = 10.sp)
+            Text("${pager.currentPage + 1} / 3", fontFamily = MonoFamily, color = DSBridge.inkMute(), fontSize = 10.sp)
             Spacer(Modifier.weight(1f))
-            if (pager.currentPage < 3) {
+            if (pager.currentPage < 2) {
                 Text(
                     "Skip",
                     color = DSBridge.inkSoft(),
@@ -87,7 +80,6 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 when (page) {
                     0 -> WelcomePage()
                     1 -> CapturePage()
-                    2 -> PersonalizePage(name, { name = it }, currency, { currency = it })
                     else -> ReadyPage()
                 }
             }
@@ -98,7 +90,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                repeat(4) { index ->
+                repeat(3) { index ->
                     Box(
                         Modifier.width(if (pager.currentPage == index) 24.dp else 7.dp).height(7.dp)
                             .clip(CircleShape)
@@ -109,7 +101,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
             Spacer(Modifier.weight(1f))
             Surface(
                 onClick = {
-                    if (pager.currentPage == 3) finish()
+                    if (pager.currentPage == 2) finish()
                     else scope.launch { pager.animateScrollToPage(pager.currentPage + 1) }
                 },
                 shape = RoundedCornerShape(17.dp),
@@ -117,7 +109,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
                 shadowElevation = 6.dp
             ) {
                 Row(Modifier.padding(start = 20.dp, end = 12.dp, top = 11.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (pager.currentPage == 3) "Start tracking" else "Continue", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(if (pager.currentPage == 2) "Start tracking" else "Continue", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.width(12.dp))
                     Box(Modifier.size(30.dp).clip(RoundedCornerShape(10.dp)).background(DS.Signal), contentAlignment = Alignment.Center) {
                         Lucide.ChevronRight(size = 17.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
@@ -183,79 +175,6 @@ private fun CapturePage() {
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-        }
-    }
-}
-
-@Composable
-private fun PersonalizePage(name: String, onName: (String) -> Unit, currency: String, onCurrency: (String) -> Unit) {
-    OnboardingFrame(
-        eyebrow = "MAKE IT YOURS",
-        title = "A money space\nthat feels personal.",
-        body = "Choose your display name and how amounts appear. You can change both later."
-    ) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().shadow(14.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = .08f)),
-            shape = RoundedCornerShape(28.dp),
-            color = DSBridge.surface(),
-        ) {
-            Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(58.dp).clip(RoundedCornerShape(19.dp)).background(DSBridge.accentBg()), contentAlignment = Alignment.Center) {
-                        Text(name.trim().take(1).ifBlank { "Y" }.uppercase(), color = DSBridge.accent(), fontSize = 21.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("DISPLAY NAME", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.sp, color = DSBridge.inkMute())
-                        Spacer(Modifier.height(6.dp))
-                        BasicTextField(
-                            value = name,
-                            onValueChange = { onName(it.take(32)) },
-                            singleLine = true,
-                            textStyle = TextStyle(color = DSBridge.ink(), fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
-                            cursorBrush = SolidColor(DSBridge.accent()),
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(DSBridge.background()).padding(horizontal = 12.dp, vertical = 10.dp),
-                            decorationBox = { field ->
-                                Box {
-                                    if (name.isBlank()) Text("Your name", color = DSBridge.inkMute(), fontSize = 14.sp)
-                                    field()
-                                }
-                            },
-                        )
-                    }
-                }
-                Spacer(Modifier.height(17.dp))
-                androidx.compose.material3.HorizontalDivider(color = DSBridge.inkMute().copy(alpha = .12f))
-                Spacer(Modifier.height(15.dp))
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Column(Modifier.weight(1f)) {
-                        Text("DISPLAY CURRENCY", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.sp, color = DSBridge.inkMute())
-                        Text("Used across your totals", fontSize = 10.sp, color = DSBridge.inkSoft())
-                    }
-                    Text(currency, fontFamily = MonoFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DSBridge.accent())
-                }
-                Spacer(Modifier.height(11.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    listOf("INR" to "₹", "USD" to "$", "EUR" to "€", "GBP" to "£").forEach { (code, symbol) ->
-                        val selected = code == currency
-                        Surface(
-                            onClick = { onCurrency(code) },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(14.dp),
-                            color = if (selected) DSBridge.accentBg() else DSBridge.background(),
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (selected) DSBridge.accent().copy(alpha = .42f) else Color.Transparent,
-                            ),
-                        ) {
-                            Column(Modifier.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(symbol, color = if (selected) DSBridge.accent() else DSBridge.ink(), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                                Text(code, color = if (selected) DSBridge.accent() else DSBridge.inkMute(), fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
