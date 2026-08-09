@@ -1,7 +1,9 @@
 package com.nudge.android.ui
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -38,6 +40,9 @@ import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.NudgeColors
 import com.nudge.android.ui.theme.DS
 import com.nudge.android.ui.theme.formatCents
+import com.nudge.android.ui.components.FloatingActionCube
+import com.nudge.android.ui.theme.NudgeHaptics
+import androidx.compose.ui.platform.LocalContext
 import java.util.Calendar
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -72,7 +77,8 @@ fun ManageAccountsScreen(
     val visibleAccounts = accounts.filter { !it.isArchived }
     val totalBalance = visibleAccounts.sumOf { accountBalance(it.id) }
 
-    Column(modifier = Modifier.fillMaxSize().background(Nc.background).statusBarsPadding()) {
+    Box(modifier = Modifier.fillMaxSize().background(Nc.background).statusBarsPadding()) {
+    Column(modifier = Modifier.fillMaxSize().padding(bottom = 96.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -127,24 +133,15 @@ fun ManageAccountsScreen(
             Spacer(Modifier.weight(1f))
         }
 
-        Box(Modifier.fillMaxWidth().padding(bottom = 18.dp), contentAlignment = Alignment.Center) {
-            Surface(
-                onClick = {
-                    editingAccount = null
-                    showSheet = true
-                },
-                shape = RoundedCornerShape(16.dp),
-                color = DS.Signal,
-                contentColor = DS.InkPrimary,
-                shadowElevation = 8.dp,
-            ) {
-                Row(Modifier.padding(horizontal = 18.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Lucide.Plus(size = 18.dp, strokeWidth = 2.2.dp, color = DS.InkPrimary)
-                    Spacer(Modifier.width(7.dp))
-                    Text("Add account", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
+    }
+        FloatingActionCube(
+            contentDescription = "Add account",
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 18.dp),
+            onClick = {
+            editingAccount = null
+            showSheet = true
+            },
+        ) { Lucide.Plus(size = 24.dp, color = DS.InkPrimary) }
     }
 
     if (showSheet) {
@@ -195,8 +192,10 @@ private fun AccountStackPreview(
     onOpen: (AccountEntity) -> Unit
 ) {
     var frontIndex by remember(accounts.map { it.id }) { mutableIntStateOf(0) }
-    val dragX = remember { Animatable(0f) }
+    var dragX by remember { mutableFloatStateOf(0f) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val haptics = remember(context) { NudgeHaptics(context) }
     Column(Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier.fillMaxWidth().height(194.dp).padding(horizontal = 34.dp)
@@ -205,21 +204,27 @@ private fun AccountStackPreview(
                         onDragEnd = {
                             scope.launch {
                                 val threshold = 54.dp.toPx()
-                                if (abs(dragX.value) > threshold) {
-                                    val direction = if (dragX.value < 0f) 1 else -1
-                                    val exit = if (dragX.value < 0f) -size.width * 1.1f else size.width * 1.1f
-                                    dragX.animateTo(exit, spring(stiffness = 520f, dampingRatio = .86f))
+                                val animator = Animatable(dragX)
+                                if (abs(dragX) > threshold) {
+                                    val direction = if (dragX < 0f) 1 else -1
+                                    val exit = if (dragX < 0f) -size.width * 1.1f else size.width * 1.1f
+                                    animator.animateTo(exit, tween(190, easing = FastOutSlowInEasing)) { dragX = value }
                                     frontIndex = (frontIndex + direction).mod(accounts.size)
-                                    dragX.snapTo(0f)
+                                    dragX = 0f
+                                    haptics.impactLight()
                                 } else {
-                                    dragX.animateTo(0f, spring(stiffness = 620f, dampingRatio = .74f))
+                                    animator.animateTo(0f, spring(stiffness = 620f, dampingRatio = .74f)) { dragX = value }
                                 }
                             }
                         },
-                        onDragCancel = { scope.launch { dragX.animateTo(0f) } },
+                        onDragCancel = {
+                            scope.launch {
+                                Animatable(dragX).animateTo(0f, spring(stiffness = 620f, dampingRatio = .74f)) { dragX = value }
+                            }
+                        },
                         onHorizontalDrag = { change, amount ->
                             change.consume()
-                            scope.launch { dragX.snapTo((dragX.value + amount).coerceIn(-size.width * .62f, size.width * .62f)) }
+                            dragX = (dragX + amount).coerceIn(-size.width * .62f, size.width * .62f)
                         },
                     )
                 },
@@ -227,12 +232,13 @@ private fun AccountStackPreview(
         ) {
             val page = frontIndex
             val account = accounts[page]
-            val depth = (abs(dragX.value) / 280f).coerceIn(0f, 1f)
+            val depth = (abs(dragX) / 280f).coerceIn(0f, 1f)
             val tint = NudgeColors.parse(account.color, DS.Accent)
             Box(Modifier.fillMaxWidth().height(184.dp).padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
                 val backCount = minOf(2, accounts.size - 1)
+                val revealDirection = if (dragX > 0f) -1 else 1
                 for (stackDepth in backCount downTo 1) {
-                    val backAccount = accounts[(page + stackDepth).mod(accounts.size)]
+                    val backAccount = accounts[(page + revealDirection * stackDepth).mod(accounts.size)]
                     val backTint = NudgeColors.parse(backAccount.color, DS.Accent)
                     Box(
                         Modifier.fillMaxWidth().height(146.dp)
@@ -246,7 +252,10 @@ private fun AccountStackPreview(
                             .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = backTint.copy(alpha = .18f))
                             .clip(RoundedCornerShape(24.dp))
                             .background(Brush.linearGradient(listOf(backTint.copy(alpha = .82f), DS.AccentDeep)))
-                    )
+                            .padding(19.dp),
+                    ) {
+                        AccountCardContent(backAccount, balanceFor(backAccount.id), compact = true)
+                    }
                 }
                 Box(
                     Modifier.fillMaxWidth().height(146.dp)
@@ -254,8 +263,8 @@ private fun AccountStackPreview(
                         .graphicsLayer {
                             scaleX = 1f - depth * .07f
                             scaleY = 1f - depth * .07f
-                            translationX = dragX.value
-                            rotationZ = dragX.value / 95f
+                            translationX = dragX
+                            rotationZ = dragX / 95f
                             translationY = depth * 5.dp.toPx()
                             alpha = 1f - depth * .10f
                         }
@@ -265,23 +274,7 @@ private fun AccountStackPreview(
                         .clickable { onOpen(account) }
                         .padding(19.dp),
                 ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            AccountIcon(account.accountType, Color.White, 20.dp)
-                            Spacer(Modifier.width(9.dp))
-                            Text(account.name, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
-                            Spacer(Modifier.weight(1f))
-                            if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Text(formatCents(balanceFor(account.id)), fontFamily = MonoFamily, fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text(
-                            listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
-                            fontFamily = MonoFamily,
-                            fontSize = 9.sp,
-                            color = Color.White.copy(alpha = .64f),
-                        )
-                    }
+                    AccountCardContent(account, balanceFor(account.id))
                 }
             }
         }
@@ -294,6 +287,28 @@ private fun AccountStackPreview(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AccountCardContent(account: AccountEntity, balance: Long, compact: Boolean = false) {
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            AccountIcon(account.accountType, Color.White, if (compact) 18.dp else 20.dp)
+            Spacer(Modifier.width(9.dp))
+            Text(account.name, fontSize = if (compact) 13.sp else 15.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1)
+            Spacer(Modifier.weight(1f))
+            if (account.isDefault) Text("DEFAULT", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.Signal)
+        }
+        Spacer(Modifier.height(if (compact) 13.dp else 18.dp))
+        Text(formatCents(balance), fontFamily = MonoFamily, fontSize = if (compact) 20.sp else 23.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Text(
+            listOfNotNull(account.bankName, account.last4Digits?.let { "•••• $it" }).joinToString(" · ").ifBlank { account.accountType.replace('_', ' ').uppercase() },
+            fontFamily = MonoFamily,
+            fontSize = 9.sp,
+            color = Color.White.copy(alpha = .64f),
+            maxLines = 1,
+        )
     }
 }
 
@@ -311,7 +326,7 @@ private fun AccountIcon(accountType: String, tint: Color, size: androidx.compose
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AccountEditSheet(
+internal fun AccountEditSheet(
     account: AccountEntity?,
     onSave: (AccountEntity) -> Unit,
     onDelete: (AccountEntity) -> Unit,

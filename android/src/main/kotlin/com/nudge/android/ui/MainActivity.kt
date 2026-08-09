@@ -16,7 +16,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
@@ -46,16 +47,19 @@ import com.nudge.android.update.InAppUpdateInstaller
 
 class MainActivity : ComponentActivity() {
     private val pendingAction = MutableStateFlow(WidgetAction.NONE)
+    private val pendingFinancialImport = MutableStateFlow<SharedFinancialImport?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingAction.value = intent.toWidgetAction()
+        pendingFinancialImport.value = intent.toSharedFinancialImport()
         enableEdgeToEdge()
         setContent {
             val vm: MainViewModel = viewModel()
             val prefs = remember { getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
             var dark by remember { mutableStateOf(prefs.getBoolean("dark_mode", false)) }
             var onboardingDone by remember { mutableStateOf(prefs.getBoolean("onboarding_complete", false)) }
+            var permissionsDone by remember { mutableStateOf(prefs.getBoolean("first_run_permissions_v1_complete", false)) }
             var tourDone by remember { mutableStateOf(prefs.getBoolean("product_tour_v2_complete", false)) }
             var availableUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
             var updateStatus by remember { mutableStateOf<String?>(null) }
@@ -65,6 +69,7 @@ class MainActivity : ComponentActivity() {
             var queuedUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
             val scope = rememberCoroutineScope()
             val widgetAction by pendingAction.collectAsState()
+            val sharedFinancialImport by pendingFinancialImport.collectAsState()
             val installPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 val release = pendingInstallPermission
                 pendingInstallPermission = null
@@ -77,6 +82,15 @@ class MainActivity : ComponentActivity() {
 
             fun checkForUpdates(manual: Boolean) {
                 if (checkingUpdates) return
+                if (BuildConfig.DISTRIBUTION == "play") {
+                    updateStatus = "Managed by Google Play"
+                    if (manual) {
+                        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+                        val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+                        runCatching { startActivity(market) }.getOrElse { startActivity(web) }
+                    }
+                    return
+                }
                 checkingUpdates = true
                 updateStatus = "Checking GitHub…"
                 scope.launch {
@@ -98,8 +112,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(onboardingDone, tourDone) {
-                if (onboardingDone && tourDone) {
+            LaunchedEffect(onboardingDone, permissionsDone, tourDone) {
+                if (BuildConfig.DISTRIBUTION == "github" && onboardingDone && permissionsDone && tourDone) {
                     val lastCheck = prefs.getLong("last_update_check_epoch", 0L)
                     if (System.currentTimeMillis() - lastCheck >= 24L * 60L * 60L * 1_000L) {
                         prefs.edit().putLong("last_update_check_epoch", System.currentTimeMillis()).apply()
@@ -130,11 +144,17 @@ class MainActivity : ComponentActivity() {
                                 prefs.edit().putBoolean("onboarding_complete", true).apply()
                                 onboardingDone = true
                             })
+                            !permissionsDone -> FirstRunPermissionsScreen(onDone = {
+                                prefs.edit().putBoolean("first_run_permissions_v1_complete", true).apply()
+                                permissionsDone = true
+                            })
                             else -> ExpenseNavHost(
                                 viewModel = vm,
                                 isDark = dark,
                                 requestedAction = widgetAction,
                                 onActionConsumed = { pendingAction.value = WidgetAction.NONE },
+                                sharedFinancialImport = sharedFinancialImport,
+                                onSharedFinancialImportConsumed = { pendingFinancialImport.value = null },
                                 onToggleTheme = {
                                     dark = !dark
                                     prefs.edit().putBoolean("dark_mode", dark).apply()
@@ -178,6 +198,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingAction.value = intent.toWidgetAction()
+        pendingFinancialImport.value = intent.toSharedFinancialImport()
     }
 
     companion object {
@@ -195,6 +216,14 @@ private fun Intent?.toWidgetAction(): WidgetAction = when {
     else -> WidgetAction.NONE
 }
 
+private fun Intent?.toSharedFinancialImport(): SharedFinancialImport? {
+    if (this?.action != Intent.ACTION_SEND) return null
+    @Suppress("DEPRECATION")
+    val stream = getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+    val sharedText = getStringExtra(Intent.EXTRA_TEXT)
+    return if (stream != null || !sharedText.isNullOrBlank()) SharedFinancialImport(stream, sharedText) else null
+}
+
 private enum class NavScreen {
     Transactions,
     Charts,
@@ -205,6 +234,8 @@ private enum class NavScreen {
     Backup,
     SavedMessages,
     Donate,
+    Privacy,
+    FinancialImport,
 }
 
 @Composable
@@ -213,6 +244,8 @@ private fun ExpenseNavHost(
     isDark: Boolean,
     requestedAction: WidgetAction,
     onActionConsumed: () -> Unit,
+    sharedFinancialImport: SharedFinancialImport?,
+    onSharedFinancialImportConsumed: () -> Unit,
     onToggleTheme: () -> Unit,
     tourActive: Boolean,
     onTourComplete: () -> Unit,
@@ -224,6 +257,7 @@ private fun ExpenseNavHost(
     val stack = remember { mutableStateListOf(NavScreen.Transactions) }
     val current = stack.last()
     var showAdd by remember { mutableStateOf(false) }
+    var directFinancialImport by remember { mutableStateOf<SharedFinancialImport?>(null) }
     var tourStep by remember { mutableIntStateOf(0) }
     var captureEnabled by remember { mutableStateOf(prefs.getBoolean("auto_capture_enabled", true)) }
     var notificationEnabled by remember(current) { mutableStateOf(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) }
@@ -260,6 +294,10 @@ private fun ExpenseNavHost(
         if (requestedAction != WidgetAction.NONE) onActionConsumed()
     }
 
+    LaunchedEffect(sharedFinancialImport) {
+        if (sharedFinancialImport != null) push(NavScreen.FinancialImport)
+    }
+
     LaunchedEffect(tourActive) {
         if (tourActive) {
             showAdd = false
@@ -284,6 +322,13 @@ private fun ExpenseNavHost(
         smsGranted = grants.values.all { it }
         prefs.edit().putBoolean("sms_granted", smsGranted).apply()
     }
+    val directImportPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            directFinancialImport = SharedFinancialImport(uri = uri)
+            showAdd = false
+            push(NavScreen.FinancialImport)
+        }
+    }
 
     val tourTargetRegistry = remember { TourTargetRegistry() }
     CompositionLocalProvider(LocalTourTargetRegistry provides tourTargetRegistry) {
@@ -291,8 +336,8 @@ private fun ExpenseNavHost(
         AnimatedContent(
             targetState = current,
             transitionSpec = {
-                (fadeIn(spring()) + slideInHorizontally { it / 10 }) togetherWith
-                    (fadeOut(spring()) + slideOutHorizontally { -it / 12 })
+                (fadeIn(tween(220)) + slideInHorizontally(tween(260, easing = FastOutSlowInEasing)) { it / 14 }) togetherWith
+                    (fadeOut(tween(170)) + slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) { -it / 16 })
             },
             label = "expenseDestination"
         ) { screen ->
@@ -306,7 +351,6 @@ private fun ExpenseNavHost(
                     captureEnabled = captureEnabled,
                     onSettings = { push(NavScreen.Settings) },
                     onReview = { push(NavScreen.Review) },
-                    onAdd = { showAdd = true },
                     onUpdate = viewModel::updateTransaction,
                     onDelete = viewModel::deleteTransaction
                 )
@@ -332,8 +376,10 @@ private fun ExpenseNavHost(
                     onAccounts = { push(NavScreen.Accounts) },
                     onCategories = { push(NavScreen.Categories) },
                     onBackup = { push(NavScreen.Backup) },
+                    onFinancialImport = { push(NavScreen.FinancialImport) },
                     onSavedMessages = { push(NavScreen.SavedMessages) },
                     onDonate = { push(NavScreen.Donate) },
+                    onPrivacy = { push(NavScreen.Privacy) },
                     onCheckUpdates = onCheckUpdates,
                     updateStatus = updateStatus,
                 )
@@ -366,6 +412,18 @@ private fun ExpenseNavHost(
                     onBack = ::back
                 )
                 NavScreen.Donate -> DonateScreen(onBack = ::back)
+                NavScreen.Privacy -> PrivacyPolicyScreen(onBack = ::back)
+                NavScreen.FinancialImport -> FinancialImportScreen(
+                    accounts = accounts,
+                    sharedImport = directFinancialImport ?: sharedFinancialImport,
+                    onSharedImportConsumed = {
+                        if (directFinancialImport != null) directFinancialImport = null
+                        else onSharedFinancialImportConsumed()
+                    },
+                    onImport = viewModel::importStatementTransactions,
+                    onCreateAccount = viewModel::saveAccount,
+                    onBack = ::back,
+                )
             }
         }
 
@@ -407,10 +465,21 @@ private fun ExpenseNavHost(
     }
     }
 
-    if (showAdd) AddTransactionSheet(categories, accounts, onDismiss = { showAdd = false }) { amount, type, merchant, account, category, note ->
-        viewModel.addTransaction(amount, type, merchant, account, category, note)
-        showAdd = false
-    }
+    if (showAdd) AddTransactionSheet(
+        categories = categories,
+        accounts = accounts,
+        onDismiss = { showAdd = false },
+        onOpenSmartImport = {
+            directImportPicker.launch(
+                arrayOf("text/csv", "text/plain", "application/pdf", "application/vnd.ms-excel", "image/*"),
+            )
+        },
+        onCreateCategory = viewModel::saveCategory,
+        onCreateAccount = viewModel::saveAccount,
+    ) { amount, type, merchant, account, category, note ->
+            viewModel.addTransaction(amount, type, merchant, account, category, note)
+            showAdd = false
+        }
 }
 
 @Composable

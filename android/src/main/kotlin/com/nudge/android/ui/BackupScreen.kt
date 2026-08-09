@@ -143,7 +143,7 @@ fun BackupScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(exportActionColor.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                        Lucide.Download(size = 20.dp, color = exportActionColor)
+                        Lucide.Upload(size = 20.dp, color = exportActionColor)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -172,7 +172,7 @@ fun BackupScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(importActionColor.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                        Lucide.Database(size = 20.dp, color = importActionColor)
+                        Lucide.Download(size = 20.dp, color = importActionColor)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {

@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -51,7 +52,9 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToLong
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     transactions: List<TransactionEntity>,
@@ -62,7 +65,6 @@ fun HistoryScreen(
     captureEnabled: Boolean,
     onSettings: () -> Unit,
     onReview: () -> Unit,
-    onAdd: () -> Unit,
     onUpdate: (TransactionEntity) -> Unit,
     onDelete: (String) -> Unit
 ) {
@@ -72,19 +74,38 @@ fun HistoryScreen(
     var editing by remember { mutableStateOf<TransactionEntity?>(null) }
     var viewingSource by remember { mutableStateOf<TransactionEntity?>(null) }
     val context = LocalContext.current
-    val now = remember { Calendar.getInstance() }
-    val currentMonth = transactions.filter { sameMonth(it.timestampEpoch, now) }
-    val previous = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val haptics = remember(context) { NudgeHaptics(context) }
+    var pendingDeleteIds by remember { mutableStateOf(emptySet<String>()) }
+    val today = remember { Calendar.getInstance() }
+    var selectedYear by rememberSaveable { mutableIntStateOf(today.get(Calendar.YEAR)) }
+    var selectedMonthIndex by rememberSaveable { mutableIntStateOf(today.get(Calendar.MONTH)) }
+    val selectedMonth = remember(selectedYear, selectedMonthIndex) {
+        Calendar.getInstance().apply { clear(); set(selectedYear, selectedMonthIndex, 1) }
+    }
+    val selectedMonthTransactions = remember(transactions, selectedYear, selectedMonthIndex) {
+        transactions.filter { sameMonth(it.timestampEpoch, selectedMonth) }
+    }
+    val previous = remember(selectedYear, selectedMonthIndex) {
+        Calendar.getInstance().apply { clear(); set(selectedYear, selectedMonthIndex, 1); add(Calendar.MONTH, -1) }
+    }
     val previousMonth = transactions.filter { sameMonth(it.timestampEpoch, previous) }
-    val spent = currentMonth.filter { it.type == "debit" }.sumOf { it.amountCents }
-    val income = currentMonth.filter { it.type == "credit" }.sumOf { it.amountCents }
-    val refunds = currentMonth.filter { it.type == "refund" }.sumOf { it.amountCents }
+    val spent = selectedMonthTransactions.filter { it.type == "debit" }.sumOf { it.amountCents }
+    val income = selectedMonthTransactions.filter { it.type == "credit" }.sumOf { it.amountCents }
+    val refunds = selectedMonthTransactions.filter { it.type == "refund" }.sumOf { it.amountCents }
     val previousSpent = previousMonth.filter { it.type == "debit" }.sumOf { it.amountCents }
     val delta = if (previousSpent > 0) (((spent - previousSpent) * 100f) / previousSpent).toInt() else 0
-    val needsReview = transactions.count { !it.isReviewed }
+    val needsReview = selectedMonthTransactions.count { !it.isReviewed }
+    val monthLabel = remember(selectedYear, selectedMonthIndex) {
+        SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(selectedMonth.time)
+    }
+    val canGoNext = selectedYear < today.get(Calendar.YEAR) ||
+        (selectedYear == today.get(Calendar.YEAR) && selectedMonthIndex < today.get(Calendar.MONTH))
 
-    val visible = remember(transactions, query, filter) {
-        transactions.filter { txn ->
+    val visible = remember(selectedMonthTransactions, query, filter, pendingDeleteIds) {
+        selectedMonthTransactions.filter { txn ->
+            if (txn.id in pendingDeleteIds) return@filter false
             val matchesType = when (filter) {
                 "all" -> true
                 "smart" -> txn.source != "manual"
@@ -99,10 +120,26 @@ fun HistoryScreen(
         visible.groupBy { dayKey(it.timestampEpoch) }.toList()
     }
 
-    val latestCaptured = transactions.firstOrNull {
+    val latestCaptured = selectedMonthTransactions.firstOrNull {
         it.source != "manual" && System.currentTimeMillis() - it.createdAt < 12_000
     }
     var dismissedCaptureId by remember { mutableStateOf<String?>(null) }
+
+    fun requestDelete(transaction: TransactionEntity) {
+        if (transaction.id in pendingDeleteIds) return
+        pendingDeleteIds = pendingDeleteIds + transaction.id
+        haptics.warning()
+        scope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = "Transaction removed",
+                actionLabel = "Undo",
+                withDismissAction = true,
+                duration = SnackbarDuration.Short,
+            )
+            if (result != SnackbarResult.ActionPerformed) onDelete(transaction.id)
+            pendingDeleteIds = pendingDeleteIds - transaction.id
+        }
+    }
 
     Box(Modifier.fillMaxSize().background(DSBridge.background())) {
         LazyColumn(
@@ -116,7 +153,29 @@ fun HistoryScreen(
                     onSearch = { showSearch = !showSearch },
                     onSettings = onSettings,
                 )
-                MonthSummary(spent, income, refunds, delta, currentMonth.size)
+                MonthSummary(
+                    spent = spent,
+                    income = income,
+                    refunds = refunds,
+                    delta = delta,
+                    count = selectedMonthTransactions.size,
+                    monthLabel = monthLabel,
+                    canGoNext = canGoNext,
+                    onPrevious = {
+                        if (selectedMonthIndex == Calendar.JANUARY) {
+                            selectedMonthIndex = Calendar.DECEMBER
+                            selectedYear--
+                        } else selectedMonthIndex--
+                    },
+                    onNext = {
+                        if (canGoNext) {
+                            if (selectedMonthIndex == Calendar.DECEMBER) {
+                                selectedMonthIndex = Calendar.JANUARY
+                                selectedYear++
+                            } else selectedMonthIndex++
+                        }
+                    },
+                )
             }
 
             if (needsReview > 0) {
@@ -177,7 +236,7 @@ fun HistoryScreen(
             }
 
             if (groups.isEmpty()) {
-                item { EmptyHistory(onAdd) }
+                item { EmptyHistory() }
             } else {
                 groups.forEach { (day, entries) ->
                     item(key = "header_$day") {
@@ -185,12 +244,17 @@ fun HistoryScreen(
                             letterSpacing = .8.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
                     }
                     items(entries, key = { it.id }) { txn ->
-                        HistoryRow(
-                            txn,
-                            categories.firstOrNull { it.id == txn.categoryId },
-                            accounts.firstOrNull { it.id == txn.accountId },
-                            onClick = { editing = txn },
-                        )
+                        SwipeToDeleteTransaction(
+                            transaction = txn,
+                            onDelete = { requestDelete(txn) },
+                        ) {
+                            HistoryRow(
+                                txn,
+                                categories.firstOrNull { it.id == txn.categoryId },
+                                accounts.firstOrNull { it.id == txn.accountId },
+                                onClick = { editing = txn },
+                            )
+                        }
                     }
                 }
             }
@@ -210,6 +274,20 @@ fun HistoryScreen(
                 )
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal = 18.dp, vertical = 94.dp),
+        ) { data ->
+            Snackbar(
+                snackbarData = data,
+                shape = RoundedCornerShape(16.dp),
+                containerColor = DS.AccentDeep,
+                contentColor = Color.White,
+                actionColor = DS.Signal,
+                dismissActionContentColor = Color.White.copy(alpha = .65f),
+            )
+        }
     }
 
     editing?.let { txn ->
@@ -228,6 +306,50 @@ fun HistoryScreen(
             categories.firstOrNull { it.id == txn.categoryId },
             onDismiss = { viewingSource = null }
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeToDeleteTransaction(
+    transaction: TransactionEntity,
+    onDelete: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    var dragOffset by remember(transaction.id) { mutableFloatStateOf(0f) }
+    var rowWidth by remember(transaction.id) { mutableFloatStateOf(1f) }
+    val scope = rememberCoroutineScope()
+    Box(
+        Modifier.fillMaxWidth().onSizeChanged { rowWidth = it.width.toFloat() },
+    ) {
+        Box(
+            Modifier.matchParentSize().background(DSBridge.background()).padding(horizontal = 22.dp),
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Text("Delete", color = DS.Negative, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = dragOffset }
+                .pointerInput(transaction.id, rowWidth) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            dragOffset = (dragOffset + amount).coerceIn(-rowWidth * .38f, 0f)
+                        },
+                        onDragCancel = {
+                            scope.launch { androidx.compose.animation.core.animate(dragOffset, 0f) { value, _ -> dragOffset = value } }
+                        },
+                        onDragEnd = {
+                            if (dragOffset <= -rowWidth * .28f) onDelete()
+                            else scope.launch { androidx.compose.animation.core.animate(dragOffset, 0f) { value, _ -> dragOffset = value } }
+                        },
+                    )
+                },
+        ) {
+            content()
+        }
     }
 }
 
@@ -277,7 +399,11 @@ private fun SwipeDismissCaptureBanner(
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("Captured ${formatCents(transaction.amountCents)}", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Captured ${if (transaction.type == "debit") "−" else ""}${formatCents(transaction.amountCents)}",
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 Text(transaction.merchantRaw, color = Color.White.copy(alpha = .6f), fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             TextButton(onClick = onEdit) { Text("Edit", color = DS.Signal) }
@@ -329,8 +455,19 @@ private fun CompactHeaderAction(active: Boolean, onClick: () -> Unit, icon: @Com
 }
 
 @Composable
-private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, count: Int) {
+private fun MonthSummary(
+    spent: Long,
+    income: Long,
+    refunds: Long,
+    delta: Int,
+    count: Int,
+    monthLabel: String,
+    canGoNext: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+) {
     val netFlow = income + refunds - spent
+    val currency = currentCurrencySymbol()
     NudgeHeroCard(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp).tourTarget(TourTarget.MonthSummary),
         style = NudgeHeroStyle.CashFlow,
@@ -339,7 +476,15 @@ private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, c
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .55f))
-                    Text(SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date()), fontSize = 11.sp, color = Color.White.copy(alpha = .78f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onPrevious, modifier = Modifier.size(24.dp)) {
+                            Lucide.ChevronLeft(size = 14.dp, color = Color.White.copy(alpha = .72f))
+                        }
+                        Text(monthLabel, fontSize = 11.sp, color = Color.White.copy(alpha = .82f), maxLines = 1)
+                        IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(24.dp)) {
+                            Lucide.ChevronRight(size = 14.dp, color = Color.White.copy(alpha = if (canGoNext) .72f else .22f))
+                        }
+                    }
                 }
                 Surface(shape = RoundedCornerShape(9.dp), color = if (delta <= 0) DS.Positive.copy(alpha = .10f) else DS.Negative.copy(alpha = .10f)) {
                     Text(
@@ -355,7 +500,7 @@ private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, c
             Spacer(Modifier.height(9.dp))
             AnimatedContent(netFlow, label = "monthFlow") { value ->
                 Text(
-                    "${if (value > 0) "+" else if (value < 0) "−" else ""}${formatCents(kotlin.math.abs(value))}",
+                    "${if (value < 0) "−" else ""}$currency${formatCompactCentsPlain(kotlin.math.abs(value))}",
                     fontFamily = MonoFamily,
                     fontSize = 29.sp,
                     fontWeight = FontWeight.ExtraBold,
@@ -369,9 +514,9 @@ private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, c
             )
             Spacer(Modifier.height(13.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryPill("MONEY IN", formatCents(income), DS.Positive, Modifier.weight(1f), onDark = true)
-                SummaryPill("SPENT", formatCents(spent), DS.Negative, Modifier.weight(1f), onDark = true)
-                SummaryPill("REFUNDS", formatCents(refunds), DS.Warning, Modifier.weight(1f), onDark = true)
+                SummaryPill("MONEY IN", "$currency${formatCompactCentsPlain(income)}", DS.Positive, Modifier.weight(1f), onDark = true)
+                SummaryPill("SPENT", "$currency${formatCompactCentsPlain(spent)}", DS.Negative, Modifier.weight(1f), onDark = true)
+                SummaryPill("REFUNDS", "$currency${formatCompactCentsPlain(refunds)}", DS.Warning, Modifier.weight(1f), onDark = true)
             }
         }
     }
@@ -392,13 +537,23 @@ private fun MonthSummary(spent: Long, income: Long, refunds: Long, delta: Int, c
 @Composable
 private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, account: AccountEntity?, onClick: () -> Unit) {
     val expense = txn.type == "debit"
-    Column {
+    val amountSign = when (txn.type) {
+        "debit" -> "−"
+        else -> ""
+    }
+    val semanticColor = when (txn.type) {
+        "debit" -> DS.Negative
+        "credit" -> DS.Positive
+        "refund" -> DS.Warning
+        else -> DSBridge.inkSoft()
+    }
+    Column(Modifier.fillMaxWidth().background(DSBridge.background())) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (expense) DS.Negative.copy(alpha = .1f) else DS.Positive.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(DSBridge.surface()), contentAlignment = Alignment.Center) {
             if (category != null) {
-                CategoryGlyph(category.icon, category.name, if (expense) DS.Negative else DS.Positive, Modifier.size(17.dp))
+                CategoryGlyph(category.icon, category.name, semanticColor, Modifier.size(17.dp))
             } else if (expense) Lucide.ShoppingCart(size = 17.dp, color = DS.Negative)
-            else Lucide.TrendingUp(size = 17.dp, color = DS.Positive)
+            else Lucide.TrendingUp(size = 17.dp, color = semanticColor)
         }
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
@@ -409,7 +564,7 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
             Text(listOfNotNull(category?.name ?: "Uncategorized", account?.name, txn.source.takeIf { it != "manual" }).joinToString(" · "), fontSize = 10.sp, color = DSBridge.inkMute(), maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("${if (expense) "−" else "+"}${formatCents(txn.amountCents)}", fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (expense) DSBridge.ink() else DS.Positive)
+            Text("$amountSign${formatCents(txn.amountCents)}", fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = semanticColor)
             Text(SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(txn.timestampEpoch)), fontSize = 9.sp, color = DSBridge.inkMute())
         }
     }
@@ -417,12 +572,11 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
     }
 }
 
-@Composable private fun EmptyHistory(onAdd: () -> Unit) {
+@Composable private fun EmptyHistory() {
     Column(Modifier.fillMaxWidth().padding(48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Lucide.ListTodo(size = 34.dp, color = DSBridge.inkMute())
         Spacer(Modifier.height(12.dp)); Text("No transactions yet", fontWeight = FontWeight.SemiBold, color = DSBridge.ink())
-        Text("Add one or enable automatic capture", fontSize = 12.sp, color = DSBridge.inkMute())
-        TextButton(onClick = onAdd) { Text("Add transaction") }
+        Text("Use the + button below or enable automatic capture", fontSize = 12.sp, color = DSBridge.inkMute(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
 

@@ -35,11 +35,24 @@ android {
     defaultConfig {
         applicationId = "com.nudge.android"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 4
-        versionName = "4.0.0"
+        targetSdk = 36
+        versionCode = 13
+        versionName = "4.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+        ndk { debugSymbolLevel = "SYMBOL_TABLE" }
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") {
+            dimension = "distribution"
+            buildConfigField("String", "DISTRIBUTION", "\"github\"")
+        }
+        create("play") {
+            dimension = "distribution"
+            buildConfigField("String", "DISTRIBUTION", "\"play\"")
+        }
     }
 
     signingConfigs {
@@ -80,10 +93,11 @@ android {
 
     applicationVariants.all {
         outputs.all {
+            val distribution = productFlavors.firstOrNull()?.name ?: "universal"
             (this as BaseVariantOutputImpl).outputFileName = if (buildType.name == "release") {
-                "Nudge-v${versionName}.apk"
+                "Nudge-${distribution}-v${versionName}.apk"
             } else {
-                "Nudge-v${versionName}-debug.apk"
+                "Nudge-${distribution}-v${versionName}-debug.apk"
             }
         }
     }
@@ -132,6 +146,12 @@ dependencies {
 
     // ML Kit — on-device card-number recognition
     implementation("com.google.mlkit:text-recognition:16.0.1")
+
+    // CameraX — embedded receipt camera preview
+    val cameraXVersion = "1.6.1"
+    implementation("androidx.camera:camera-camera2:$cameraXVersion")
+    implementation("androidx.camera:camera-lifecycle:$cameraXVersion")
+    implementation("androidx.camera:camera-view:$cameraXVersion")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

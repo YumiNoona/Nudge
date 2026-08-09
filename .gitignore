@@ -21,11 +21,27 @@ output-metadata.json
 *.keystore
 *.jks
 *.p12
+*.pfx
 *.pem
 *.key
+*.der
+*.cer
+*.crt
 secrets.properties
 keystore.properties
 google-services.json
+service-account*.json
+play-service-account*.json
+play-console-credentials*.json
+upload-key.properties
+pepk*.jar
+
+# Local Play Console and release-signing material
+.play/
+play-console/
+signing/*.txt
+signing/*.json
+signing/*.zip
 
 # IntelliJ IDEA and Android Studio
 .idea/

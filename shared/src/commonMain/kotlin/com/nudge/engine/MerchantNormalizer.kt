@@ -36,6 +36,13 @@ object MerchantNormalizer {
     fun normalize(raw: String): NormalizationResult {
         val cleaned = clean(raw)
         val lowered = cleaned.lowercase()
+        if (cleaned == "Unknown merchant") {
+            return NormalizationResult(
+                normalized = cleaned,
+                confidence = 0.15f,
+                source = NormalizationSource.HEURISTIC,
+            )
+        }
 
         // 1. Exact alias match
         aliases[lowered]?.let { normalized ->
@@ -78,6 +85,11 @@ object MerchantNormalizer {
      */
     private fun clean(raw: String): String {
         var result = raw.trim().trim('"', '\'', ' ')
+        // Payment gateways and notification payload metadata are not part of a merchant name.
+        // District messages, for example, may arrive as "District Dining CYBS on <timestamp>.Not...".
+        result = result.replace(Regex("""(?i)\s+\bcybs\b.*$"""), "")
+        result = result.replace(Regex("""(?i)\s+\bon\s+\d{4}-\d{1,2}-\d{1,2}(?::|T|\s).*?$"""), "")
+        result = result.replace(Regex("""(?i)\.not(?:ification)?\b.*$"""), "")
         // Stop at transaction metadata accidentally captured after the merchant.
         result = result.replace(
             Regex("""(?i)\s+\b(?:on|at)\s+(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}-[A-Za-z]{3}-\d{2,4})(?::\d+)?(?:\s.*)?$"""),
@@ -97,7 +109,7 @@ object MerchantNormalizer {
         val noise = result.lowercase()
         if (result.length < 2 || noise.startsWith("using ") || noise in setOf(
                 "unknown", "bank", "bank card", "credit card", "debit card", "upi", "payment", "purchase"
-            )
+            ) || noise == "ee" || Regex("""your card ending\s+\d+\s+on""", RegexOption.IGNORE_CASE).matches(result)
         ) return "Unknown merchant"
         return result.take(64)
     }
@@ -109,7 +121,9 @@ object MerchantNormalizer {
         // Capitalize first letter of each word
         if (raw == "Unknown merchant") return raw
         val words = raw.split(" ").map { word ->
-            if (word.length > 2 && word.all { it.isUpperCase() }) {
+            if (word.uppercase() in setOf("HDFC", "ICICI", "SBI", "IDFC", "UPI", "ATM")) {
+                word.uppercase()
+            } else if (word.length > 2 && word.all { it.isUpperCase() }) {
                 word.lowercase().replaceFirstChar { it.titlecaseChar() }
             } else {
                 word.replaceFirstChar { it.titlecaseChar() }

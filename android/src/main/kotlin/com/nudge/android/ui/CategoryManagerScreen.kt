@@ -1,7 +1,6 @@
 package com.nudge.android.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,8 +16,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.ui.theme.*
+import com.nudge.android.ui.components.FloatingActionCube
 import com.nudge.model.CategoryType
 
 @Composable
@@ -42,7 +40,8 @@ fun CategoryManagerScreen(
     var deleting by remember { mutableStateOf<CategoryEntity?>(null) }
     var typeFilter by remember { mutableStateOf("expense") }
 
-    Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
+    Box(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().padding(bottom = 96.dp)) {
         Box(Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 8.dp)) {
             IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
             Text("Categories", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
@@ -56,7 +55,7 @@ fun CategoryManagerScreen(
 
         LazyColumn(
             modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 10.dp, bottom = 18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(categories.filter { it.type == typeFilter }, key = { it.id }) { category ->
@@ -83,26 +82,12 @@ fun CategoryManagerScreen(
             item { Spacer(Modifier.height(12.dp)) }
         }
 
-        Box(
-            Modifier.fillMaxWidth().navigationBarsPadding().height(82.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier.size(58.dp).offset(y = 4.dp).clip(RoundedCornerShape(17.dp))
-                    .background(DS.AccentDeep.copy(alpha = .88f))
-            )
-            Box(
-                Modifier.size(58.dp)
-                    .shadow(12.dp, RoundedCornerShape(17.dp), spotColor = DS.Signal.copy(alpha = .35f))
-                    .clip(RoundedCornerShape(17.dp))
-                    .background(Brush.verticalGradient(listOf(Color(0xFFE8FF76), DS.Signal)))
-                    .border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape(17.dp))
-                    .clickable { creating = true },
-                contentAlignment = Alignment.Center,
-            ) {
-                Lucide.Plus(size = 23.dp, strokeWidth = 2.4.dp, color = DS.InkPrimary)
-            }
-        }
+    }
+        FloatingActionCube(
+            contentDescription = "Add category",
+            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 18.dp),
+            onClick = { creating = true },
+        ) { Lucide.Plus(size = 24.dp, color = DS.InkPrimary) }
     }
 
     if (creating || editing != null) {
@@ -145,11 +130,14 @@ internal fun CategoryEditorSheet(
 ) {
     var name by remember { mutableStateOf(category?.name.orEmpty()) }
     var type by remember { mutableStateOf(category?.type ?: defaultType) }
+    val initialCustomEmoji = category?.icon?.takeIf { it.startsWith("emoji:") }?.removePrefix("emoji:").orEmpty()
     val inferred = remember(category) {
         CategoryIcons.all.firstOrNull { it.key == category?.icon }?.key
             ?: CategoryIcons.all.first { it.image == CategoryIcons.resolve(null, category?.name.orEmpty()) }.key
     }
     var iconKey by remember { mutableStateOf(inferred) }
+    var customIconMode by remember { mutableStateOf(initialCustomEmoji.isNotBlank()) }
+    var customEmoji by remember { mutableStateOf(initialCustomEmoji) }
     val palette = listOf("#365244", "#1E9E62", "#3E6F8E", "#149A8B", "#E38B42", "#C65D4B", "#E5A524", "#607D68")
     var color by remember { mutableStateOf(category?.color ?: palette.first()) }
     var iconSearch by remember { mutableStateOf("") }
@@ -196,39 +184,73 @@ internal fun CategoryEditorSheet(
                     }
                 }
             }
-            OutlinedTextField(
-                value = iconSearch,
-                onValueChange = { iconSearch = it },
-                leadingIcon = { Lucide.Search(size = 18.dp, color = DSBridge.inkMute()) },
-                placeholder = { Text("Search ${CategoryIcons.all.size} icons") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            )
-            Spacer(Modifier.height(10.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(58.dp),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(7.dp),
-                verticalArrangement = Arrangement.spacedBy(7.dp)
-            ) {
-                items(shownIcons, key = { it.key }) { option ->
-                    val selected = iconKey == option.key
-                    Box(
-                        Modifier.aspectRatio(1f).clip(RoundedCornerShape(16.dp))
-                            .background(if (selected) DSBridge.accentBg() else DSBridge.background())
-                            .clickable { iconKey = option.key; haptics.selection() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(option.image, option.label, tint = if (selected) DSBridge.accent() else DSBridge.inkSoft(), modifier = Modifier.size(22.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Icon", style = DSTypography.labelMedium, color = DSBridge.inkSoft(), modifier = Modifier.weight(1f))
+                TextButton(onClick = { customIconMode = !customIconMode; haptics.selection() }) {
+                    if (customIconMode) Lucide.LayoutDashboard(size = 16.dp, color = DSBridge.accent()) else Lucide.Plus(size = 16.dp, color = DSBridge.accent())
+                    Spacer(Modifier.width(5.dp))
+                    Text(if (customIconMode) "Browse icons" else "Custom emoji", fontSize = 11.sp)
+                }
+            }
+            if (customIconMode) {
+                Surface(shape = RoundedCornerShape(18.dp), color = DSBridge.background()) {
+                    Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)).background(NudgeColors.parse(color).copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                            Text(customEmoji.ifBlank { "✨" }, fontSize = 25.sp)
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        OutlinedTextField(
+                            value = customEmoji,
+                            onValueChange = { customEmoji = it.take(8) },
+                            label = { Text("Emoji or symbol") },
+                            placeholder = { Text("🍜") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Text("Use one emoji for the clearest category icon.", color = DSBridge.inkMute(), fontSize = 9.sp)
+                Spacer(Modifier.weight(1f))
+            } else {
+                OutlinedTextField(
+                    value = iconSearch,
+                    onValueChange = { iconSearch = it },
+                    leadingIcon = { Lucide.Search(size = 18.dp, color = DSBridge.inkMute()) },
+                    trailingIcon = if (iconSearch.isNotBlank()) ({
+                        IconButton(onClick = { iconSearch = "" }) { Lucide.X(size = 17.dp, color = DSBridge.inkMute()) }
+                    }) else null,
+                    placeholder = { Text("Search ${CategoryIcons.all.size} icons") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                )
+                Spacer(Modifier.height(10.dp))
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(58.dp),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    items(shownIcons, key = { it.key }) { option ->
+                        val selected = iconKey == option.key
+                        Box(
+                            Modifier.aspectRatio(1f).clip(RoundedCornerShape(16.dp))
+                                .background(if (selected) DSBridge.accentBg() else DSBridge.background())
+                                .clickable { iconKey = option.key; haptics.selection() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(option.image, option.label, tint = if (selected) DSBridge.accent() else DSBridge.inkSoft(), modifier = Modifier.size(22.dp))
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(12.dp))
             Button(
-                onClick = { haptics.success(); onSave(name.trim(), type, iconKey, color) },
-                enabled = name.isNotBlank(),
+                onClick = { haptics.success(); onSave(name.trim(), type, if (customIconMode) "emoji:${customEmoji.trim()}" else iconKey, color) },
+                enabled = name.isNotBlank() && (!customIconMode || customEmoji.isNotBlank()),
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = DSBridge.accent())

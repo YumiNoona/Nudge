@@ -38,7 +38,7 @@ fun DonateScreen(onBack: () -> Unit) {
             IconButton(onClick = onBack, modifier = Modifier.size(48.dp).align(Alignment.CenterStart)) {
                 Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft())
             }
-            Text("Support Nudge", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
+            Text("Tip the creator", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
         }
 
         Column(
@@ -46,7 +46,7 @@ fun DonateScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                "If Nudge saves you time, you can support its independent development.",
+                "If Nudge saves you time, you can optionally tip its creator. The full app stays free and a tip unlocks no feature, content, badge, or benefit.",
                 style = DSTypography.bodyMedium,
                 color = DSBridge.inkSoft(),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -61,7 +61,7 @@ fun DonateScreen(onBack: () -> Unit) {
             ) {
                 Image(
                     painter = painterResource(R.drawable.donate_upi_qr),
-                    contentDescription = "UPI donation QR for Rushikesh Ingale",
+                    contentDescription = "Optional creator tip QR for Rushikesh Ingale",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxWidth().aspectRatio(1336f / 1848f).clip(RoundedCornerShape(26.dp)),
                 )
@@ -79,7 +79,7 @@ fun DonateScreen(onBack: () -> Unit) {
                     }
                     IconButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Nudge donation UPI ID", DONATION_UPI_ID))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Nudge creator tip UPI ID", DONATION_UPI_ID))
                         Toast.makeText(context, "UPI ID copied", Toast.LENGTH_SHORT).show()
                     }) { Lucide.Copy(size = 18.dp, color = DSBridge.accent()) }
                 }
@@ -98,6 +98,14 @@ fun DonateScreen(onBack: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Text("Open a UPI app", fontWeight = FontWeight.SemiBold)
             }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "100% goes directly to the creator. This is a voluntary peer-to-peer contribution and is not a purchase.",
+                color = DSBridge.inkMute(),
+                fontSize = 9.sp,
+                lineHeight = 14.sp,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
             Spacer(Modifier.height(34.dp).navigationBarsPadding())
         }
     }

@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -15,12 +16,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.*
@@ -30,6 +36,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.abs
 
 @Composable
 fun NeedsReviewSwipeScreen(
@@ -45,10 +52,11 @@ fun NeedsReviewSwipeScreen(
 ) {
     val queue = remember { mutableStateListOf<TransactionEntity>().apply { addAll(transactions) } }
     val seenIds = remember { transactions.mapTo(mutableSetOf()) { it.id } }
-    var totalCount by remember { mutableIntStateOf(transactions.size) }
-    var completedCount by remember { mutableIntStateOf(0) }
+    var currentIndex by remember { mutableIntStateOf(0) }
     var transitionDirection by remember { mutableIntStateOf(-1) }
     var processing by remember { mutableStateOf(false) }
+    var cardDrag by remember { mutableFloatStateOf(0f) }
+    var cardWidth by remember { mutableFloatStateOf(1f) }
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showCreateCategory by remember { mutableStateOf(false) }
     var showSource by remember { mutableStateOf(false) }
@@ -61,11 +69,11 @@ fun NeedsReviewSwipeScreen(
         queue.removeAll { it.id !in activeIds }
         transactions.filter { seenIds.add(it.id) }.forEach {
             queue.add(it)
-            totalCount++
         }
+        if (queue.isNotEmpty()) currentIndex = currentIndex.coerceIn(0, queue.lastIndex)
     }
 
-    val current = queue.firstOrNull()
+    val current = queue.getOrNull(currentIndex)
     fun advance(confirmed: Boolean, persist: () -> Unit) {
         if (processing || current == null) return
         processing = true
@@ -73,11 +81,27 @@ fun NeedsReviewSwipeScreen(
         persist()
         scope.launch {
             delay(190)
-            if (queue.firstOrNull()?.id == current.id) queue.removeAt(0)
-            completedCount++
+            val removedIndex = queue.indexOfFirst { it.id == current.id }
+            if (removedIndex >= 0) queue.removeAt(removedIndex)
+            if (queue.isNotEmpty()) currentIndex = currentIndex.coerceAtMost(queue.lastIndex)
             showCategoryPicker = false
             showCreateCategory = false
             showSource = false
+            processing = false
+        }
+    }
+    fun browse(direction: Int) {
+        if (processing || queue.size < 2) {
+            scope.launch { androidx.compose.animation.core.animate(cardDrag, 0f) { value, _ -> cardDrag = value } }
+            return
+        }
+        processing = true
+        transitionDirection = if (direction > 0) -1 else 1
+        val target = if (direction > 0) -cardWidth else cardWidth
+        scope.launch {
+            androidx.compose.animation.core.animate(cardDrag, target) { value, _ -> cardDrag = value }
+            currentIndex = Math.floorMod(currentIndex + direction, queue.size)
+            cardDrag = 0f
             processing = false
         }
     }
@@ -101,7 +125,7 @@ fun NeedsReviewSwipeScreen(
                 Lucide.ChevronLeft(size = 21.dp, color = DSBridge.inkSoft())
             }
             Text(
-                "${completedCount + 1} / ${totalCount.coerceAtLeast(1)}",
+                "${currentIndex + 1} / ${queue.size.coerceAtLeast(1)}",
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 fontFamily = MonoFamily,
@@ -111,28 +135,86 @@ fun NeedsReviewSwipeScreen(
             Spacer(Modifier.width(48.dp))
         }
 
+        Box(
+            modifier = Modifier.align(Alignment.Center).fillMaxWidth().heightIn(min = 470.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            repeat(minOf(2, queue.size - 1)) { index ->
+                val depth = 2 - index
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = (27 + depth * 5).dp)
+                        .height(420.dp)
+                        .graphicsLayer {
+                            translationY = (depth * 10).dp.toPx()
+                            rotationZ = if (depth % 2 == 0) -2.2f else 2.2f
+                            scaleX = 1f - depth * .025f
+                            scaleY = 1f - depth * .025f
+                        },
+                    shape = RoundedCornerShape(30.dp),
+                    color = DSBridge.surface().copy(alpha = if (depth == 1) .92f else .72f),
+                    shadowElevation = (3 + depth).dp,
+                ) {}
+            }
         AnimatedContent(
             targetState = current,
             transitionSpec = {
                 (slideInHorizontally(spring(stiffness = 420f, dampingRatio = .82f)) { transitionDirection * -it / 3 } + fadeIn()) togetherWith
                     (slideOutHorizontally { transitionDirection * it } + fadeOut())
             },
-            modifier = Modifier.align(Alignment.Center).fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onSizeChanged { cardWidth = it.width.toFloat().coerceAtLeast(1f) }
+                .graphicsLayer {
+                    translationX = cardDrag
+                    rotationZ = (cardDrag / cardWidth) * 4.5f
+                }
+                .pointerInput(queue.size, current.id, cardWidth) {
+                    detectHorizontalDragGestures(
+                        onHorizontalDrag = { change, amount ->
+                            change.consume()
+                            cardDrag = (cardDrag + amount).coerceIn(-cardWidth, cardWidth)
+                        },
+                        onDragCancel = {
+                            scope.launch { androidx.compose.animation.core.animate(cardDrag, 0f) { value, _ -> cardDrag = value } }
+                        },
+                        onDragEnd = {
+                            when {
+                                cardDrag <= -cardWidth * .18f -> browse(1)
+                                cardDrag >= cardWidth * .18f -> browse(-1)
+                                else -> scope.launch { androidx.compose.animation.core.animate(cardDrag, 0f) { value, _ -> cardDrag = value } }
+                            }
+                        },
+                    )
+                },
             label = "reviewQueue"
         ) { transaction ->
+            val transactionAccount = accounts.firstOrNull { it.id == transaction.accountId }
+            val transactionCategory = categories.firstOrNull { it.id == transaction.categoryId }
             Surface(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp).heightIn(min = 420.dp),
                 shape = RoundedCornerShape(30.dp),
                 color = DSBridge.surface(),
                 shadowElevation = 10.dp
             ) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 26.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    val amountSign = when (transaction.type) {
+                        "debit" -> "−"
+                        else -> ""
+                    }
+                    val amountColor = when (transaction.type) {
+                        "debit" -> DS.Negative
+                        "credit" -> DS.Positive
+                        "refund" -> DS.Warning
+                        else -> DSBridge.ink()
+                    }
                     Text(
-                        "₹${fmt.format(transaction.amountCents / 100.0)}",
+                        "$amountSign₹${fmt.format(transaction.amountCents / 100.0)}",
                         fontFamily = MonoFamily,
                         fontSize = 34.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (transaction.type == "debit") DS.Negative else DS.Positive
+                        color = amountColor
                     )
                     Spacer(Modifier.height(9.dp))
                     Text(
@@ -143,7 +225,7 @@ fun NeedsReviewSwipeScreen(
                         maxLines = 2
                     )
                     Text(
-                        listOfNotNull(account?.name, category?.name).joinToString(" · ").ifBlank { "Needs your confirmation" },
+                        listOfNotNull(transactionAccount?.name, transactionCategory?.name).joinToString(" · ").ifBlank { "Needs your confirmation" },
                         style = DSTypography.bodySmall,
                         color = DSBridge.inkMute(),
                         textAlign = TextAlign.Center
@@ -198,6 +280,7 @@ fun NeedsReviewSwipeScreen(
                     }
                 }
             }
+        }
         }
 
         if (processing) {
@@ -309,14 +392,15 @@ private fun ReviewCategoryPicker(
                 }
                 item(key = "new_category") {
                     Column(
-                        Modifier.height(74.dp).clip(RoundedCornerShape(17.dp)).background(DS.Signal.copy(alpha = .14f))
+                        Modifier.height(74.dp).clip(RoundedCornerShape(17.dp)).background(DSBridge.background())
+                            .semantics { contentDescription = "Add category" }
                             .clickable(onClick = onCreate).padding(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        verticalArrangement = Arrangement.Center,
                     ) {
-                        Lucide.Plus(size = 22.dp, color = DSBridge.accent())
+                        Lucide.Tag(size = 21.dp, color = DSBridge.accent())
                         Spacer(Modifier.height(6.dp))
-                        Text("New category", style = DSTypography.labelSmall, color = DSBridge.accent(), maxLines = 1)
+                        Text("New category", style = DSTypography.labelSmall, color = DSBridge.inkSoft(), maxLines = 1)
                     }
                 }
             }

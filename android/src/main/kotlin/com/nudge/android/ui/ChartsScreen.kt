@@ -194,7 +194,7 @@ private fun CashFlowOverview(
             Spacer(Modifier.height(10.dp))
             AnimatedContent(netFlow, label = "netFlow") { value ->
                 Text(
-                    "${if (value > 0) "+" else if (value < 0) "−" else ""}${formatCents(value.absoluteValue)}",
+                    "${if (value < 0) "−" else ""}${formatCents(value.absoluteValue)}",
                     fontFamily = MonoFamily,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.ExtraBold,

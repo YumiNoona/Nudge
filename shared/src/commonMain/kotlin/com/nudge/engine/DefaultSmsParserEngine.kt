@@ -49,6 +49,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
         val result = tryRegexPatterns(cleaned, bankName)
         if (result != null) {
             // Step 4: Normalize merchant
+            val semanticType = resolveTransactionType(cleaned, result.type)
             var normResult = merchantNormalizer.normalize(result.merchantRaw)
             if (normResult.normalized == "Unknown merchant") {
                 val extractedMerchant = extractMerchant(cleaned)
@@ -56,13 +57,12 @@ class DefaultSmsParserEngine : SmsParserEngine {
                     normResult = merchantNormalizer.normalize(extractedMerchant)
                 }
             }
-            val semanticType = when {
-                cleaned.contains("refund", true) || cleaned.contains("reversal", true) || cleaned.contains("reversed", true) -> TransactionType.REFUND
-                else -> result.type
+            if (semanticType == TransactionType.TRANSFER && isCreditCardPayment(cleaned)) {
+                normResult = merchantNormalizer.normalize(creditCardPaymentMerchant(cleaned, senderId, bankName))
             }
             return result.copy(
                 type = semanticType,
-                merchantNormalized = normResult.normalized,
+                merchantNormalized = normResult.normalized.takeUnless { it.equals("EE", ignoreCase = true) } ?: "Unknown merchant",
                 confidenceScore = (result.confidenceScore * 0.8f + normResult.confidence * 0.2f).coerceIn(0f, 1f)
             )
         }
@@ -70,9 +70,15 @@ class DefaultSmsParserEngine : SmsParserEngine {
         // Step 3: Fallback heuristic extraction
         val fallback = heuristicExtract(cleaned)
         if (fallback != null) {
-            val normResult = merchantNormalizer.normalize(fallback.merchantRaw)
+            val semanticType = resolveTransactionType(cleaned, fallback.type)
+            val merchant = if (semanticType == TransactionType.TRANSFER && isCreditCardPayment(cleaned)) {
+                creditCardPaymentMerchant(cleaned, senderId, bankName)
+            } else fallback.merchantRaw
+            val normResult = merchantNormalizer.normalize(merchant)
             return fallback.copy(
-                merchantNormalized = normResult.normalized,
+                type = semanticType,
+                merchantRaw = merchant,
+                merchantNormalized = normResult.normalized.takeUnless { it.equals("EE", ignoreCase = true) } ?: "Unknown merchant",
                 confidenceScore = (fallback.confidenceScore * 0.8f + normResult.confidence * 0.2f).coerceIn(0f, 1f)
             )
         }
@@ -212,7 +218,7 @@ class DefaultSmsParserEngine : SmsParserEngine {
         }
 
         // Determine transaction type
-        val type = rule.fieldMapping.transactionTypeHint ?: inferTransactionType(text)
+        val type = resolveTransactionType(text, rule.fieldMapping.transactionTypeHint)
 
         // Confidence: higher for bank-specific verified rules, lower for generic
         val confidence = when {
@@ -321,12 +327,59 @@ class DefaultSmsParserEngine : SmsParserEngine {
         return when {
             lowered.contains("refund") || lowered.contains("reversal") || lowered.contains("reversed") ->
                 TransactionType.REFUND
+            isCreditCardPayment(lowered) ->
+                TransactionType.TRANSFER
             lowered.contains("transfer") || lowered.contains("transferred") ->
                 TransactionType.TRANSFER
-            lowered.contains("credit") || lowered.contains("received") || lowered.contains("deposited") ||
+            lowered.contains("credited") || lowered.contains("deposited") ||
             lowered.contains("added") || lowered.contains("salary") ->
                 TransactionType.CREDIT
             else -> TransactionType.DEBIT
         }
+    }
+
+    /**
+     * A bank rule is only a structural hint. Strong semantic phrases must win so a rule that sees
+     * "payment received" cannot turn a credit-card repayment into income.
+     */
+    private fun resolveTransactionType(text: String, hint: TransactionType?): TransactionType {
+        val lowered = text.lowercase()
+        return when {
+            lowered.contains("refund") || lowered.contains("reversal") || lowered.contains("reversed") ->
+                TransactionType.REFUND
+            isCreditCardPayment(lowered) -> TransactionType.TRANSFER
+            else -> hint ?: inferTransactionType(lowered)
+        }
+    }
+
+    private fun isCreditCardPayment(text: String): Boolean {
+        val lowered = text.lowercase()
+        val cardContext = lowered.contains("credit card") ||
+            Regex("""\bcard\s+(?:ending|ending\s+in|xx|x{2,})""").containsMatchIn(lowered) ||
+            lowered.contains("card bill")
+        val settlementContext = lowered.contains("payment received") ||
+            lowered.contains("received towards") ||
+            lowered.contains("received for") ||
+            lowered.contains("payment towards") ||
+            lowered.contains("bill payment") ||
+            lowered.contains("paid your") ||
+            lowered.contains("paid towards")
+        return cardContext && settlementContext
+    }
+
+    private fun creditCardPaymentMerchant(text: String, senderId: String, bankName: String?): String {
+        val combined = "$senderId $bankName $text".uppercase()
+        val bank = when {
+            "HDFC" in combined -> "HDFC"
+            "ICICI" in combined -> "ICICI"
+            "SBI" in combined -> "SBI"
+            "AXIS" in combined -> "Axis"
+            "KOTAK" in combined -> "Kotak"
+            "IDFC" in combined -> "IDFC"
+            "INDUSIND" in combined -> "IndusInd"
+            "YES BANK" in combined || "YESBNK" in combined -> "YES Bank"
+            else -> null
+        }
+        return listOfNotNull(bank, "Credit Card Payment").joinToString(" ")
     }
 }

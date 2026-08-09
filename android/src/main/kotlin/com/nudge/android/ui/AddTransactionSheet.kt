@@ -39,6 +39,7 @@ import com.nudge.android.ui.theme.CategoryGlyph
 import com.nudge.android.ui.theme.NudgeHaptics
 import androidx.compose.ui.platform.LocalContext
 import com.nudge.model.TransactionType
+import com.nudge.android.importer.ReceiptDraft
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,6 +48,9 @@ fun AddTransactionSheet(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
     onDismiss: () -> Unit,
+    onOpenSmartImport: () -> Unit,
+    onCreateCategory: (CategoryEntity) -> Unit,
+    onCreateAccount: (AccountEntity) -> Unit,
     onAdd: (
         amountCents: Long,
         type: TransactionType,
@@ -57,6 +61,12 @@ fun AddTransactionSheet(
     ) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var showReceiptScanner by remember { mutableStateOf(false) }
+    var receiptDraft by remember { mutableStateOf<ReceiptDraft?>(null) }
+    var categoryCreationType by remember { mutableStateOf<String?>(null) }
+    var showAccountCreator by remember { mutableStateOf(false) }
+    var preferredCategoryId by remember { mutableStateOf<String?>(null) }
+    var preferredAccountId by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -65,19 +75,68 @@ fun AddTransactionSheet(
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             Box(
-                Modifier.fillMaxWidth().padding(top = 13.dp, bottom = 9.dp),
+                Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 12.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
-                    Modifier
-                        .width(38.dp).height(4.dp)
+                    Modifier.width(42.dp).height(4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(DSBridge.inkMute().copy(alpha = 0.38f))
+                        .background(DSBridge.inkMute().copy(alpha = .42f)),
                 )
             }
-        }
+        },
     ) {
-        AddTransactionSheetContent(categories, accounts, onAdd)
+        AddTransactionSheetContent(
+            categories = categories,
+            accounts = accounts,
+            receiptDraft = receiptDraft,
+            onScanReceipt = { showReceiptScanner = true },
+            onOpenSmartImport = onOpenSmartImport,
+            preferredCategoryId = preferredCategoryId,
+            preferredAccountId = preferredAccountId,
+            onRequestAddCategory = { categoryCreationType = it },
+            onRequestAddAccount = { showAccountCreator = true },
+            onAdd = onAdd,
+        )
+    }
+    if (showReceiptScanner) ReceiptScannerDialog(
+        onDismiss = { showReceiptScanner = false },
+        onScanned = {
+            receiptDraft = it
+            showReceiptScanner = false
+        },
+    )
+    categoryCreationType?.let { defaultType ->
+        CategoryEditorSheet(
+            category = null,
+            defaultType = defaultType,
+            onDismiss = { categoryCreationType = null },
+            onSave = { name, type, icon, color ->
+                val entity = CategoryEntity(
+                    id = java.util.UUID.randomUUID().toString(),
+                    name = name,
+                    type = type,
+                    icon = icon,
+                    color = color,
+                    sortOrder = categories.size,
+                )
+                onCreateCategory(entity)
+                preferredCategoryId = entity.id
+                categoryCreationType = null
+            },
+        )
+    }
+    if (showAccountCreator) {
+        AccountEditSheet(
+            account = null,
+            onSave = { account ->
+                onCreateAccount(account)
+                preferredAccountId = account.id
+                showAccountCreator = false
+            },
+            onDelete = {},
+            onDismiss = { showAccountCreator = false },
+        )
     }
 }
 
@@ -85,6 +144,13 @@ fun AddTransactionSheet(
 private fun AddTransactionSheetContent(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
+    receiptDraft: ReceiptDraft?,
+    onScanReceipt: () -> Unit,
+    onOpenSmartImport: () -> Unit,
+    preferredCategoryId: String?,
+    preferredAccountId: String?,
+    onRequestAddCategory: (String) -> Unit,
+    onRequestAddAccount: () -> Unit,
     onAdd: (
         amountCents: Long,
         type: TransactionType,
@@ -107,9 +173,27 @@ private fun AddTransactionSheetContent(
     val localContext = LocalContext.current
     val haptics = remember(localContext) { NudgeHaptics(localContext) }
 
+    LaunchedEffect(receiptDraft) {
+        receiptDraft?.let {
+            amountStr = (it.amountCents / 100.0).let { amount -> if (amount % 1.0 == 0.0) amount.toLong().toString() else "%.2f".format(amount) }
+            merchant = it.merchant
+            selectedType = TransactionType.DEBIT
+        }
+    }
+
     LaunchedEffect(selectableAccounts) {
         if (selectedAccountId == null) {
             selectedAccountId = selectableAccounts.firstOrNull { it.isDefault }?.id ?: selectableAccounts.firstOrNull()?.id
+        }
+    }
+    LaunchedEffect(preferredCategoryId, categories) {
+        if (preferredCategoryId != null && categories.any { it.id == preferredCategoryId }) {
+            selectedCategoryId = preferredCategoryId
+        }
+    }
+    LaunchedEffect(preferredAccountId, selectableAccounts) {
+        if (preferredAccountId != null && selectableAccounts.any { it.id == preferredAccountId }) {
+            selectedAccountId = preferredAccountId
         }
     }
 
@@ -147,6 +231,24 @@ private fun AddTransactionSheetContent(
                 color = if (amountStr.isEmpty()) DSBridge.inkMute() else DSBridge.ink(),
                 modifier = Modifier.weight(1f)
             )
+            Surface(
+                onClick = onScanReceipt,
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = DSBridge.accentBg(),
+            ) {
+                Box(contentAlignment = Alignment.Center) { Lucide.Camera(size = 19.dp, color = DSBridge.accent()) }
+            }
+            Spacer(Modifier.width(8.dp))
+            Surface(
+                onClick = onOpenSmartImport,
+                modifier = Modifier.size(42.dp),
+                shape = RoundedCornerShape(13.dp),
+                color = DSBridge.surface(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .16f)),
+            ) {
+                Box(contentAlignment = Alignment.Center) { Lucide.Upload(size = 19.dp, color = DSBridge.inkSoft()) }
+            }
         }
         Spacer(modifier = Modifier.height(DSSpace.md))
 
@@ -198,8 +300,7 @@ private fun AddTransactionSheetContent(
 
         val categoryType = if (selectedType == TransactionType.CREDIT) "income" else "expense"
         val expenseCats = categories.filter { it.type == categoryType }
-        if (expenseCats.isNotEmpty()) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val categoryWidth = (maxWidth - 16.dp) / 3
                 LazyHorizontalGrid(
                     rows = GridCells.Fixed(2),
@@ -229,27 +330,53 @@ private fun AddTransactionSheetContent(
                             Text(cat.name, fontSize = 9.sp, color = if (isSel) DSBridge.accent() else DSBridge.inkSoft(), maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
+                    item(key = "add_category") {
+                        Box(
+                            modifier = Modifier
+                                .width(categoryWidth)
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DSBridge.accentBg().copy(alpha = .62f))
+                                .clickable {
+                                    haptics.impactLight()
+                                    onRequestAddCategory(categoryType)
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Lucide.Plus(size = 22.dp, color = DSBridge.accent())
+                        }
+                    }
                 }
             }
-        }
         Spacer(modifier = Modifier.height(DSSpace.sm))
 
         // Account
         Text("Account", style = DSTypography.labelMedium, color = DSBridge.inkSoft())
         Spacer(modifier = Modifier.height(DSSpace.sm))
-        if (selectableAccounts.isEmpty()) {
-            Text(
-                "No accounts yet — add one from More → Manage Accounts",
-                fontSize = 12.sp, color = DSBridge.inkMute()
-            )
-        } else {
-            selectableAccounts.chunked(3).forEach { rowAccounts ->
+        val accountsWithAdd: List<AccountEntity?> = selectableAccounts + listOf(null)
+        accountsWithAdd.chunked(3).forEach { rowAccounts ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     rowAccounts.forEach { a ->
+                        if (a == null) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 68.dp)
+                                    .clip(RoundedCornerShape(13.dp))
+                                    .background(DSBridge.accentBg().copy(alpha = .62f))
+                                    .clickable {
+                                        haptics.impactLight()
+                                        onRequestAddAccount()
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Lucide.Plus(size = 22.dp, color = DSBridge.accent())
+                            }
+                        } else {
                         val isSel = selectedAccountId == a.id
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -280,12 +407,12 @@ private fun AddTransactionSheetContent(
                                 Text("DEFAULT", fontSize = 6.sp, color = DSBridge.inkMute(), letterSpacing = .5.sp)
                             }
                         }
+                        }
                     }
                     repeat(3 - rowAccounts.size) { Spacer(Modifier.weight(1f)) }
                 }
                 Spacer(Modifier.height(8.dp))
             }
-        }
         Spacer(modifier = Modifier.height(DSSpace.sm))
 
         Spacer(modifier = Modifier.height(DSSpace.md))

@@ -21,14 +21,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -62,8 +65,10 @@ fun ExpenseSettingsScreen(
     onAccounts: () -> Unit,
     onCategories: () -> Unit,
     onBackup: () -> Unit,
+    onFinancialImport: () -> Unit,
     onSavedMessages: () -> Unit,
     onDonate: () -> Unit,
+    onPrivacy: () -> Unit,
     onCheckUpdates: () -> Unit,
     updateStatus: String?,
 ) {
@@ -107,7 +112,11 @@ fun ExpenseSettingsScreen(
         }
     }
 
-    val themeRotation by animateFloatAsState(if (isDark) 180f else 0f, label = "themeRotation")
+    val themeIconRotation = remember { Animatable(0f) }
+    LaunchedEffect(isDark) {
+        themeIconRotation.snapTo(if (isDark) -82f else 82f)
+        themeIconRotation.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
+    }
 
     Column(Modifier.fillMaxSize().background(DSBridge.background()).statusBarsPadding()) {
         Box(Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 8.dp)) {
@@ -120,12 +129,14 @@ fun ExpenseSettingsScreen(
                 color = DSBridge.surface(),
                 border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .12f)),
             ) {
-                Box(
-                    Modifier.fillMaxSize().graphicsLayer { rotationZ = themeRotation },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isDark) Lucide.Moon(size = 18.dp, color = DSBridge.accent())
-                    else Lucide.Sun(size = 18.dp, color = DSBridge.accent())
+                Crossfade(targetState = isDark, label = "themeIcon") { darkMode ->
+                    Box(
+                        Modifier.fillMaxSize().graphicsLayer { rotationZ = themeIconRotation.value },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (darkMode) Lucide.Moon(size = 18.dp, color = DSBridge.accent())
+                        else Lucide.Sun(size = 18.dp, color = DSBridge.accent())
+                    }
                 }
             }
         }
@@ -235,6 +246,8 @@ fun ExpenseSettingsScreen(
 
             Text("ORGANIZATION", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
             SettingsGroup {
+                SettingsRow({ m, c, s, sw -> Lucide.FileText(m, c, s, sw) }, "Smart import", "Bank, card, mail & PDF", true, onFinancialImport)
+                HorizontalDivider(color = DSBridge.background())
                 SettingsRow({ m, c, s, sw -> Lucide.Wallet(m, c, s, sw) }, "Accounts", "Cards, UPI and cash sources", true, onAccounts)
                 HorizontalDivider(color = DSBridge.background())
                 SettingsRow({ m, c, s, sw -> Lucide.Tag(m, c, s, sw) }, "Categories", "Organize expenses your way", true, onCategories)
@@ -276,7 +289,9 @@ fun ExpenseSettingsScreen(
                     onCheckUpdates,
                 )
                 HorizontalDivider(color = DSBridge.background())
-                SettingsRow({ m, c, s, sw -> Lucide.Heart(m, c, s, sw) }, "Support Nudge", "Donate with any UPI app", true, onDonate)
+                SettingsRow({ m, c, s, sw -> Lucide.Shield(m, c, s, sw) }, "Privacy policy", "Data use & your controls", true, onPrivacy)
+                HorizontalDivider(color = DSBridge.background())
+                SettingsRow({ m, c, s, sw -> Lucide.Heart(m, c, s, sw) }, "Tip the creator", "Optional · unlocks nothing", true, onDonate)
             }
             Text(
                 "Made With 💙Veil",

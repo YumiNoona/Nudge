@@ -20,7 +20,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.nudge.android.service.TransactionCaptureProcessor
 import com.nudge.engine.MerchantNormalizer
+import com.nudge.engine.DefaultCategorizationEngine
+import com.nudge.engine.DefaultSmsParserEngine
 import com.nudge.engine.TransactionMessageGuard
+import com.nudge.android.importer.StatementDraft
 import com.nudge.android.widget.NudgeWidget
 import androidx.glance.appwidget.updateAll
 
@@ -56,6 +59,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             DefaultsSeeder.seedIfEmpty(db)
             removeInvalidCapturedStatements()
+            repairCapturedSemantics()
             repairCapturedMerchantNames()
         }
 
@@ -114,6 +118,68 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.transactionDao().insert(txn)
             awardXp(com.nudge.engine.GamificationMath.XP_MANUAL_ENTRY_SAME_DAY)
             refreshWidget()
+        }
+    }
+
+    fun importStatementTransactions(
+        drafts: List<StatementDraft>,
+        accountId: String,
+        replaceExistingStatements: Boolean,
+        onComplete: (imported: Int, skipped: Int) -> Unit,
+    ) {
+        viewModelScope.launch {
+            if (replaceExistingStatements) {
+                db.transactionDao().deleteStatementImportsForAccount(accountId)
+            }
+            val existing = transactions.value.toMutableList()
+            if (replaceExistingStatements) {
+                existing.removeAll { it.accountId == accountId && it.source == "statement" }
+            }
+            val categorizer = DefaultCategorizationEngine()
+            var imported = 0
+            var skipped = 0
+            drafts.forEach { draft ->
+                val normalized = MerchantNormalizer.normalize(draft.merchant).normalized
+                val duplicate = existing.any { transaction ->
+                    transaction.amountCents == draft.amountCents &&
+                        transaction.type == draft.type.name.lowercase() &&
+                        kotlin.math.abs(transaction.timestampEpoch - draft.timestampEpoch) < 36L * 60L * 60L * 1_000L &&
+                        MerchantNormalizer.normalize(transaction.merchantRaw).normalized.equals(normalized, ignoreCase = true)
+                }
+                if (duplicate) {
+                    skipped++
+                    return@forEach
+                }
+                val hint = categorizer.autoCategorize(normalized, draft.amountCents).categoryId
+                val categoryId = hint?.takeIf { it.isNotBlank() }?.let { categoryHint -> categories.value.firstOrNull { category ->
+                    val expectedType = if (draft.type == TransactionType.CREDIT) "income" else "expense"
+                    category.type == expectedType && category.name.lowercase().replace(" & ", " ").contains(
+                        when (categoryHint) {
+                            "food" -> "food"
+                            "other" -> "other"
+                            else -> categoryHint
+                        },
+                    )
+                }?.id }
+                val transaction = TransactionEntity(
+                    id = IdGenerator.generate(),
+                    amountCents = draft.amountCents,
+                    type = draft.type.name.lowercase(),
+                    merchantRaw = normalized,
+                    merchantNormalized = normalized,
+                    categoryId = categoryId,
+                    accountId = accountId,
+                    source = "statement",
+                    confidenceScore = if (categoryId == null || normalized == "Unknown merchant") .62f else .82f,
+                    isReviewed = categoryId != null && normalized != "Unknown merchant",
+                    timestampEpoch = draft.timestampEpoch,
+                )
+                db.transactionDao().insert(transaction)
+                existing += transaction
+                imported++
+            }
+            refreshWidget()
+            withContext(Dispatchers.Main.immediate) { onComplete(imported, skipped) }
         }
     }
 
@@ -372,6 +438,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun saveCategory(category: CategoryEntity) {
+        viewModelScope.launch { db.categoryDao().insert(category) }
+    }
+
     fun archiveCategory(id: String) {
         viewModelScope.launch { db.categoryDao().archive(id) }
     }
@@ -583,6 +653,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         merchantNormalized = normalized,
                         updatedAt = System.currentTimeMillis()
                     )
+                )
+            }
+        }
+    }
+
+    private suspend fun repairCapturedSemantics() {
+        val parser = DefaultSmsParserEngine()
+        db.transactionDao().getAllOnce().filter { it.source != "manual" }.forEach { transaction ->
+            val savedSource = db.savedSourceMessageDao().getByTransaction(transaction.id)
+            val sourceBody = savedSource?.encryptedBody?.let { encrypted ->
+                runCatching { sourceCrypto.decrypt(encrypted) }.getOrNull()
+            }
+            val parsed = sourceBody?.let { parser.parse(it, savedSource.sender.orEmpty()) }
+            val legacyCardPayment = transaction.type == "credit" &&
+                Regex("""(?i)^your\s+card\s+ending\s+\d+\s+on\b""").containsMatchIn(transaction.merchantRaw)
+            if (parsed?.type == TransactionType.TRANSFER || legacyCardPayment) {
+                val sender = savedSource?.sender.orEmpty().uppercase()
+                val bank = when {
+                    "HDFC" in sender -> "HDFC"
+                    "ICICI" in sender -> "ICICI"
+                    "SBI" in sender -> "SBI"
+                    "AXIS" in sender -> "Axis"
+                    "KOTAK" in sender -> "Kotak"
+                    else -> null
+                }
+                val merchant = parsed?.merchantNormalized
+                    ?.takeUnless { it == "Unknown merchant" }
+                    ?: listOfNotNull(bank, "Credit Card Payment").joinToString(" ")
+                db.transactionDao().update(
+                    transaction.copy(
+                        type = "transfer",
+                        merchantRaw = merchant,
+                        merchantNormalized = merchant,
+                        isReviewed = true,
+                        updatedAt = System.currentTimeMillis(),
+                    ),
                 )
             }
         }

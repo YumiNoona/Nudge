@@ -62,6 +62,9 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun deleteById(id: String)
 
+    @Query("DELETE FROM transactions WHERE account_id = :accountId AND source = 'statement'")
+    suspend fun deleteStatementImportsForAccount(accountId: String): Int
+
     @Query("UPDATE transactions SET category_id = NULL WHERE category_id = :categoryId")
     suspend fun clearCategory(categoryId: String)
 

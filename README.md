@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-4.0.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.0.0" />
+    <img src="https://img.shields.io/badge/Version-4.7.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.7.0" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -35,15 +35,17 @@ Nudge is an Android-only product. The repository contains the mobile application
 | Analytics | Monthly expense mix, category shares, and daily money-in/money-out rhythm |
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
 | Card scanning | On-device ML Kit recognition; the captured image is discarded and only limited card metadata is retained |
-| Categories | Built-in and custom categories with editable colors and a large icon catalogue |
+| Smart import | Local CSV/TXT/PDF/image bank and card statement parsing, Gmail/Outlook share-in support, OCR fallback, and duplicate suppression |
+| Receipt scan beta | Embedded CameraX preview or gallery OCR fills the merchant and bill total into the normal transaction form for confirmation |
+| Categories | Built-in and custom categories with editable colors, 200 searchable icons, and user-defined emoji glyphs |
 | Local profile | Display name and profile image stored inside app-private storage |
 | Data ownership | JSON export, merge-style import, source-message retention controls, and complete local-data deletion |
 | Widgets | Compact, snapshot, and expanded home-screen widgets with responsive layouts |
 | Polish | Dark/light themes, JetBrains Mono typography, Lucide-style icons, semantic haptics, and Compose micro-interactions |
 | Reminders | Optional daily expense check-ins with rotating copy and Android notification-permission handling |
 | Guided start | A first-run seven-step coach-mark tour over the real Transactions and Analytics screens |
-| Updates | Automatic daily and manual GitHub Release checks with an update-available prompt and APK/release link |
-| Support | An optional UPI donation screen with a scannable QR, copyable ID, and UPI deep link |
+| Distribution | Separate Google Play and GitHub builds: Play-managed delivery for the store and signed APK updates for GitHub users |
+| Support | An optional creator-tip screen; 100% goes to the creator and it unlocks no app content or benefit |
 
 ## Product flow
 
@@ -87,7 +89,8 @@ Nudge is designed to operate without a user account. Expense tracking, parsing, 
 - A source message body is retained only when **Save transaction messages** is enabled.
 - Retained source bodies are encrypted with AES-GCM using an app-owned Android Keystore key.
 - Rejection learning stores stable patterns rather than raw message bodies.
-- Card images are processed on-device and discarded after recognition.
+- Card and receipt images, plus imported PDF pages, are processed on-device and discarded after recognition.
+- Nudge cannot silently access another mail app. Only email text or attachments explicitly shared to Nudge are read.
 - JSON exports are intentionally portable and are **not encrypted**. Store exported files securely.
 
 ### Android permissions
@@ -96,9 +99,9 @@ Nudge is designed to operate without a user account. Expense tracking, parsing, 
 |---|---|---|
 | Read and receive SMS | Scan historical financial messages and capture future bank/UPI SMS alerts | Optional; required for SMS capture |
 | Notification access | Read transaction notifications from payment and banking apps | Optional; required for notification capture |
-| Camera | Scan limited card metadata while creating a card account | Optional |
+| Camera | Scan limited card metadata or prefill a restaurant/shop receipt | Optional |
 | Notifications | Show user-enabled expense reminders | Optional |
-| Internet | Check the public Nudge GitHub Releases feed for a newer app version | Optional; expense tracking remains offline |
+| Internet | Google Play delivery/update services, or the public GitHub Releases feed in the GitHub build | Optional; expense tracking remains offline |
 | Vibration | Haptic feedback for keypad and important actions | Optional experience enhancement |
 
 All permission controls remain available from the app's Settings screen.
@@ -123,6 +126,7 @@ android/src/main/
 │   │   ├── ParsingWorkers       Background parsing entry points
 │   │   ├── TransactionCaptureProcessor
 │   │   └── ExpenseReminderWorker
+│   ├── importer/                 Statement, shared-email, PDF OCR, and receipt parsing
 │   ├── ui/
 │   │   ├── MainActivity         Navigation and application shell
 │   │   ├── MainViewModel        State and application actions
@@ -148,6 +152,7 @@ Transactions <-> Analytics
              +-> Accounts
              +-> Categories
              +-> Data & backup
+             +-> Smart import
              +-> Saved messages
              +-> App tour
              +-> Check for updates
@@ -192,21 +197,38 @@ Create `local.properties` if Android Studio has not created it automatically:
 sdk.dir=C:\\Users\\YOUR_NAME\\AppData\\Local\\Android\\Sdk
 ```
 
-Build the Android debug APK:
+Build a Google Play debug APK:
 
 ```powershell
-.\gradlew.bat :android:assembleDebug
+.\gradlew.bat :android:assemblePlayDebug
 ```
 
 The APK is written to:
 
 ```text
-android/build/outputs/apk/debug/Nudge-v4.0.0-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v4.7.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
 
-## Publishing an Android update
+## Distribution builds
+
+Nudge has two distribution flavors with the same package and signing identity:
+
+- `play`: no sideload/install permission and updates managed by Google Play;
+- `github`: signed APK delivery with the existing GitHub Releases updater.
+
+Both builds include the optional **Tip the creator** screen. A tip is a direct peer-to-peer contribution, unlocks nothing, and is never required to use Nudge.
+
+Build the Play App Bundle:
+
+```powershell
+.\gradlew.bat :android:bundlePlayRelease
+```
+
+The bundle is written to `android/build/outputs/bundle/playRelease/android-play-release.aab`. Follow [the Play release checklist](docs/PLAY_STORE_CHECKLIST.md), [Data safety guide](docs/DATA_SAFETY_GUIDE.md), and [SMS permission declaration](docs/SMS_PERMISSION_DECLARATION.md) before upload.
+
+## Publishing a GitHub update
 
 The app checks `https://api.github.com/repos/YumiNoona/Nudge/releases/latest` at most once every 24 hours while it is opened. Users can also run an immediate check from **Settings → Check for updates**.
 
@@ -214,8 +236,8 @@ For each public update:
 
 1. Increase both `versionCode` and `versionName` in `android/build.gradle.kts`. Android requires every installable update to have a higher `versionCode`.
 2. Build and verify the signed release APK.
-3. Create a public GitHub Release with the matching semantic tag, such as `v4.0.0`.
-4. Attach `android/build/outputs/apk/release/Nudge-v4.0.0.apk` to that release.
+3. Create a public GitHub Release with the matching semantic tag, such as `v4.7.0`.
+4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.7.0.apk` to that release.
 
 Nudge compares the release tag with its installed `versionName`. If the tag is newer, it downloads the attached release APK inside the app, verifies its package name, version, version code and signing certificate, then hands it to Android's secure package installer. Android may show one final system confirmation before replacing the existing app. If no APK is attached, Nudge falls back to the GitHub Release page.
 
@@ -224,7 +246,7 @@ Nudge compares the release tag with its installed `versionName`. If the tag is n
 Release builds read private credentials from the ignored `keystore.properties` file. Copy `keystore.properties.example`, point it at your private `.jks` file, and never commit either the populated properties file or signing key.
 
 ```powershell
-.\gradlew.bat :android:assembleRelease
+.\gradlew.bat :android:assembleGithubRelease
 ```
 
 Back up the release keystore and its passwords in at least two secure locations. Every future update must use the same key; losing it permanently prevents Android from updating existing installations. A device currently running an old debug-signed build needs a one-time export, uninstall, V4 release install and data import. Release-signed V4 and later builds update in place.
@@ -234,22 +256,22 @@ Back up the release keystore and its passwords in at least two secure locations.
 Run the Android and shared unit tests:
 
 ```powershell
-.\gradlew.bat :android:testDebugUnitTest :shared:testDebugUnitTest
+.\gradlew.bat :android:testPlayDebugUnitTest :shared:testDebugUnitTest
 ```
 
 Run Android lint:
 
 ```powershell
-.\gradlew.bat :android:lintDebug
+.\gradlew.bat :android:lintPlayRelease
 ```
 
 Run the complete local verification used before producing an APK:
 
 ```powershell
-.\gradlew.bat :android:testDebugUnitTest :shared:testDebugUnitTest :android:lintDebug :android:assembleDebug
+.\gradlew.bat :android:testPlayDebugUnitTest :shared:testDebugUnitTest :android:lintPlayRelease :android:bundlePlayRelease
 ```
 
-The lint report is generated at `android/build/reports/lint-results-debug.html`.
+The lint report is generated under `android/build/reports/`.
 
 ## Data import and export
 
@@ -284,7 +306,7 @@ Open **Needs review**, correct the merchant/category/account, and confirm it. Nu
 
 ### Android Studio reports an SDK error
 
-Verify that `local.properties` points to a valid Android SDK and that SDK Platform 36 is installed. The app targets API 34 while compiling against API 36.
+Verify that `local.properties` points to a valid Android SDK and that SDK Platform 36 is installed. The Play-ready app both compiles against and targets API 36.
 
 ## Contributing
 

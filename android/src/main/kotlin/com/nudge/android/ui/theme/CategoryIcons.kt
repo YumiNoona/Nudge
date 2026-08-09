@@ -3,10 +3,14 @@ package com.nudge.android.ui.theme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
 
 data class CategoryIconOption(val key: String, val label: String, val image: ImageVector)
 
@@ -126,7 +130,93 @@ object CategoryIcons {
         CategoryIconOption("print", "Printing", Icons.Rounded.Print),
         CategoryIconOption("package", "Package", Icons.Rounded.Inventory),
         CategoryIconOption("charity", "Charity", Icons.Rounded.Handshake),
-        CategoryIconOption("wallet", "Wallet", Icons.Rounded.AccountBalanceWallet)
+        CategoryIconOption("wallet", "Wallet", Icons.Rounded.AccountBalanceWallet),
+        CategoryIconOption("setmeal", "Seafood", Icons.Rounded.SetMeal),
+        CategoryIconOption("ramen", "Noodles", Icons.Rounded.RamenDining),
+        CategoryIconOption("brunch", "Brunch", Icons.Rounded.BrunchDining),
+        CategoryIconOption("liquor", "Drinks", Icons.Rounded.Liquor),
+        CategoryIconOption("coffee", "Coffee", Icons.Rounded.Coffee),
+        CategoryIconOption("breakfast", "Breakfast", Icons.Rounded.BreakfastDining),
+        CategoryIconOption("takeout", "Takeout", Icons.Rounded.TakeoutDining),
+        CategoryIconOption("foodbank", "Food bank", Icons.Rounded.FoodBank),
+        CategoryIconOption("grocery_store", "Grocery store", Icons.Rounded.LocalGroceryStore),
+        CategoryIconOption("boat", "Boat", Icons.Rounded.DirectionsBoat),
+        CategoryIconOption("subway", "Subway", Icons.Rounded.DirectionsSubway),
+        CategoryIconOption("tram", "Tram", Icons.Rounded.Tram),
+        CategoryIconOption("sailing", "Sailing", Icons.Rounded.Sailing),
+        CategoryIconOption("rocket", "Space travel", Icons.Rounded.RocketLaunch),
+        CategoryIconOption("seat", "Travel seat", Icons.Rounded.AirlineSeatReclineNormal),
+        CategoryIconOption("smartphone", "Smartphone", Icons.Rounded.Smartphone),
+        CategoryIconOption("laptop", "Laptop", Icons.Rounded.LaptopMac),
+        CategoryIconOption("headphones", "Headphones", Icons.Rounded.Headphones),
+        CategoryIconOption("watch", "Watch", Icons.Rounded.Watch),
+        CategoryIconOption("television", "Television", Icons.Rounded.Tv),
+        CategoryIconOption("router", "Router", Icons.Rounded.Router),
+        CategoryIconOption("dentistry", "Dentist", Icons.Rounded.MedicalServices),
+        CategoryIconOption("vaccines", "Vaccines", Icons.Rounded.Vaccines),
+        CategoryIconOption("psychology", "Therapy", Icons.Rounded.Psychology),
+        CategoryIconOption("emergency", "Emergency", Icons.Rounded.Emergency),
+        CategoryIconOption("heart_monitor", "Heart care", Icons.Rounded.MonitorHeart),
+        CategoryIconOption("basketball", "Basketball", Icons.Rounded.SportsBasketball),
+        CategoryIconOption("tennis", "Tennis", Icons.Rounded.SportsTennis),
+        CategoryIconOption("gymnastics", "Gymnastics", Icons.Rounded.SportsGymnastics),
+        CategoryIconOption("hiking", "Hiking", Icons.Rounded.Hiking),
+        CategoryIconOption("pool", "Swimming", Icons.Rounded.Pool),
+        CategoryIconOption("florist", "Flowers", Icons.Rounded.LocalFlorist),
+        CategoryIconOption("public", "International", Icons.Rounded.Public),
+        CategoryIconOption("language", "Languages", Icons.Rounded.Language),
+        CategoryIconOption("factory", "Manufacturing", Icons.Rounded.Factory),
+        CategoryIconOption("warehouse", "Warehouse", Icons.Rounded.Warehouse),
+        CategoryIconOption("shipping", "Shipping", Icons.Rounded.LocalShipping),
+        CategoryIconOption("delivery", "Delivery", Icons.Rounded.DeliveryDining),
+        CategoryIconOption("walking", "Walking", Icons.Rounded.DirectionsWalk),
+        CategoryIconOption("running", "Running", Icons.Rounded.DirectionsRun),
+        CategoryIconOption("accessibility", "Accessibility", Icons.Rounded.Accessible),
+        CategoryIconOption("baseball", "Baseball", Icons.Rounded.SportsBaseball),
+        CategoryIconOption("volleyball", "Volleyball", Icons.Rounded.SportsVolleyball),
+        CategoryIconOption("golf", "Golf", Icons.Rounded.SportsGolf),
+        CategoryIconOption("hockey", "Hockey", Icons.Rounded.SportsHockey),
+        CategoryIconOption("kabaddi", "Kabaddi", Icons.Rounded.SportsKabaddi),
+        CategoryIconOption("martial_arts", "Martial arts", Icons.Rounded.SportsMartialArts),
+        CategoryIconOption("kayaking", "Kayaking", Icons.Rounded.Kayaking),
+        CategoryIconOption("surfing", "Surfing", Icons.Rounded.Surfing),
+        CategoryIconOption("snowboarding", "Snowboarding", Icons.Rounded.Snowboarding),
+        CategoryIconOption("skiing", "Skiing", Icons.Rounded.DownhillSkiing),
+        CategoryIconOption("paragliding", "Paragliding", Icons.Rounded.Paragliding),
+        CategoryIconOption("skating", "Skating", Icons.Rounded.RollerSkating),
+        CategoryIconOption("casino", "Casino", Icons.Rounded.Casino),
+        CategoryIconOption("hobby", "Hobby", Icons.Rounded.Extension),
+        CategoryIconOption("robot", "Robot", Icons.Rounded.SmartToy),
+        CategoryIconOption("toys", "Toys", Icons.Rounded.Toys),
+        CategoryIconOption("jewellery", "Jewellery", Icons.Rounded.Diamond),
+        CategoryIconOption("appointments", "Appointments", Icons.Rounded.WatchLater),
+        CategoryIconOption("magic", "Creative tools", Icons.Rounded.AutoFixHigh),
+        CategoryIconOption("painting", "Painting", Icons.Rounded.Brush),
+        CategoryIconOption("colors", "Colors", Icons.Rounded.ColorLens),
+        CategoryIconOption("design", "Design", Icons.Rounded.DesignServices),
+        CategoryIconOption("architecture", "Architecture", Icons.Rounded.Architecture),
+        CategoryIconOption("engineering", "Engineering", Icons.Rounded.Engineering),
+        CategoryIconOption("plumbing", "Plumbing", Icons.Rounded.Plumbing),
+        CategoryIconOption("roofing", "Roofing", Icons.Rounded.Roofing),
+        CategoryIconOption("foundation", "Foundation", Icons.Rounded.Foundation),
+        CategoryIconOption("hardware", "Hardware", Icons.Rounded.Hardware),
+        CategoryIconOption("maintenance", "Maintenance", Icons.Rounded.BuildCircle),
+        CategoryIconOption("pest_control", "Pest control", Icons.Rounded.PestControl),
+        CategoryIconOption("garden", "Gardening", Icons.Rounded.Yard),
+        CategoryIconOption("compost", "Compost", Icons.Rounded.Compost),
+        CategoryIconOption("solar", "Solar energy", Icons.Rounded.SolarPower),
+        CategoryIconOption("oil", "Oil", Icons.Rounded.OilBarrel),
+        CategoryIconOption("gas_cylinder", "Gas cylinder", Icons.Rounded.PropaneTank),
+        CategoryIconOption("heating", "Heating", Icons.Rounded.HeatPump),
+        CategoryIconOption("microwave", "Microwave", Icons.Rounded.Microwave),
+        CategoryIconOption("blender", "Blender", Icons.Rounded.Blender),
+        CategoryIconOption("fire", "Fire safety", Icons.Rounded.LocalFireDepartment),
+        CategoryIconOption("fire_service", "Fire service", Icons.Rounded.FireTruck),
+        CategoryIconOption("catering", "Catering", Icons.Rounded.RoomService),
+        CategoryIconOption("dry_cleaning", "Dry cleaning", Icons.Rounded.DryCleaning),
+        CategoryIconOption("car_service", "Car service", Icons.Rounded.CarRepair),
+        CategoryIconOption("scooter", "Scooter", Icons.Rounded.ElectricScooter),
+        CategoryIconOption("community", "Community", Icons.Rounded.Groups)
     )
 
     fun resolve(key: String?, categoryName: String = ""): ImageVector {
@@ -163,10 +253,17 @@ fun CategoryGlyph(
     tint: Color,
     modifier: Modifier = Modifier
 ) {
-    Icon(
-        imageVector = CategoryIcons.resolve(iconKey, categoryName),
-        contentDescription = null,
-        tint = tint,
-        modifier = modifier
-    )
+    val customEmoji = iconKey?.takeIf { it.startsWith("emoji:") }?.removePrefix("emoji:")
+    if (!customEmoji.isNullOrBlank()) {
+        Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text(customEmoji, fontSize = 17.sp, maxLines = 1)
+        }
+    } else {
+        Icon(
+            imageVector = CategoryIcons.resolve(iconKey, categoryName),
+            contentDescription = null,
+            tint = tint,
+            modifier = modifier
+        )
+    }
 }

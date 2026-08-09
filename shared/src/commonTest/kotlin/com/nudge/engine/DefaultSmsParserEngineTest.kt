@@ -89,4 +89,51 @@ class DefaultSmsParserEngineTest {
         assertEquals("Swiggy", spend.merchantNormalized)
         assertEquals(TransactionType.CREDIT, credit.type)
     }
+
+    @Test
+    fun creditCardRepaymentIsATransferNotIncome() {
+        val result = assertNotNull(
+            parser.parse(
+                "Payment of Rs.4,000 received towards your HDFC Bank Credit Card ending 9529 on 07-Aug-2026.",
+                "JD-HDFCBK-S",
+            ),
+        )
+
+        assertEquals(400_000L, result.amount)
+        assertEquals(TransactionType.TRANSFER, result.type)
+        assertEquals("HDFC Credit Card Payment", result.merchantNormalized)
+    }
+
+    @Test
+    fun cardSpendRemainsAnExpenseEvenThoughMessageSaysCreditCard() {
+        val result = assertNotNull(
+            parser.parse(
+                "Rs.360 spent on your HDFC Bank Credit Card ending 9529 at EE on 08-Aug-2026.",
+                "JD-HDFCBK-S",
+            ),
+        )
+
+        assertEquals(TransactionType.DEBIT, result.type)
+        assertEquals("Unknown merchant", result.merchantNormalized)
+    }
+
+    @Test
+    fun removesDistrictGatewayAndTimestampNoise() {
+        assertEquals(
+            "District Dining",
+            parser.normalizeMerchant("District Dining CYBS on 2026-08-08:19:54:52.Not"),
+        )
+    }
+
+    @Test
+    fun districtGatewayMessageKeepsOnlyTheCustomerFacingMerchant() {
+        val result = assertNotNull(
+            parser.parse(
+                "Rs.725.15 spent at District Dining CYBS on 2026-08-08:19:54:52.Notification from HDFC Bank.",
+                "JD-HDFCBK-S",
+            ),
+        )
+        assertEquals(TransactionType.DEBIT, result.type)
+        assertEquals("District Dining", result.merchantNormalized)
+    }
 }
