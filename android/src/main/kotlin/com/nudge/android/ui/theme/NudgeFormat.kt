@@ -83,7 +83,13 @@ fun formatCompactCentsPlain(cents: Long): String {
             minimumFractionDigits = if (cents % 100 == 0L) 0 else 2
         }.format(value)
     }
-    val decimals = if (abs(scaled) >= 10 || scaled % 1.0 == 0.0) 0 else 1
+    // Keep useful precision for glanceable totals: 24.5K is materially clearer than 24K.
+    // Very large three-digit compact values stay whole so constrained cards do not overflow.
+    val decimals = when {
+        scaled % 1.0 == 0.0 -> 0
+        abs(scaled) < 100 -> 1
+        else -> 0
+    }
     return NumberFormat.getNumberInstance(Locale.getDefault()).apply {
         maximumFractionDigits = decimals
         minimumFractionDigits = 0

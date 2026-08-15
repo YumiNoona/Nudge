@@ -2,7 +2,7 @@
 
 **Effective date:** 9 August 2026  
 **Developer:** Veil  
-**App:** Nudge (`com.nudge.android`)
+**App:** Nudge (`com.veilafk.nudge` on Google Play; `com.nudge.android` for the GitHub edition)
 
 Nudge is a local-first Android expense manager. It does not require an account and does not operate a cloud financial database. This policy explains what the app can access, what remains on your device, and the controls available to you.
 
@@ -33,7 +33,7 @@ By default, transaction source bodies are not retained after parsing. If you ena
 
 ## Camera, images and files
 
-Camera access is requested only when you start card or receipt scanning. Files and gallery images are chosen through Android's system picker; Nudge does not request broad storage access. OCR and parsing happen locally. Captured card, receipt and rendered PDF images are discarded after recognition unless you independently keep the original outside Nudge.
+Camera access is requested only when you start card or receipt scanning. Files and gallery images are chosen through Android's system picker; Nudge does not request broad storage access. OCR and parsing happen locally. Captured card images and temporary rendered PDF pages are discarded after recognition. Receipt pages are discarded when you cancel review; when you save a reviewed receipt, its pages remain only in Nudge's app-private storage as a local source attachment and are removed by **Delete everything**.
 
 Portable JSON exports are not encrypted. You control where exported backups are stored and shared.
 

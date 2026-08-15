@@ -42,7 +42,7 @@ fun <T> ScrollableChipRow(
                     labelColor = unselectedLabelColor
                 ),
                 shape = RoundedCornerShape(50),
-                modifier = Modifier.heightIn(min = 36.dp)
+                modifier = Modifier.height(40.dp)
             )
         }
     }

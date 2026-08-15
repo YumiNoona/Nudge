@@ -30,10 +30,8 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.nudge.android.data.NudgeDatabase
 import com.nudge.android.ui.MainActivity
-import java.text.NumberFormat
+import com.nudge.android.ui.theme.formatCompactCentsPlain
 import java.util.Calendar
-import java.util.Currency
-import java.util.Locale
 import kotlin.math.max
 
 private data class WidgetCategory(
@@ -337,25 +335,7 @@ class NudgeSnapshotWidgetReceiver : GlanceAppWidgetReceiver() {
 private fun widgetAmount(snapshot: WidgetSnapshot): String =
     if (snapshot.hideAmounts) "₹ ••••" else formatCompactMoney(snapshot.spentCents)
 
-private fun formatCompactMoney(cents: Long): String {
-    val whole = cents / 100.0
-    return when {
-        whole >= 10_000_000 -> "₹${trimDecimal(whole / 10_000_000)}Cr"
-        whole >= 100_000 -> "₹${trimDecimal(whole / 100_000)}L"
-        whole >= 1_000 -> "₹${trimDecimal(whole / 1_000)}K"
-        else -> formatWidgetMoney(cents)
-    }
-}
-
-private fun trimDecimal(value: Double): String = if (value >= 10 || value % 1.0 == 0.0) "%.0f".format(Locale.US, value) else "%.1f".format(Locale.US, value)
-
-private fun formatWidgetMoney(cents: Long): String {
-    val format = NumberFormat.getCurrencyInstance(Locale.Builder().setLanguage("en").setRegion("IN").build()).apply {
-        currency = Currency.getInstance("INR")
-        maximumFractionDigits = if (cents % 100 == 0L) 0 else 2
-    }
-    return format.format(cents / 100.0)
-}
+private fun formatCompactMoney(cents: Long): String = "₹${formatCompactCentsPlain(cents)}"
 
 private fun createDonutBitmap(categories: List<WidgetCategory>): Bitmap {
     val size = 320

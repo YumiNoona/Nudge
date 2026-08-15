@@ -18,14 +18,20 @@ import kotlinx.datetime.Clock
 import java.security.SecureRandom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import com.nudge.android.service.TransactionCaptureProcessor
 import com.nudge.engine.MerchantNormalizer
 import com.nudge.engine.DefaultCategorizationEngine
 import com.nudge.engine.DefaultSmsParserEngine
 import com.nudge.engine.TransactionMessageGuard
 import com.nudge.android.importer.StatementDraft
+import com.nudge.android.importer.DetailedReceiptDraft
+import com.nudge.android.importer.ReceiptIntelligence
 import com.nudge.android.widget.NudgeWidget
+import androidx.room.withTransaction
 import androidx.glance.appwidget.updateAll
+import java.io.File
+import java.util.Calendar
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -41,6 +47,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val sourceMessages: StateFlow<List<SavedSourceMessageEntity>>
     val savedSourceCount: StateFlow<Int>
     val savedSourceBytes: StateFlow<Long>
+    val friends: StateFlow<List<FriendEntity>>
+    val transactionSplits: StateFlow<List<TransactionSplitEntity>>
+    val recurringTransactions: StateFlow<List<RecurringTransactionEntity>>
     private val _captureScanState = MutableStateFlow<String?>(null)
     val captureScanState: StateFlow<String?> = _captureScanState.asStateFlow()
     private val sourceCrypto by lazy { SourceMessageCrypto() }
@@ -61,6 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             removeInvalidCapturedStatements()
             repairCapturedSemantics()
             repairCapturedMerchantNames()
+            materializeDueRecurringTransactions()
         }
 
         transactions = db.transactionDao().getAll()
@@ -89,6 +99,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         savedSourceBytes = db.savedSourceMessageDao().observeSavedBytes()
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+        friends = db.sharedExpenseDao().observeFriends()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        transactionSplits = db.sharedExpenseDao().observeAllSplits()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+        recurringTransactions = db.recurringTransactionDao().observeActive()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     }
 
     fun addTransaction(
@@ -97,10 +116,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         merchantRaw: String,
         accountId: String,
         categoryId: String? = null,
-        note: String? = null
+        note: String? = null,
+        timestampEpoch: Long = System.currentTimeMillis(),
+        split: SplitDraft? = null,
+        recurrence: RecurrenceDraft? = null,
     ) {
         viewModelScope.launch {
-            val now = Clock.System.now()
+            val recurringId = recurrence?.let { IdGenerator.generate() }
             val txn = TransactionEntity(
                 id = IdGenerator.generate(),
                 amountCents = amountCents,
@@ -112,13 +134,155 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 source = TransactionSource.MANUAL.name.lowercase(),
                 confidenceScore = 1f,
                 isReviewed = true,
+                isRecurring = recurrence != null,
+                recurringGroupId = recurringId,
                 note = note,
-                timestampEpoch = now.toEpochMilliseconds()
+                timestampEpoch = timestampEpoch,
             )
             db.transactionDao().insert(txn)
+            replaceSplits(txn.id, split)
+            recurrence?.let {
+                db.recurringTransactionDao().upsert(
+                    RecurringTransactionEntity(
+                        id = recurringId!!,
+                        templateTransactionId = txn.id,
+                        interval = it.interval,
+                        nextRunEpoch = advanceRecurringDate(timestampEpoch, it.interval),
+                        endEpoch = it.endEpoch,
+                    ),
+                )
+                materializeDueRecurringTransactions()
+            }
             awardXp(com.nudge.engine.GamificationMath.XP_MANUAL_ENTRY_SAME_DAY)
             refreshWidget()
         }
+    }
+
+    fun saveReceipt(
+        receipt: DetailedReceiptDraft,
+        accountId: String,
+        categoryId: String?,
+        itemized: Boolean,
+        onComplete: (Boolean, String) -> Unit,
+    ) {
+        viewModelScope.launch {
+            val nearbyDuplicates = db.transactionDao().findPotentialDuplicates(
+                receipt.printedTotalCents,
+                "debit",
+                receipt.purchaseTimestamp - 36L * 60L * 60L * 1_000L,
+                receipt.purchaseTimestamp + 36L * 60L * 60L * 1_000L,
+            )
+            val duplicate = nearbyDuplicates.firstOrNull {
+                MerchantNormalizer.normalize(it.merchantRaw).normalized.equals(
+                    MerchantNormalizer.normalize(receipt.merchant).normalized,
+                    ignoreCase = true,
+                )
+            }
+            if (duplicate != null) {
+                withContext(Dispatchers.Main.immediate) {
+                    onComplete(false, "This receipt already matches ${duplicate.merchantRaw} for ₹${receipt.printedTotalCents / 100.0}.")
+                }
+                return@launch
+            }
+
+            val receiptId = IdGenerator.generate()
+            val activeItems = receipt.items.filter { it.lineTotalCents > 0 }
+            val allocations = ReceiptIntelligence.allocateTotal(activeItems, receipt.printedTotalCents)
+            val createdTransactions = mutableListOf<TransactionEntity>()
+            val lineEntities = mutableListOf<ReceiptLineItemEntity>()
+            db.withTransaction {
+                db.receiptDao().insertReceipt(
+                    ReceiptEntity(
+                        id = receiptId,
+                        merchant = receipt.merchant,
+                        printedTotalCents = receipt.printedTotalCents,
+                        calculatedTotalCents = receipt.calculatedTotalCents,
+                        subtotalCents = receipt.subtotalCents,
+                        discountCents = receipt.discountCents,
+                        taxCents = receipt.taxCents,
+                        feeCents = receipt.feeCents,
+                        tipCents = receipt.tipCents,
+                        roundingCents = receipt.roundingCents,
+                        purchaseTimestamp = receipt.purchaseTimestamp,
+                        rawText = receipt.rawText,
+                        confidence = receipt.confidence,
+                        saveMode = if (itemized) "itemized" else "single",
+                    ),
+                )
+                db.receiptDao().insertPages(receipt.pages.mapIndexed { index, page ->
+                    ReceiptPageEntity(IdGenerator.generate(), receiptId, index, page.localUri, page.ocrText, page.warning)
+                })
+                if (itemized && activeItems.isNotEmpty()) {
+                    activeItems.forEachIndexed { index, item ->
+                        val transaction = TransactionEntity(
+                            id = IdGenerator.generate(),
+                            amountCents = allocations[index],
+                            type = "debit",
+                            merchantRaw = item.name,
+                            merchantNormalized = item.name,
+                            categoryId = item.selectedCategoryId ?: categoryForReceiptHint(item.categoryHint),
+                            accountId = accountId,
+                            source = "receipt",
+                            confidenceScore = item.confidence,
+                            isReviewed = true,
+                            note = "${receipt.merchant} · itemized receipt",
+                            timestampEpoch = receipt.purchaseTimestamp,
+                        )
+                        db.transactionDao().insert(transaction)
+                        createdTransactions += transaction
+                        lineEntities += ReceiptLineItemEntity(
+                            IdGenerator.generate(), receiptId, transaction.id, item.name, item.quantity,
+                            item.unitPriceCents, item.lineTotalCents, allocations[index], transaction.categoryId,
+                            item.confidence, index,
+                        )
+                    }
+                } else {
+                    val transaction = TransactionEntity(
+                        id = IdGenerator.generate(),
+                        amountCents = receipt.printedTotalCents,
+                        type = "debit",
+                        merchantRaw = receipt.merchant,
+                        merchantNormalized = receipt.merchant,
+                        categoryId = categoryId ?: categoryForReceiptHint(activeItems.firstNotNullOfOrNull { it.categoryHint }),
+                        accountId = accountId,
+                        source = "receipt",
+                        confidenceScore = receipt.confidence,
+                        isReviewed = true,
+                        note = "Receipt · ${activeItems.size} detected items",
+                        timestampEpoch = receipt.purchaseTimestamp,
+                    )
+                    db.transactionDao().insert(transaction)
+                    createdTransactions += transaction
+                    lineEntities += activeItems.mapIndexed { index, item ->
+                        ReceiptLineItemEntity(
+                            IdGenerator.generate(), receiptId, transaction.id, item.name, item.quantity,
+                            item.unitPriceCents, item.lineTotalCents, allocations.getOrElse(index) { item.lineTotalCents },
+                            item.selectedCategoryId ?: categoryForReceiptHint(item.categoryHint), item.confidence, index,
+                        )
+                    }
+                }
+                if (lineEntities.isNotEmpty()) db.receiptDao().insertItems(lineEntities)
+                db.receiptDao().insertLinks(createdTransactions.map { ReceiptTransactionLinkEntity(receiptId, it.id) })
+            }
+            refreshWidget()
+            withContext(Dispatchers.Main.immediate) {
+                onComplete(true, if (itemized) "Added ${createdTransactions.size} linked receipt items" else "Receipt added with ${activeItems.size} saved line items")
+            }
+        }
+    }
+
+    private fun categoryForReceiptHint(hint: String?): String? {
+        val value = hint?.lowercase() ?: return null
+        return categories.value.firstOrNull { category ->
+            category.type == "expense" && when (value) {
+                "food" -> category.name.contains("food", true) || category.name.contains("dining", true)
+                "groceries" -> category.name.contains("grocer", true)
+                "healthcare" -> category.name.contains("health", true) || category.name.contains("medical", true)
+                "personal care" -> category.name.contains("personal", true)
+                "education" -> category.name.contains("education", true)
+                else -> category.name.contains(value, true)
+            }
+        }?.id
     }
 
     fun importStatementTransactions(
@@ -248,6 +412,108 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateTransactionDetails(
+        transaction: TransactionEntity,
+        split: SplitDraft?,
+        recurrence: RecurrenceDraft?,
+    ) {
+        viewModelScope.launch {
+            val existingRule = transaction.recurringGroupId?.let { db.recurringTransactionDao().getById(it) }
+                ?: db.recurringTransactionDao().getForTemplate(transaction.id)
+            val recurringId = recurrence?.let { existingRule?.id ?: IdGenerator.generate() }
+            val updated = transaction.copy(
+                isReviewed = true,
+                isRecurring = recurrence != null,
+                recurringGroupId = recurringId,
+                updatedAt = System.currentTimeMillis(),
+            )
+            db.transactionDao().update(updated)
+            replaceSplits(updated.id, split)
+            if (recurrence == null) {
+                db.recurringTransactionDao().deleteForTemplate(existingRule?.templateTransactionId ?: updated.id)
+            } else {
+                db.recurringTransactionDao().upsert(
+                    RecurringTransactionEntity(
+                        id = recurringId!!,
+                        templateTransactionId = existingRule?.templateTransactionId ?: updated.id,
+                        interval = recurrence.interval,
+                        nextRunEpoch = existingRule?.nextRunEpoch
+                            ?: advanceRecurringDate(updated.timestampEpoch, recurrence.interval),
+                        endEpoch = recurrence.endEpoch,
+                    ),
+                )
+            }
+            refreshWidget()
+        }
+    }
+
+    fun saveFriend(name: String): FriendEntity {
+        val friend = FriendEntity(id = IdGenerator.generate(), name = name.trim())
+        viewModelScope.launch { db.sharedExpenseDao().upsertFriend(friend) }
+        return friend
+    }
+
+    fun settleSplit(splitId: String, amountCents: Long) {
+        viewModelScope.launch { db.sharedExpenseDao().settle(splitId, amountCents) }
+    }
+
+    private suspend fun replaceSplits(transactionId: String, split: SplitDraft?) {
+        db.sharedExpenseDao().deleteSplits(transactionId)
+        val shares = split?.members.orEmpty().filter { it.shareCents > 0 || it.paidCents > 0 }.map { member ->
+            TransactionSplitEntity(
+                id = IdGenerator.generate(),
+                transactionId = transactionId,
+                friendId = member.friendId,
+                participantName = member.name,
+                shareCents = member.shareCents,
+                paidCents = member.paidCents,
+                splitMethod = split!!.method,
+            )
+        }
+        if (shares.isNotEmpty()) db.sharedExpenseDao().insertSplits(shares)
+    }
+
+    private suspend fun materializeDueRecurringTransactions() {
+        val now = System.currentTimeMillis()
+        db.recurringTransactionDao().getDue(now).forEach { rule ->
+            val template = db.transactionDao().getById(rule.templateTransactionId) ?: return@forEach
+            var next = rule.nextRunEpoch
+            var created = 0
+            while (next <= now && (rule.endEpoch == null || next <= rule.endEpoch) && created < 120) {
+                val generated = template.copy(
+                    id = IdGenerator.generate(),
+                    source = "recurring",
+                    timestampEpoch = next,
+                    createdAt = now,
+                    updatedAt = now,
+                    recurringGroupId = rule.id,
+                )
+                db.transactionDao().insert(generated)
+                val templateSplits = db.sharedExpenseDao().getSplits(template.id)
+                if (templateSplits.isNotEmpty()) {
+                    db.sharedExpenseDao().insertSplits(templateSplits.map {
+                        it.copy(id = IdGenerator.generate(), transactionId = generated.id, settledCents = 0)
+                    })
+                }
+                next = advanceRecurringDate(next, rule.interval)
+                created++
+            }
+            db.recurringTransactionDao().update(
+                rule.copy(nextRunEpoch = next, active = rule.endEpoch == null || next <= rule.endEpoch),
+            )
+        }
+    }
+
+    private fun advanceRecurringDate(epoch: Long, interval: String): Long =
+        Calendar.getInstance().apply {
+            timeInMillis = epoch
+            when (interval) {
+                "weekly" -> add(Calendar.WEEK_OF_YEAR, 1)
+                "yearly" -> add(Calendar.YEAR, 1)
+                else -> add(Calendar.MONTH, 1)
+            }
+        }.timeInMillis
+
     fun scanHistoricalSms() {
         viewModelScope.launch {
             _captureScanState.value = "Scanning all accessible SMS & MMS…"
@@ -255,6 +521,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _captureScanState.value = buildString {
                 append("Checked ${result.checked} messages · added ${result.added}")
                 if (result.unreadable > 0) append(" · ${result.unreadable} unreadable")
+            }
+        }
+    }
+
+    /**
+     * Quietly repairs short listener/receiver gaps whenever the app resumes. Unlike the manual
+     * history scan this only examines messages since the previous sync and never shows progress UI.
+     */
+    fun syncRecentMessages() {
+        val app = getApplication<Application>()
+        val prefs = app.getSharedPreferences("nudge_prefs", android.content.Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("auto_capture_enabled", true)) return
+        val now = System.currentTimeMillis()
+        val previousSync = prefs.getLong("last_realtime_sms_sync", now - 15 * 60_000L)
+        if (now - previousSync < 30_000L) return
+        // Advance early so several lifecycle callbacks cannot launch the same scan concurrently.
+        prefs.edit().putLong("last_realtime_sms_sync", now).apply()
+        viewModelScope.launch(Dispatchers.IO) {
+            val processor = TransactionCaptureProcessor(app)
+            val resolver = app.contentResolver
+            val since = (previousSync - 2 * 60_000L).coerceAtLeast(0L)
+            runCatching {
+                resolver.query(
+                    Telephony.Sms.CONTENT_URI,
+                    arrayOf(Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
+                    "${Telephony.Sms.TYPE} = ? AND ${Telephony.Sms.DATE} >= ?",
+                    arrayOf(Telephony.Sms.MESSAGE_TYPE_INBOX.toString(), since.toString()),
+                    "${Telephony.Sms.DATE} ASC",
+                )
+            }.getOrNull()?.use { cursor ->
+                val idIndex = cursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val addressIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val bodyIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIndex = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                while (cursor.moveToNext()) {
+                    val body = cursor.getString(bodyIndex)?.takeIf(String::isNotBlank) ?: continue
+                    val id = cursor.getLong(idIndex)
+                    val sender = cursor.getString(addressIndex).orEmpty()
+                    processor.process(
+                        rawText = body,
+                        sourceId = sender,
+                        source = "sms_realtime_sync",
+                        receivedAt = cursor.getLong(dateIndex),
+                        sourceMetadata = TransactionCaptureProcessor.SourceMetadata(
+                            sender = sender,
+                            originalMessageId = id.toString(),
+                            originalMessageUri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id).toString(),
+                        ),
+                    )
+                }
             }
         }
     }
@@ -303,6 +619,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             originalMessageId = id.toString(),
                             originalMessageUri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id).toString(),
                         ),
+                        bypassCaptureToggle = true,
                     )
                     if (outcome is TransactionCaptureProcessor.Outcome.Added) result.added++
                 } catch (_: Exception) {
@@ -339,6 +656,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             originalMessageId = id.toString(),
                             originalMessageUri = ContentUris.withAppendedId(Telephony.Mms.CONTENT_URI, id).toString(),
                         ),
+                        bypassCaptureToggle = true,
                     )
                     if (outcome is TransactionCaptureProcessor.Outcome.Added) result.added++
                 } catch (_: Exception) {
@@ -578,6 +896,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { db.budgetDao().insert(budget) }
     }
 
+    fun importFriend(friend: FriendEntity) {
+        viewModelScope.launch { db.sharedExpenseDao().upsertFriend(friend) }
+    }
+
+    fun importSplit(split: TransactionSplitEntity) {
+        viewModelScope.launch {
+            repeat(20) {
+                if (db.transactionDao().getById(split.transactionId) != null) {
+                    db.sharedExpenseDao().insertSplits(listOf(split))
+                    return@launch
+                }
+                delay(50)
+            }
+        }
+    }
+
+    fun importRecurrence(rule: RecurringTransactionEntity) {
+        viewModelScope.launch {
+            repeat(20) {
+                if (db.transactionDao().getById(rule.templateTransactionId) != null) {
+                    db.recurringTransactionDao().upsert(rule)
+                    return@launch
+                }
+                delay(50)
+            }
+        }
+    }
+
     fun saveBudget(id: String?, categoryId: String?, amountCents: Long, period: String, rolloverEnabled: Boolean, startDateEpoch: Long) {
         viewModelScope.launch {
             val budget = com.nudge.android.data.BudgetEntity(
@@ -599,25 +945,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun deleteAllData() {
-        viewModelScope.launch {
-            db.transactionDao().let { dao ->
-                // Clear all tables
-                db.openHelper.writableDatabase.apply {
-                    execSQL("DELETE FROM transactions")
-                    execSQL("DELETE FROM categories")
-                    execSQL("DELETE FROM subcategories")
-                    execSQL("DELETE FROM accounts")
-                    execSQL("DELETE FROM budgets")
-                    execSQL("DELETE FROM recurring_rules")
-                    execSQL("DELETE FROM gamification_profile")
-                    execSQL("DELETE FROM parser_rules")
-                    execSQL("DELETE FROM merchant_aliases")
-                    execSQL("DELETE FROM sender_whitelist")
-                    execSQL("DELETE FROM saved_source_messages")
-                }
-            }
+    suspend fun deleteAllData(): Result<Unit> = runCatching {
+        withContext(Dispatchers.IO) {
+            // Room clears every current table in dependency-safe order and checkpoints the WAL.
+            // This is both faster and less error-prone than maintaining a manual SQL list.
+            db.clearAllTables()
+            // Clearing user data must leave the app usable in the same session. Recreate the
+            // built-in expense/income categories and selectable accounts immediately.
+            DefaultsSeeder.seedIfEmpty(db)
+            File(getApplication<Application>().filesDir, "receipts").deleteRecursively()
         }
+        refreshWidget()
     }
 
     // --- Gamification ---
@@ -660,15 +998,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun repairCapturedSemantics() {
         val parser = DefaultSmsParserEngine()
+        val categories = db.categoryDao().getAllOnce().associateBy { it.id }
         db.transactionDao().getAllOnce().filter { it.source != "manual" }.forEach { transaction ->
             val savedSource = db.savedSourceMessageDao().getByTransaction(transaction.id)
             val sourceBody = savedSource?.encryptedBody?.let { encrypted ->
                 runCatching { sourceCrypto.decrypt(encrypted) }.getOrNull()
-            }
-            val parsed = sourceBody?.let { parser.parse(it, savedSource.sender.orEmpty()) }
+            } ?: withContext(Dispatchers.IO) { readOriginalSmsBody(savedSource?.originalMessageUri) }
+            val parsed = sourceBody?.let { parser.parse(it, savedSource?.sender.orEmpty()) }
             val legacyCardPayment = transaction.type == "credit" &&
                 Regex("""(?i)^your\s+card\s+ending\s+\d+\s+on\b""").containsMatchIn(transaction.merchantRaw)
-            if (parsed?.type == TransactionType.TRANSFER || legacyCardPayment) {
+            if (parsed != null || legacyCardPayment) {
+                val repairedType = if (legacyCardPayment) TransactionType.TRANSFER else parsed!!.type
                 val sender = savedSource?.sender.orEmpty().uppercase()
                 val bank = when {
                     "HDFC" in sender -> "HDFC"
@@ -678,15 +1018,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     "KOTAK" in sender -> "Kotak"
                     else -> null
                 }
-                val merchant = parsed?.merchantNormalized
-                    ?.takeUnless { it == "Unknown merchant" }
-                    ?: listOfNotNull(bank, "Credit Card Payment").joinToString(" ")
+                val merchant = when {
+                    repairedType == TransactionType.TRANSFER -> parsed?.merchantNormalized
+                        ?.takeUnless { it == "Unknown merchant" }
+                        ?: listOfNotNull(bank, "Credit Card Payment").joinToString(" ")
+                    else -> parsed?.merchantNormalized
+                        ?.takeUnless { it == "Unknown merchant" }
+                        ?: transaction.merchantNormalized
+                        ?: transaction.merchantRaw
+                }
+                val category = transaction.categoryId?.let(categories::get)
+                val categoryStillValid = when (repairedType) {
+                    TransactionType.DEBIT, TransactionType.REFUND -> category?.type?.lowercase() != "income"
+                    TransactionType.CREDIT -> category?.type?.lowercase() != "expense"
+                    TransactionType.TRANSFER -> false
+                }
+                val semanticsChanged = transaction.type != repairedType.name.lowercase()
+                if (!semanticsChanged && merchant == transaction.merchantRaw) return@forEach
                 db.transactionDao().update(
                     transaction.copy(
-                        type = "transfer",
+                        type = repairedType.name.lowercase(),
                         merchantRaw = merchant,
                         merchantNormalized = merchant,
-                        isReviewed = true,
+                        categoryId = transaction.categoryId.takeIf { categoryStillValid },
+                        isReviewed = if (semanticsChanged) false else transaction.isReviewed,
+                        confidenceScore = maxOf(transaction.confidenceScore, parsed?.confidenceScore ?: .99f),
                         updatedAt = System.currentTimeMillis(),
                     ),
                 )

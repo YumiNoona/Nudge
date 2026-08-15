@@ -83,6 +83,14 @@ tmp/
 temp/
 *.tmp
 
+# Local release staging, signing workspaces, and profiling output
+/release/
+/signing/
+*.prof
+*.profm
+lint-results*.html
+lint-results*.xml
+
 # Operating systems
 .DS_Store
 .AppleDouble

@@ -85,21 +85,21 @@ val MonoFamily = FontFamily(
 )
 
 val DSTypography = Typography(
-    displayLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 34.sp, lineHeight = 40.sp, letterSpacing = (-0.5).sp),
-    displayMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp, lineHeight = 34.sp, letterSpacing = (-0.5).sp),
-    displaySmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 30.sp),
-    headlineLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 29.sp, letterSpacing = (-0.35).sp),
-    headlineMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 25.sp, letterSpacing = (-0.25).sp),
-    headlineSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 22.sp),
-    titleLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 21.sp),
-    titleMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 20.sp),
-    titleSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp),
-    bodyLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp),
-    bodyMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 19.sp),
-    bodySmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 11.sp, lineHeight = 16.sp),
-    labelLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 17.sp),
-    labelMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 15.sp),
-    labelSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 10.sp, lineHeight = 14.sp),
+    displayLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 36.sp, lineHeight = 43.sp, letterSpacing = (-0.5).sp),
+    displayMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 37.sp, letterSpacing = (-0.5).sp),
+    displaySmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 33.sp),
+    headlineLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 31.sp, letterSpacing = (-0.35).sp),
+    headlineMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 20.sp, lineHeight = 27.sp, letterSpacing = (-0.25).sp),
+    headlineSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 24.sp),
+    titleLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 17.sp, lineHeight = 23.sp),
+    titleMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    titleSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 19.sp),
+    bodyLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp),
+    bodyMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 21.sp),
+    bodySmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 19.sp),
+    labelMedium = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, lineHeight = 17.sp),
+    labelSmall = TextStyle(fontFamily = MonoFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 16.sp),
 )
 
 // ── Spacing ──

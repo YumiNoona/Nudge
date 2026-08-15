@@ -1,10 +1,11 @@
 # Google Play release checklist — Nudge 4.7.0
 
-This is the operational checklist for the first Google Play release of `com.nudge.android`. Complete it from top to bottom after the Play developer-account verification finishes.
+This is the operational checklist for the first Google Play release of `com.veilafk.nudge`. Complete it from top to bottom after the Play developer-account verification finishes.
 
 ## 1. Build identity and signing
 
-- [x] Package name remains `com.nudge.android`.
+- [x] Google Play package name is `com.veilafk.nudge`.
+- [x] The GitHub distribution keeps `com.nudge.android` so existing sideloaded installations remain update-compatible.
 - [x] Play candidate uses `versionName 4.7.0` and `versionCode 13`.
 - [x] `compileSdk` and `targetSdk` are API 36.
 - [x] Minimum Android version remains API 26 / Android 8.0.
@@ -18,7 +19,7 @@ This is the operational checklist for the first Google Play release of `com.nudg
 Build the candidate:
 
 ```powershell
-.\gradlew.bat clean :shared:allTests :android:testPlayDebugUnitTest :android:lintPlayRelease :android:bundlePlayRelease
+.\gradlew.bat clean :shared:test :android:testPlayDebugUnitTest :android:lintPlayRelease :android:bundlePlayRelease
 ```
 
 Upload this file to Play Console:

@@ -136,6 +136,29 @@ WDL TFR
         assertEquals("Santosh", drafts[1].merchant)
     }
 
+    @Test
+    fun signedSingleAmountColumnKeepsItsDirection() {
+        val drafts = FinancialDocumentImporter.parseStatement(
+            """Date,Narration,Amount
+01/08/2026,AMAZON,-499.00
+02/08/2026,ACME SALARY,+45000.00""",
+        )
+
+        assertEquals(2, drafts.size)
+        assertEquals(TransactionType.DEBIT, drafts[0].type)
+        assertEquals(TransactionType.CREDIT, drafts[1].type)
+    }
+
+    @Test
+    fun unsignedAmountWithoutDirectionIsNotGuessedAsExpense() {
+        val drafts = FinancialDocumentImporter.parseStatement(
+            """Date,Narration,Amount
+01/08/2026,REFERENCE 123456,499.00""",
+        )
+
+        assertEquals(0, drafts.size)
+    }
+
     private fun assertDate(epoch: Long, year: Int, month: Int, day: Int) {
         val calendar = Calendar.getInstance().apply { timeInMillis = epoch }
         assertEquals(year, calendar.get(Calendar.YEAR))

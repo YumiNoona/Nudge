@@ -5,8 +5,9 @@ import com.nudge.util.IdGenerator
 
 object DefaultsSeeder {
     suspend fun seedIfEmpty(db: NudgeDatabase) {
-        val catCount = db.categoryDao().count()
-        if (catCount == 0) {
+        // Count only categories that the UI can actually display. Archived rows used to make the
+        // old `COUNT(*)` check pass while Add Transaction received an empty list and showed only +.
+        val visibleCategories = db.categoryDao().getAllOnce()
         val defaultCategories = listOf(
             CategoryEntity(IdGenerator.generate(), "Food & Dining", "\uD83C\uDF54", DesignTokens.Colors.categoryColor(0), "expense", true, false, null, 0),
             CategoryEntity(IdGenerator.generate(), "Transport", "\uD83D\uDE97", DesignTokens.Colors.categoryColor(1), "expense", true, false, null, 1),
@@ -30,16 +31,18 @@ object DefaultsSeeder {
             CategoryEntity(IdGenerator.generate(), "Other Income", "\uD83D\uDCB5", DesignTokens.Colors.categoryColor(11), "income", true, false, null, 4),
         )
 
-        db.categoryDao().insertAll(defaultCategories)
+        val missingCategoryTypes = setOf("expense", "income") - visibleCategories.map { it.type }.toSet()
+        if (missingCategoryTypes.isNotEmpty()) {
+            db.categoryDao().insertAll(defaultCategories.filter { it.type in missingCategoryTypes })
         }
 
-        val acctCount = db.accountDao().count()
-        if (acctCount == 0) {
+        // Likewise, inactive/archived accounts are not selectable and must not block recovery.
+        if (db.accountDao().getAllOnce().isEmpty()) {
             val defaultAccounts = listOf(
-                AccountEntity(IdGenerator.generate(), "Cash", null, "cash", null, "#10B981", "\uD83D\uDCB5", true),
-                AccountEntity(IdGenerator.generate(), "Savings", null, "savings", null, "#3E6F8E", "\uD83C\uDFE6", true),
-                AccountEntity(IdGenerator.generate(), "Credit Card", null, "credit_card", null, "#F97316", "\uD83D\uDCB3", true),
-                AccountEntity(IdGenerator.generate(), "UPI", null, "upi", null, "#22D3EE", "\uD83D\uDCF2", true),
+                AccountEntity(IdGenerator.generate(), "Cash", null, "cash", null, "#10B981", "\uD83D\uDCB5", isActive = true, isDefault = true),
+                AccountEntity(IdGenerator.generate(), "Savings", null, "savings", null, "#3E6F8E", "\uD83C\uDFE6", isActive = true),
+                AccountEntity(IdGenerator.generate(), "Credit Card", null, "credit_card", null, "#F97316", "\uD83D\uDCB3", isActive = true),
+                AccountEntity(IdGenerator.generate(), "UPI", null, "upi", null, "#22D3EE", "\uD83D\uDCF2", isActive = true),
             )
             db.accountDao().insertAll(defaultAccounts)
         }

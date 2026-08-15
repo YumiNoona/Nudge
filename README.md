@@ -26,20 +26,22 @@ Nudge is an Android-only product. The repository contains the mobile application
 
 | Area | What Nudge provides |
 |---|---|
-| Automatic capture | Bank SMS and notification-listener ingestion for debit, credit, refund, card, wallet, and UPI alerts |
-| Local parsing | Bundled bank/payment templates, heuristic fallback parsing, merchant normalization, and confidence scoring |
+| Automatic capture | Real-time bank SMS and notification-listener ingestion for debit, credit, refund, card, wallet, and UPI alerts |
+| Local parsing | Layered financial-event classification, bundled bank/payment templates, heuristic fallbacks, merchant normalization, and confidence scoring |
 | Smart review | Confirm, correct, categorize, or reject uncertain captures; local rules remember merchant corrections and repeated rejection patterns |
 | Duplicate protection | Source IDs, message fingerprints, time/amount matching, and learned identities prevent rescanned messages from creating the same transaction again |
-| Manual entry | Haptic numeric keypad, expense/income/refund types, horizontal category grid, account grid, and merchant |
-| Transaction timeline | Search, type filters, smart-capture filter, editable entries, source-message access, and swipe-dismiss capture feedback |
+| Manual entry | Haptic keypad, historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
+| Shared expenses | Local friend list, equal/exact/percentage splits, flexible payer selection, outstanding balances, and one-tap settlement |
+| Recurring entries | Weekly, monthly, or yearly local schedules materialized on the next app launch without a cloud account |
+| Transaction timeline | Month navigation, search, type/shared/smart filters, editable entries, source-message access, and swipe-to-delete with undo |
 | Analytics | Monthly expense mix, category shares, and daily money-in/money-out rhythm |
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
 | Card scanning | On-device ML Kit recognition; the captured image is discarded and only limited card metadata is retained |
 | Smart import | Local CSV/TXT/PDF/image bank and card statement parsing, Gmail/Outlook share-in support, OCR fallback, and duplicate suppression |
-| Receipt scan beta | Embedded CameraX preview or gallery OCR fills the merchant and bill total into the normal transaction form for confirmation |
+| Receipt intelligence | Multi-page CameraX/gallery capture, on-device OCR, Indian receipt-table parsing, product quantity/rate/value extraction, GST and printed-total reconciliation, and one-expense or itemized saving |
 | Categories | Built-in and custom categories with editable colors, 200 searchable icons, and user-defined emoji glyphs |
 | Local profile | Display name and profile image stored inside app-private storage |
-| Data ownership | JSON export, merge-style import, source-message retention controls, and complete local-data deletion |
+| Data ownership | Versioned JSON export/import including friends, splits, and recurring schedules; retention controls; complete local-data deletion |
 | Widgets | Compact, snapshot, and expanded home-screen widgets with responsive layouts |
 | Polish | Dark/light themes, JetBrains Mono typography, Lucide-style icons, semantic haptics, and Compose micro-interactions |
 | Reminders | Optional daily expense check-ins with rotating copy and Android notification-permission handling |
@@ -50,10 +52,10 @@ Nudge is an Android-only product. The repository contains the mobile application
 ## Product flow
 
 ```text
-Bank SMS / payment notification
-              |
-              v
-     Local parser + rule pack
+Bank SMS / payment notification / statement / receipt
+                       |
+                       v
+        Local parser + classifier + rule pack
               |
               v
   Normalize merchant and transaction type
@@ -76,7 +78,7 @@ Bank SMS / payment notification
  Transactions     Analytics / widgets
 ```
 
-Manual transactions enter the same local database and therefore appear everywhere automatic captures do.
+Manual transactions, statement rows, and reviewed receipt items enter the same local database and therefore appear everywhere automatic captures do. Receipt scans can remain one transaction with linked line items or become separate, linked item transactions.
 
 ## Privacy and security
 
@@ -89,7 +91,7 @@ Nudge is designed to operate without a user account. Expense tracking, parsing, 
 - A source message body is retained only when **Save transaction messages** is enabled.
 - Retained source bodies are encrypted with AES-GCM using an app-owned Android Keystore key.
 - Rejection learning stores stable patterns rather than raw message bodies.
-- Card and receipt images, plus imported PDF pages, are processed on-device and discarded after recognition.
+- Card images and temporary PDF renderings are discarded after recognition. Receipt pages are discarded when a scan is cancelled; after the user saves a reviewed receipt, its pages remain only in app-private storage as a local source attachment and are removed by **Delete everything**.
 - Nudge cannot silently access another mail app. Only email text or attachments explicitly shared to Nudge are read.
 - JSON exports are intentionally portable and are **not encrypted**. Store exported files securely.
 
@@ -99,7 +101,7 @@ Nudge is designed to operate without a user account. Expense tracking, parsing, 
 |---|---|---|
 | Read and receive SMS | Scan historical financial messages and capture future bank/UPI SMS alerts | Optional; required for SMS capture |
 | Notification access | Read transaction notifications from payment and banking apps | Optional; required for notification capture |
-| Camera | Scan limited card metadata or prefill a restaurant/shop receipt | Optional |
+| Camera | Scan limited card metadata or capture one or more receipt sections for local review | Optional |
 | Notifications | Show user-enabled expense reminders | Optional |
 | Internet | Google Play delivery/update services, or the public GitHub Releases feed in the GitHub build | Optional; expense tracking remains offline |
 | Vibration | Haptic feedback for keypad and important actions | Optional experience enhancement |
@@ -126,7 +128,8 @@ android/src/main/
 │   │   ├── ParsingWorkers       Background parsing entry points
 │   │   ├── TransactionCaptureProcessor
 │   │   └── ExpenseReminderWorker
-│   ├── importer/                 Statement, shared-email, PDF OCR, and receipt parsing
+│   ├── importer/                 Statement, shared-email, PDF OCR, multi-page receipt parsing,
+│   │                             totals reconciliation, and line-item intelligence
 │   ├── ui/
 │   │   ├── MainActivity         Navigation and application shell
 │   │   ├── MainViewModel        State and application actions
@@ -213,10 +216,12 @@ For interactive development, open the repository root in Android Studio, select 
 
 ## Distribution builds
 
-Nudge has two distribution flavors with the same package and signing identity:
+Nudge has two distribution flavors built from the same local-first codebase but intentionally uses different Android package IDs:
 
-- `play`: no sideload/install permission and updates managed by Google Play;
-- `github`: signed APK delivery with the existing GitHub Releases updater.
+- `play` (`com.veilafk.nudge`): no sideload/install permission; delivery and updates are managed by Google Play;
+- `github` (`com.nudge.android`): signed APK delivery with the existing GitHub Releases updater.
+
+The two editions can coexist on one device. Because Android treats their package IDs as different apps, Google Play cannot replace the GitHub edition and a GitHub APK cannot update the Play edition. Each distribution must keep its own package ID and signing lineage for every future update.
 
 Both builds include the optional **Tip the creator** screen. A tip is a direct peer-to-peer contribution, unlocks nothing, and is never required to use Nudge.
 
@@ -295,7 +300,7 @@ The lint report is generated under `android/build/reports/`.
 ### Automatic capture is not receiving messages
 
 1. Open **Settings** in Nudge.
-2. Enable **Log transactions automatically**.
+2. Enable **Smart**.
 3. Grant **SMS access** for bank/UPI text messages.
 4. Enable **Notification access** for payment-app notifications.
 5. Use **Scan message history** to import older compatible messages.

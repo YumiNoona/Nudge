@@ -268,6 +268,7 @@ private fun ExpenseNavHost(
             if (event == Lifecycle.Event.ON_RESUME) {
                 notificationEnabled = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
                 smsGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+                if (smsGranted && captureEnabled) viewModel.syncRecentMessages()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -278,6 +279,9 @@ private fun ExpenseNavHost(
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val sources by viewModel.sourceMessages.collectAsState()
+    val friends by viewModel.friends.collectAsState()
+    val splits by viewModel.transactionSplits.collectAsState()
+    val recurring by viewModel.recurringTransactions.collectAsState()
     val scanState by viewModel.captureScanState.collectAsState()
 
     fun root(destination: NavScreen) { stack.clear(); stack.add(destination) }
@@ -321,6 +325,11 @@ private fun ExpenseNavHost(
     val smsPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
         smsGranted = grants.values.all { it }
         prefs.edit().putBoolean("sms_granted", smsGranted).apply()
+        if (smsGranted && captureEnabled) viewModel.syncRecentMessages()
+    }
+
+    LaunchedEffect(smsGranted, captureEnabled) {
+        if (smsGranted && captureEnabled) viewModel.syncRecentMessages()
     }
     val directImportPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
@@ -347,11 +356,16 @@ private fun ExpenseNavHost(
                     categories = categories,
                     accounts = accounts,
                     sources = sources,
+                    friends = friends,
+                    splits = splits,
+                    recurring = recurring,
                     decryptSource = viewModel::decryptSourceBody,
                     captureEnabled = captureEnabled,
                     onSettings = { push(NavScreen.Settings) },
                     onReview = { push(NavScreen.Review) },
-                    onUpdate = viewModel::updateTransaction,
+                    onUpdate = viewModel::updateTransactionDetails,
+                    onCreateFriend = viewModel::saveFriend,
+                    onSettleSplit = viewModel::settleSplit,
                     onDelete = viewModel::deleteTransaction
                 )
                 NavScreen.Charts -> ChartsScreen(transactions, categories)
@@ -468,6 +482,7 @@ private fun ExpenseNavHost(
     if (showAdd) AddTransactionSheet(
         categories = categories,
         accounts = accounts,
+        friends = friends,
         onDismiss = { showAdd = false },
         onOpenSmartImport = {
             directImportPicker.launch(
@@ -476,8 +491,10 @@ private fun ExpenseNavHost(
         },
         onCreateCategory = viewModel::saveCategory,
         onCreateAccount = viewModel::saveAccount,
-    ) { amount, type, merchant, account, category, note ->
-            viewModel.addTransaction(amount, type, merchant, account, category, note)
+        onCreateFriend = viewModel::saveFriend,
+        onSaveReceipt = viewModel::saveReceipt,
+    ) { amount, type, merchant, account, category, note, timestamp, split, recurrence ->
+            viewModel.addTransaction(amount, type, merchant, account, category, note, timestamp, split, recurrence)
             showAdd = false
         }
 }

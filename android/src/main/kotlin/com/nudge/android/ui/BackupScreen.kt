@@ -57,9 +57,13 @@ fun BackupScreen(
     val accounts by viewModel.accounts.collectAsState()
     val budgets by viewModel.budgets.collectAsState()
     val gamification by viewModel.gamificationProfile.collectAsState()
+    val friends by viewModel.friends.collectAsState()
+    val splits by viewModel.transactionSplits.collectAsState()
+    val recurring by viewModel.recurringTransactions.collectAsState()
 
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var deleteText by remember { mutableStateOf("") }
+    var deleting by remember { mutableStateOf(false) }
     val exportActionColor = Color(0xFF149A8B)
     val importActionColor = Color(0xFFE38B42)
 
@@ -67,7 +71,7 @@ fun BackupScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
-        uri?.let { scope.launch { exportToUri(context, it, transactions, categories, accounts, budgets, gamification) } }
+        uri?.let { scope.launch { exportToUri(context, it, transactions, categories, accounts, budgets, gamification, friends, splits, recurring) } }
     }
 
     // File picker for import
@@ -201,7 +205,7 @@ fun BackupScreen(
                         color = Nc.negative
                     )
                     Text(
-                        "This will permanently delete ALL your transactions, categories, budgets, and settings. This cannot be undone.",
+                        "This permanently deletes transactions, receipts, saved messages, categories, accounts and budgets. This cannot be undone.",
                         fontSize = 12.sp,
                         color = Nc.inkSoft
                     )
@@ -237,17 +241,27 @@ fun BackupScreen(
                             Button(
                                 onClick = {
                                     scope.launch {
-                                        viewModel.deleteAllData()
-                                        deleteText = ""
-                                        showDeleteConfirm = false
-                                        Toast.makeText(context, "All data deleted", Toast.LENGTH_SHORT).show()
+                                        deleting = true
+                                        val result = viewModel.deleteAllData()
+                                        deleting = false
+                                        result.onSuccess {
+                                            deleteText = ""
+                                            showDeleteConfirm = false
+                                            Toast.makeText(context, "All local data deleted", Toast.LENGTH_SHORT).show()
+                                        }.onFailure {
+                                            Toast.makeText(context, "Could not delete data. Please try again.", Toast.LENGTH_LONG).show()
+                                        }
                                     }
                                 },
-                                enabled = deleteText == "DELETE",
+                                enabled = deleteText.trim().equals("DELETE", ignoreCase = true) && !deleting,
                                 colors = ButtonDefaults.buttonColors(containerColor = Nc.negative),
                                 shape = RoundedCornerShape(NudgeRadius.SM)
                             ) {
-                                Text("Delete")
+                                if (deleting) {
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                                } else {
+                                    Text("Delete")
+                                }
                             }
                         }
                     }
@@ -286,11 +300,14 @@ private suspend fun exportToUri(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
     budgets: List<BudgetEntity>,
-    gamification: GamificationProfileEntity?
+    gamification: GamificationProfileEntity?,
+    friends: List<FriendEntity>,
+    splits: List<TransactionSplitEntity>,
+    recurring: List<RecurringTransactionEntity>,
 ) = withContext(Dispatchers.IO) {
     try {
         val json = JSONObject()
-        json.put("version", 1)
+        json.put("version", 2)
         json.put("exportedAt", System.currentTimeMillis())
 
         fun <T> List<T>.toJson(block: (T) -> JSONObject): JSONArray {
@@ -334,6 +351,27 @@ private suspend fun exportToUri(
                 put("amountCents", b.amountCents); put("period", b.period)
                 put("rolloverEnabled", b.rolloverEnabled)
                 put("startDateEpoch", b.startDateEpoch)
+            }
+        })
+
+        json.put("friends", friends.toJson { friend ->
+            JSONObject().apply {
+                put("id", friend.id); put("name", friend.name); put("colorHex", friend.colorHex ?: "")
+                put("isArchived", friend.isArchived); put("createdAt", friend.createdAt)
+            }
+        })
+        json.put("splits", splits.toJson { split ->
+            JSONObject().apply {
+                put("id", split.id); put("transactionId", split.transactionId); put("friendId", split.friendId ?: "")
+                put("participantName", split.participantName); put("shareCents", split.shareCents); put("paidCents", split.paidCents)
+                put("settledCents", split.settledCents); put("splitMethod", split.splitMethod)
+            }
+        })
+        json.put("recurring", recurring.toJson { rule ->
+            JSONObject().apply {
+                put("id", rule.id); put("templateTransactionId", rule.templateTransactionId); put("interval", rule.interval)
+                put("nextRunEpoch", rule.nextRunEpoch); put("endEpoch", rule.endEpoch ?: JSONObject.NULL); put("active", rule.active)
+                put("createdAt", rule.createdAt)
             }
         })
 
@@ -443,6 +481,30 @@ private suspend fun importFromUri(
                         startDateEpoch = obj.optLong("startDateEpoch", System.currentTimeMillis())
                     )
                 )
+            }
+        }
+
+        json.optJSONArray("friends")?.let { array ->
+            for (i in 0 until array.length()) array.getJSONObject(i).let { obj ->
+                viewModel.importFriend(FriendEntity(obj.optString("id"), obj.optString("name"), obj.optionalString("colorHex"), obj.optBoolean("isArchived"), obj.optLong("createdAt", System.currentTimeMillis())))
+            }
+        }
+        json.optJSONArray("splits")?.let { array ->
+            for (i in 0 until array.length()) array.getJSONObject(i).let { obj ->
+                viewModel.importSplit(TransactionSplitEntity(
+                    id = obj.optString("id"), transactionId = obj.optString("transactionId"), friendId = obj.optionalString("friendId"),
+                    participantName = obj.optString("participantName"), shareCents = obj.optLong("shareCents"), paidCents = obj.optLong("paidCents"),
+                    settledCents = obj.optLong("settledCents"), splitMethod = obj.optString("splitMethod", "equal"),
+                ))
+            }
+        }
+        json.optJSONArray("recurring")?.let { array ->
+            for (i in 0 until array.length()) array.getJSONObject(i).let { obj ->
+                viewModel.importRecurrence(RecurringTransactionEntity(
+                    id = obj.optString("id"), templateTransactionId = obj.optString("templateTransactionId"), interval = obj.optString("interval", "monthly"),
+                    nextRunEpoch = obj.optLong("nextRunEpoch"), endEpoch = if (obj.isNull("endEpoch")) null else obj.optLong("endEpoch"),
+                    active = obj.optBoolean("active", true), createdAt = obj.optLong("createdAt", System.currentTimeMillis()),
+                ))
             }
         }
 

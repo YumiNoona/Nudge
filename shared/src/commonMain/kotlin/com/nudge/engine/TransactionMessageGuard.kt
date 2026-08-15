@@ -25,7 +25,23 @@ object TransactionMessageGuard {
             "outstanding amount", "outstanding balance",
         ).any(normalized::contains)
 
-        return (cardContext && statementContext) || (cardContext && dueContext) ||
+        val authorizationOnly = listOf(
+            "otp", "one time password", "verification code", "do not share",
+            "collect request", "requesting money", "payment request", "mandate request",
+            "autopay reminder", "scheduled for", "will be debited", "may be debited",
+            "transaction declined", "transaction failed", "payment failed", "payment pending",
+            "txn declined", "txn failed", "payment unsuccessful", "transaction pending",
+            "transaction processing", "payment processing", "refund initiated", "transfer initiated",
+            "beneficiary added", "payee added",
+        ).any(normalized::contains)
+
+        val nonCompletedStatus = Regex(
+            """\b(?:payment|transaction|txn|transfer|refund|reversal|mandate|auto[- ]?debit|collect\s+request)\b.{0,70}\b(?:failed|declined|pending|unsuccessful|processing|initiated|scheduled|requested|will\s+be|may\s+be)\b""",
+        ).containsMatchIn(normalized) || Regex(
+            """\b(?:failed|declined|pending|unsuccessful|processing|initiated|scheduled)\b.{0,70}\b(?:payment|transaction|txn|transfer|refund|reversal|mandate|auto[- ]?debit)\b""",
+        ).containsMatchIn(normalized)
+
+        return authorizationOnly || nonCompletedStatus || (cardContext && statementContext) || (cardContext && dueContext) ||
             (statementContext && dueContext)
     }
 

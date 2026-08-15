@@ -10,6 +10,7 @@ import com.nudge.android.data.SourceMessageCrypto
 import com.nudge.android.data.SourceMessagePolicy
 import com.nudge.android.data.CaptureLearning
 import com.nudge.engine.DefaultSmsParserEngine
+import com.nudge.engine.FinancialEventClassifier
 import com.nudge.engine.TransactionMessageGuard
 import com.nudge.model.TransactionType
 import com.nudge.util.IdGenerator
@@ -43,19 +44,29 @@ class TransactionCaptureProcessor(context: Context) {
         sourceId: String,
         source: String,
         receivedAt: Long = System.currentTimeMillis(),
-        sourceMetadata: SourceMetadata = SourceMetadata()
+        sourceMetadata: SourceMetadata = SourceMetadata(),
+        bypassCaptureToggle: Boolean = false,
     ): Outcome {
-        if (!prefs.getBoolean("auto_capture_enabled", true)) return Outcome.Ignored("Capture disabled")
+        if (!bypassCaptureToggle && !prefs.getBoolean("auto_capture_enabled", true)) {
+            return Outcome.Ignored("Capture disabled")
+        }
         sourceMetadata.originalMessageUri?.takeIf { it.isNotBlank() }?.let { uri ->
             db.savedSourceMessageDao().getByOriginalMessageUri(uri)?.let { existing ->
                 return Outcome.Duplicate(existing.transactionId)
             }
         }
         if (TransactionMessageGuard.isNonTransaction(rawText)) return Outcome.Ignored("Statement or due notice")
-        if (looksFailedOrPending(rawText)) return Outcome.Ignored("Pending or failed event")
-        if (!looksLikeCompletedMovement(rawText)) return Outcome.Ignored("No completed money movement")
+        val direction = FinancialEventClassifier.classify(rawText)
+            ?: return Outcome.Ignored("No unambiguous completed money movement")
 
-        val parsed = parser.parse(rawText, sourceId) ?: return Outcome.Ignored("Not a transaction")
+        val extracted = parser.parse(rawText, sourceId) ?: return Outcome.Ignored("Not a transaction")
+        // Extraction rules may find the amount/merchant, but the semantic classifier
+        // is the sole authority for direction. This prevents a bank regex hint from
+        // turning card repayments into income or incoming transfers into expenses.
+        val parsed = extracted.copy(
+            type = direction.type,
+            confidenceScore = maxOf(extracted.confidenceScore, direction.confidence),
+        )
         if (parsed.amount <= 0L) return Outcome.Ignored("No valid amount")
 
         val aliases = db.captureRuleDao().getAliases()
@@ -201,22 +212,6 @@ class TransactionCaptureProcessor(context: Context) {
             "investments" -> normalized.contains("invest")
             else -> normalized.contains(hint.lowercase())
         }
-    }
-
-    private fun looksFailedOrPending(text: String): Boolean {
-        val lower = text.lowercase()
-        return listOf("failed", "declined", "pending", "processing", "cancelled", "canceled", "request money", "payment due", "due date", "statement generated", "reminder")
-            .any(lower::contains)
-    }
-
-    private fun looksLikeCompletedMovement(text: String): Boolean {
-        val lower = text.lowercase()
-        return listOf(
-            "debited", "credited", "paid", "spent", "money sent", "sent to", "received", "deposited", "deposit",
-            "withdrawn", "withdrawal", "refund", "reversal", "purchase", "transferred", "added",
-            "loaded", "money in", "money out"
-        )
-            .any(lower::contains)
     }
 
     private fun merchantSimilarity(a: String, b: String): Float {

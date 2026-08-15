@@ -51,6 +51,7 @@ android {
         }
         create("play") {
             dimension = "distribution"
+            applicationId = "com.veilafk.nudge"
             buildConfigField("String", "DISTRIBUTION", "\"play\"")
         }
     }
@@ -152,6 +153,7 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$cameraXVersion")
     implementation("androidx.camera:camera-lifecycle:$cameraXVersion")
     implementation("androidx.camera:camera-view:$cameraXVersion")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

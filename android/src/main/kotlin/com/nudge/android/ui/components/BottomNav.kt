@@ -129,8 +129,8 @@ fun BottomDock(
                             text = item.label.uppercase(),
                             color = if (active) dockActive else dockInactive,
                             fontFamily = MonoFamily,
-                            fontSize = 7.sp,
-                            lineHeight = 10.sp,
+                            fontSize = 9.sp,
+                            lineHeight = 12.sp,
                             fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
                             letterSpacing = 0.4.sp,
                             maxLines = 1

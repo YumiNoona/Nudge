@@ -168,29 +168,32 @@ fun ExpenseSettingsScreen(
                 }
             }
 
-            Text("AUTOMATIC CAPTURE", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
+            Text("AUTOMATIC CAPTURE", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = DSBridge.inkSoft(), modifier = Modifier.padding(top = 12.dp))
             Surface(shape = RoundedCornerShape(20.dp), color = DSBridge.accentBg()) {
-                Column(Modifier.padding(14.dp)) {
+                Column(Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(DSBridge.accent().copy(alpha = .12f)), contentAlignment = Alignment.Center) { Lucide.Sparkles(size = 18.dp, color = DSBridge.accent()) }
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) { Text("Log transactions automatically", color = DSBridge.ink(), fontWeight = FontWeight.SemiBold, fontSize = 13.sp); Text("Processed only on this device", color = DSBridge.inkMute(), fontSize = 9.sp) }
+                        Column(Modifier.weight(1f)) {
+                            Text("Smart", color = DSBridge.ink(), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                            Text("Captures SMS & notifications", color = DSBridge.inkSoft(), fontSize = 11.sp, maxLines = 1)
+                        }
                         CompactSwitch(checked = captureEnabled, onCheckedChange = {
                             onCaptureChanged(it)
                             scope.launch { NudgeWidget().updateAll(context) }
                         })
                     }
-                    if (scanState != null) { Spacer(Modifier.height(8.dp)); Text(scanState, fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.accent()) }
+                    if (scanState != null) { Spacer(Modifier.height(8.dp)); Text(scanState, fontFamily = MonoFamily, fontSize = 11.sp, color = DSBridge.accent()) }
                 }
             }
-            Text("REMINDERS", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
+            Text("REMINDERS", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = DSBridge.inkSoft(), modifier = Modifier.padding(top = 12.dp))
             SettingsGroup {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Lucide.Bell(size = 18.dp, color = DSBridge.accent())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Expense reminders", color = DSBridge.ink(), fontSize = 13.sp)
-                        Text("Gentle daily check-ins", fontSize = 9.sp, color = DSBridge.inkMute())
+                        Text("Expense reminders", color = DSBridge.ink(), fontSize = 15.sp)
+                        Text("Gentle daily check-ins", fontSize = 11.sp, color = DSBridge.inkSoft())
                     }
                     CompactSwitch(checked = remindersEnabled, onCheckedChange = { enabled ->
                         if (!enabled) {
@@ -219,14 +222,14 @@ fun ExpenseSettingsScreen(
                 }
             }
 
-            Text("TRANSACTION MESSAGE SAVING", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
+            Text("MESSAGE SAVING", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = DSBridge.inkSoft(), modifier = Modifier.padding(top = 12.dp))
             SettingsGroup {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                     Lucide.Message(size = 18.dp, color = DSBridge.accent())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Save transaction messages", color = DSBridge.ink(), fontSize = 13.sp)
-                        Text("Auto sources", fontSize = 9.sp, color = DSBridge.inkMute())
+                        Text("Save messages", color = DSBridge.ink(), fontSize = 15.sp)
+                        Text("Keeps linked sources locally", fontSize = 11.sp, color = DSBridge.inkSoft(), maxLines = 1)
                     }
                     CompactSwitch(checked = saveMessages, onCheckedChange = {
                         saveMessages = it
@@ -238,13 +241,13 @@ fun ExpenseSettingsScreen(
             }
             Text(
                 "When enabled, Nudge privately saves messages that create automatic transactions. Unrelated messages are never saved. This affects future captures.",
-                fontSize = 10.sp,
-                lineHeight = 15.sp,
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
                 color = DSBridge.inkMute(),
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
 
-            Text("ORGANIZATION", fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(top = 10.dp))
+            Text("ORGANIZATION", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = DSBridge.inkSoft(), modifier = Modifier.padding(top = 12.dp))
             SettingsGroup {
                 SettingsRow({ m, c, s, sw -> Lucide.FileText(m, c, s, sw) }, "Smart import", "Bank, card, mail & PDF", true, onFinancialImport)
                 HorizontalDivider(color = DSBridge.background())
@@ -267,8 +270,8 @@ fun ExpenseSettingsScreen(
                     Lucide.Shield(size = 18.dp, color = DSBridge.accent())
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Hide widget amounts", color = DSBridge.ink(), fontSize = 13.sp)
-                        Text("Keep launcher totals private", fontSize = 9.sp, color = DSBridge.inkMute())
+                        Text("Hide widget amounts", color = DSBridge.ink(), fontSize = 15.sp)
+                        Text("Keep launcher totals private", fontSize = 11.sp, color = DSBridge.inkSoft())
                     }
                     CompactSwitch(checked = hideWidgetAmounts, onCheckedChange = {
                         hideWidgetAmounts = it
@@ -278,7 +281,7 @@ fun ExpenseSettingsScreen(
                 }
             }
 
-            Text("Nudge parses locally. Source bodies are Keystore-encrypted when saving is enabled and are excluded from normal backup exports.", fontSize = 10.sp, lineHeight = 15.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(8.dp))
+            Text("Nudge parses locally. Source bodies are Keystore-encrypted when saving is enabled and are excluded from normal backup exports.", fontSize = 12.sp, lineHeight = 18.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(8.dp))
 
             SettingsGroup {
                 SettingsRow(
@@ -298,7 +301,7 @@ fun ExpenseSettingsScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 fontFamily = MonoFamily,
-                fontSize = 11.sp,
+                fontSize = 13.sp,
                 color = DSBridge.inkMute(),
             )
             Spacer(Modifier.height(30.dp))
@@ -339,9 +342,9 @@ fun ExpenseSettingsScreen(
 
 @Composable
 private fun SettingsRow(icon: @Composable (Modifier, Color, androidx.compose.ui.unit.Dp, androidx.compose.ui.unit.Dp) -> Unit, title: String, subtitle: String, positive: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         icon(Modifier, if (positive) DSBridge.accent() else DS.Warning, 18.dp, 1.8.dp)
-        Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(title, color = DSBridge.ink(), fontSize = 13.sp); Text(subtitle, fontSize = 9.sp, color = DSBridge.inkMute(), maxLines = 2) }
+        Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text(title, color = DSBridge.ink(), fontSize = 15.sp); Text(subtitle, fontSize = 11.sp, lineHeight = 15.sp, color = DSBridge.inkSoft(), maxLines = 2) }
         Lucide.ChevronRight(size = 16.dp, color = DSBridge.inkMute())
     }
 }

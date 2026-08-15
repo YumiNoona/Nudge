@@ -3,11 +3,12 @@ package com.nudge.android.service
 import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
+import com.nudge.engine.FinancialMessageCandidate
 
 /**
  * Notification Listener Service — captures bank/UPI app notifications
@@ -19,26 +20,6 @@ import androidx.work.WorkManager
 class NudgeNotificationListener : NotificationListenerService() {
 
     companion object {
-        private val TARGET_PACKAGES = setOf(
-            "com.google.android.apps.nbu.paisa.user",
-            "com.phonepe.app",
-            "net.one97.paytm",
-            "in.org.npci.upiapp",
-            "com.mobikwik_new",
-            "com.freecharge.android",
-            "com.csam.icici.bank.imobile",
-            "com.snapwork.hdfc",
-            "com.sbi.SBIFreedomPlus",
-            "com.axis.mobile",
-            "com.konylabs.cbplpat",
-            "com.idfcfirstbank.optimus",
-            "com.kotak.neo",
-            "com.icici.bank.icicico",
-            "com.hdfc.retail.netbanking",
-            "com.yesbank.nomad",
-            "com.sbi.lotus"
-        )
-
         private var instance: NudgeNotificationListener? = null
         fun getInstance(): NudgeNotificationListener? = instance
         fun isListening(context: Context): Boolean {
@@ -62,19 +43,31 @@ class NudgeNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         super.onNotificationPosted(sbn)
-        if (sbn == null) return
+        sbn?.let(::queueNotification)
+    }
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        // Covers notifications that arrived while Android was reconnecting the listener.
+        activeNotifications.orEmpty().forEach(::queueNotification)
+    }
+
+    private fun queueNotification(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
-        if (packageName !in TARGET_PACKAGES) return
+        if (packageName == applicationContext.packageName || packageName == "com.android.systemui") return
 
         val extras = sbn.notification.extras
-        val title = extras.getCharSequence("android.title")?.toString().orEmpty()
-        val text = extras.getCharSequence("android.bigText")?.toString()
-            ?: extras.getCharSequence("android.text")?.toString()
-            ?: return
-        val fullText = "$title: $text"
+        val fragments = buildList {
+            extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()?.let(::add)
+            extras.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()?.let(::add)
+            extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()?.let(::add)
+            extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()?.let(::add)
+            extras.getCharSequenceArray(android.app.Notification.EXTRA_TEXT_LINES)
+                ?.map(CharSequence::toString)?.let(::addAll)
+        }.map(String::trim).filter(String::isNotBlank).distinct()
+        val fullText = fragments.joinToString(" · ")
 
-        if (!looksLikeTransaction(fullText)) return
+        if (!FinancialMessageCandidate.looksLikeCompletedMovement(fullText)) return
 
         val workData = Data.Builder()
             .putString("package_name", packageName)
@@ -84,16 +77,12 @@ class NudgeNotificationListener : NotificationListenerService() {
 
         val work = OneTimeWorkRequestBuilder<NotificationParsingWorker>()
             .setInputData(workData)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiresBatteryNotLow(true)
-                    .build()
-            )
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .build()
 
         WorkManager.getInstance(this)
             .enqueueUniqueWork(
-                "notif_parse_${fullText.hashCode()}",
+                "notif_parse_${sbn.key.hashCode()}_${fullText.hashCode()}_${sbn.postTime / 60_000L}",
                 ExistingWorkPolicy.KEEP,
                 work
             )
@@ -101,14 +90,5 @@ class NudgeNotificationListener : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         // Not needed for transaction capture
-    }
-
-    private fun looksLikeTransaction(text: String): Boolean {
-        val transactionKeywords = listOf(
-            "debited", "credited", "payment", "spent", "received",
-            "transferred", "paid", "balance", "purchase", "wallet",
-            "₹", "Rs.", "INR", "amount"
-        )
-        return transactionKeywords.any { text.contains(it, ignoreCase = true) }
     }
 }

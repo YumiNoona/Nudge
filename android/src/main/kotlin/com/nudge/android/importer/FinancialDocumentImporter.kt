@@ -9,7 +9,9 @@ import androidx.core.graphics.createBitmap
 import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.nudge.engine.FinancialEventClassifier
 import com.nudge.engine.MerchantNormalizer
 import com.nudge.model.TransactionType
 import kotlinx.coroutines.Dispatchers
@@ -75,7 +77,7 @@ object FinancialDocumentImporter {
 
     private suspend fun readImage(context: Context, uri: Uri): DocumentReadResult {
         val quality = inspectImageQuality(context, uri)
-        val text = runCatching { recognizeUri(context, uri) }
+        val text = runCatching { recognizeUriLayout(context, uri) }
             .getOrElse { throw DocumentReadException("Nudge could not open this image. Choose the original image and try again.", it) }
             .trim()
         if (text.length < 18) {
@@ -182,26 +184,40 @@ object FinancialDocumentImporter {
     private suspend fun recognizeBitmapLayout(bitmap: Bitmap): String {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
         return try {
-            val result = recognizer.process(InputImage.fromBitmap(bitmap, 0)).await()
-            val lines = result.textBlocks.flatMap { it.lines }.mapNotNull { line ->
-                val box = line.boundingBox ?: return@mapNotNull null
-                LayoutText(line.text, box.left, box.centerY(), box.height())
-            }.sortedBy { it.centerY }
-            val rows = mutableListOf<MutableList<LayoutText>>()
-            lines.forEach { item ->
-                val row = rows.lastOrNull()
-                val rowCenter = row?.map { it.centerY }?.average()
-                val tolerance = maxOf(12.0, item.height * .62)
-                if (row != null && rowCenter != null && kotlin.math.abs(item.centerY - rowCenter) <= tolerance) {
-                    row += item
-                } else {
-                    rows += mutableListOf(item)
-                }
-            }
-            rows.joinToString("\n") { row -> row.sortedBy { it.left }.joinToString(" ") { it.text } }
+            layoutText(recognizer.process(InputImage.fromBitmap(bitmap, 0)).await())
         } finally {
             recognizer.close()
         }
+    }
+
+    private suspend fun recognizeUriLayout(context: Context, uri: Uri): String {
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        return try {
+            layoutText(recognizer.process(InputImage.fromFilePath(context, uri)).await())
+        } finally {
+            recognizer.close()
+        }
+    }
+
+    private fun layoutText(result: Text): String {
+        // Rebuild rows from OCR elements rather than ML Kit's paragraph lines. Indian
+        // supermarket receipts are narrow tables; line-level OCR frequently joins a GST
+        // cell to the next product or separates quantity/rate/amount into unrelated rows.
+        val lines = result.textBlocks.flatMap { block -> block.lines }
+            .flatMap { line -> line.elements }
+            .mapNotNull { element ->
+            val box = element.boundingBox ?: return@mapNotNull null
+            LayoutText(element.text, box.left, box.centerY(), box.height())
+        }.sortedBy { it.centerY }
+        val rows = mutableListOf<MutableList<LayoutText>>()
+        lines.forEach { item ->
+            val row = rows.lastOrNull()
+            val rowCenter = row?.map { it.centerY }?.average()
+            val tolerance = maxOf(12.0, item.height * .62)
+            if (row != null && rowCenter != null && kotlin.math.abs(item.centerY - rowCenter) <= tolerance) row += item
+            else rows += mutableListOf(item)
+        }
+        return rows.joinToString("\n") { row -> row.sortedBy { it.left }.joinToString(" ") { it.text } }
     }
 
     suspend fun recognizeUri(context: Context, uri: Uri): String {
@@ -258,17 +274,20 @@ object FinancialDocumentImporter {
         return rows.mapNotNull { row ->
             val debit = row.getOrNull(debitIndex)?.toCents()
             val credit = row.getOrNull(creditIndex)?.toCents()
-            val rawAmount = row.getOrNull(amountIndex)?.toCents()
+            val rawAmountCell = row.getOrNull(amountIndex).orEmpty()
+            val rawAmount = rawAmountCell.toCents()
             val typeCell = row.getOrNull(typeIndex).orEmpty().lowercase()
             val columnType = when {
                 debit != null && debit > 0 -> TransactionType.DEBIT
                 credit != null && credit > 0 -> TransactionType.CREDIT
                 typeCell.contains("cr") || typeCell.contains("credit") -> TransactionType.CREDIT
                 typeCell.contains("dr") || typeCell.contains("debit") -> TransactionType.DEBIT
-                else -> TransactionType.DEBIT
+                rawAmountCell.hasDebitSign() -> TransactionType.DEBIT
+                rawAmountCell.hasCreditSign() -> TransactionType.CREDIT
+                else -> null
             }
             val rawMerchant = row.getOrNull(merchantIndex).orEmpty()
-            val type = statementSemanticType(rawMerchant, columnType)
+            val type = statementSemanticType(rawMerchant, columnType) ?: return@mapNotNull null
             val amount = when (type) {
                 TransactionType.CREDIT, TransactionType.REFUND -> credit ?: rawAmount
                 TransactionType.TRANSFER -> credit ?: debit ?: rawAmount
@@ -345,9 +364,9 @@ object FinancialDocumentImporter {
         val columnType = when {
             Regex("""\bcr\b|credited|\bdep\s+tfr\b|deposit""").containsMatchIn(lowered) -> TransactionType.CREDIT
             Regex("""\bdr\b|debited|\bwdl\s+tfr\b|spent|purchase|withdraw""").containsMatchIn(lowered) -> TransactionType.DEBIT
-            else -> columnHint ?: TransactionType.DEBIT
+            else -> columnHint
         }
-        val type = statementSemanticType(line, columnType)
+        val type = statementSemanticType(line, columnType) ?: return null
         // The final monetary value is the running balance; the first credible value
         // following the narration is the row's debit or credit movement.
         val amount = amountMatches.first().groupValues[1].toCents() ?: return null
@@ -392,14 +411,17 @@ object FinancialDocumentImporter {
         """(?i)opening\s+balance|closing\s+balance|available\s+balance|total\s+(?:debit|credit)|amount\s+due|minimum\s+due|statement\s+summary""",
     ).containsMatchIn(text)
 
-    private fun statementSemanticType(narration: String, columnType: TransactionType): TransactionType {
+    private fun statementSemanticType(narration: String, columnType: TransactionType?): TransactionType? {
         val lowered = narration.lowercase()
         return when {
             lowered.contains("refund") || lowered.contains("reversal") || lowered.contains("reversed") -> TransactionType.REFUND
             lowered.contains("payment received") &&
                 (lowered.contains("thank") || lowered.contains("credit card") || lowered.contains("card payment")) -> TransactionType.TRANSFER
             lowered.contains("credit card payment") || lowered.contains("card bill payment") -> TransactionType.TRANSFER
-            else -> columnType
+            // Debit/credit columns and explicit CR/DR markers are authoritative.
+            // Only ask the sentence classifier when a statement has no direction
+            // column; never silently turn an unsigned amount into an expense.
+            else -> columnType ?: FinancialEventClassifier.classify(narration)?.type
         }
     }
 
@@ -434,6 +456,16 @@ object FinancialDocumentImporter {
     private fun String.toCents(): Long? {
         val cleaned = replace(",", "").replace(Regex("""(?i)₹|rs\.?|inr|cr|dr"""), "").trim()
         return cleaned.toDoubleOrNull()?.let { (kotlin.math.abs(it) * 100).roundToLong() }?.takeIf { it > 0 }
+    }
+
+    private fun String.hasDebitSign(): Boolean {
+        val value = trim()
+        return value.startsWith("-") || Regex("""(?i)\bdr\s*$""").containsMatchIn(value)
+    }
+
+    private fun String.hasCreditSign(): Boolean {
+        val value = trim()
+        return value.startsWith("+") || Regex("""(?i)\bcr\s*$""").containsMatchIn(value)
     }
 
     private suspend fun <T> Task<T>.await(): T = suspendCoroutine { continuation ->

@@ -111,7 +111,7 @@ fun ChartsScreen(
 
             Column(
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(13.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 CategoryAnalyticsCard(categorySpending, spent)
                 DailyCashFlowCard(dailyExpense, dailyIncome, spent, income, spendDelta)
@@ -177,14 +177,14 @@ private fun CashFlowOverview(
         Column(Modifier.padding(19.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = .9.sp, color = DSBridge.inkMute())
+                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = .9.sp, color = DSBridge.inkSoft())
                     Text(monthLabel, style = DSTypography.bodySmall, color = DSBridge.inkSoft())
                 }
                 Surface(shape = RoundedCornerShape(10.dp), color = if (spendDelta <= 0) DSBridge.accentBg() else DS.Negative.copy(alpha = .10f)) {
                     Text(
                         if (spendDelta == 0) "STEADY" else "${spendDelta.absoluteValue}% ${if (spendDelta > 0) "MORE" else "LESS"} SPENT",
                         fontFamily = MonoFamily,
-                        fontSize = 8.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (spendDelta <= 0) DSBridge.accent() else DS.Negative,
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
@@ -218,10 +218,10 @@ private fun FlowMetric(label: String, amount: Long, color: Color, modifier: Modi
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(color))
             Spacer(Modifier.width(5.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute(), maxLines = 1)
+            Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkSoft(), maxLines = 1)
         }
         Spacer(Modifier.height(5.dp))
-        Text(formatCents(amount), fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
+        Text(formatCents(amount), fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
     }
 }
 
@@ -251,8 +251,8 @@ private fun DailyCashFlowCard(
                     )
                 }
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("MONEY IN", fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute())
-                    Text(formatCents(totalIncome), fontFamily = MonoFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DS.Positive)
+                    Text("MONEY IN", fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkSoft())
+                    Text(formatCents(totalIncome), fontFamily = MonoFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DS.Positive)
                     Spacer(Modifier.height(7.dp))
                     Row {
                         ChartLegend("In", DS.Positive)
@@ -272,7 +272,7 @@ private fun ChartLegend(label: String, color: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(7.dp).clip(CircleShape).background(color))
         Spacer(Modifier.width(4.dp))
-        Text(label, fontFamily = MonoFamily, fontSize = 8.sp, color = DSBridge.inkMute())
+        Text(label, fontFamily = MonoFamily, fontSize = 10.sp, color = DSBridge.inkSoft())
     }
 }
 
@@ -287,9 +287,9 @@ private fun InsightCard(label: String, value: String, subtext: String, color: Co
         Column(Modifier.padding(12.dp)) {
             Box(Modifier.size(7.dp).clip(CircleShape).background(color))
             Spacer(Modifier.height(9.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute(), maxLines = 1)
-            Text(value, fontFamily = MonoFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
-            Text(subtext, fontSize = 8.sp, color = DSBridge.inkMute(), maxLines = 1)
+            Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkSoft(), maxLines = 1)
+            Text(value, fontFamily = MonoFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
+            Text(subtext, fontSize = 10.sp, color = DSBridge.inkMute(), maxLines = 1)
         }
     }
 }
@@ -302,7 +302,7 @@ private fun CategoryAnalyticsCard(categorySpending: List<Triple<String, Color, L
     ) {
         Column(Modifier.padding(18.dp)) {
             Surface(shape = RoundedCornerShape(50), color = DS.Signal) {
-                Text("EXPENSE MIX", fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DS.InkPrimary, modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp))
+                Text("EXPENSE MIX", fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DS.InkPrimary, modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp))
             }
             Spacer(Modifier.height(8.dp))
             Text("Where your money went", style = DSTypography.titleMedium, color = DSBridge.ink())
@@ -344,7 +344,7 @@ private fun CategoryAnalyticsCard(categorySpending: List<Triple<String, Color, L
                                     Box(Modifier.size(7.dp).clip(CircleShape).background(color))
                                     Spacer(Modifier.width(6.dp))
                                     Text(name, style = DSTypography.labelSmall, color = DSBridge.ink(), modifier = Modifier.weight(1f), maxLines = 1)
-                                    Text("${share.toInt()}%", fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkSoft())
+                                    Text("${share.toInt()}%", fontFamily = MonoFamily, fontSize = 11.sp, color = DSBridge.inkSoft())
                                 }
                                 Spacer(Modifier.height(4.dp))
                                 LinearProgressIndicator(
@@ -425,7 +425,7 @@ private fun CashFlowLineChart(
             if ((expense[day] ?: 0) > 0) drawCircle(DS.Negative, 2.5.dp.toPx(), expensePoints[index])
         }
 
-        val labelStyle = TextStyle(fontSize = 8.sp, color = gridColor)
+        val labelStyle = TextStyle(fontSize = 10.sp, color = gridColor)
         listOf(1, 8, 15, 22, lastDay).distinct().filter { it <= lastDay }.forEach { day ->
             val x = left + ((day - 1f) / (lastDay - 1f)) * width
             val layout = textMeasurer.measure(AnnotatedString(day.toString()), labelStyle)

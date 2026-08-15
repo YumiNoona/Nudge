@@ -45,8 +45,16 @@ import com.nudge.android.data.AccountEntity
 import com.nudge.android.data.CategoryEntity
 import com.nudge.android.data.TransactionEntity
 import com.nudge.android.data.SavedSourceMessageEntity
+import com.nudge.android.data.FriendEntity
+import com.nudge.android.data.TransactionSplitEntity
+import com.nudge.android.data.RecurringTransactionEntity
+import com.nudge.android.data.SplitDraft
+import com.nudge.android.data.SplitMemberDraft
+import com.nudge.android.data.RecurrenceDraft
 import com.nudge.android.ui.components.NudgeHeroCard
 import com.nudge.android.ui.components.NudgeHeroStyle
+import com.nudge.android.ui.components.NudgeConfirmDialog
+import com.nudge.android.ui.components.ScrollableChipRow
 import com.nudge.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -61,11 +69,16 @@ fun HistoryScreen(
     categories: List<CategoryEntity>,
     accounts: List<AccountEntity>,
     sources: List<SavedSourceMessageEntity>,
+    friends: List<FriendEntity>,
+    splits: List<TransactionSplitEntity>,
+    recurring: List<RecurringTransactionEntity>,
     decryptSource: (SavedSourceMessageEntity?) -> String?,
     captureEnabled: Boolean,
     onSettings: () -> Unit,
     onReview: () -> Unit,
-    onUpdate: (TransactionEntity) -> Unit,
+    onUpdate: (TransactionEntity, SplitDraft?, RecurrenceDraft?) -> Unit,
+    onCreateFriend: (String) -> FriendEntity,
+    onSettleSplit: (String, Long) -> Unit,
     onDelete: (String) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
@@ -103,12 +116,14 @@ fun HistoryScreen(
     val canGoNext = selectedYear < today.get(Calendar.YEAR) ||
         (selectedYear == today.get(Calendar.YEAR) && selectedMonthIndex < today.get(Calendar.MONTH))
 
-    val visible = remember(selectedMonthTransactions, query, filter, pendingDeleteIds) {
+    val sharedTransactionIds = remember(splits) { splits.mapTo(mutableSetOf()) { it.transactionId } }
+    val visible = remember(selectedMonthTransactions, query, filter, pendingDeleteIds, sharedTransactionIds) {
         selectedMonthTransactions.filter { txn ->
             if (txn.id in pendingDeleteIds) return@filter false
             val matchesType = when (filter) {
                 "all" -> true
                 "smart" -> txn.source != "manual"
+                "shared" -> txn.id in sharedTransactionIds
                 else -> txn.type == filter
             }
             val matchesQuery = query.isBlank() || txn.merchantRaw.contains(query, true) ||
@@ -192,7 +207,7 @@ fun HistoryScreen(
                             Spacer(Modifier.width(10.dp))
                             Column(Modifier.weight(1f)) {
                                 Text("$needsReview need${if (needsReview == 1) "s" else ""} review", fontWeight = FontWeight.SemiBold, color = DS.Warning)
-                                Text("Confirm once and Nudge remembers", fontSize = 11.sp, color = DSBridge.inkSoft())
+                                Text("Confirm once and Nudge remembers", fontSize = 13.sp, color = DSBridge.inkSoft())
                             }
                             Lucide.ChevronRight(size = 18.dp, color = DSBridge.inkMute())
                         }
@@ -205,7 +220,7 @@ fun HistoryScreen(
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Merchant, note or amount") },
+                        placeholder = { Text("Search") },
                         leadingIcon = { Lucide.Search(size = 17.dp, color = DSBridge.inkMute()) },
                         trailingIcon = {
                             if (query.isNotEmpty()) IconButton(onClick = { query = "" }) {
@@ -213,20 +228,20 @@ fun HistoryScreen(
                             }
                         },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(15.dp)
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 5.dp).height(48.dp),
+                        shape = RoundedCornerShape(14.dp)
                     )
                 }
                 Row(
                     Modifier.fillMaxWidth().tourTarget(TourTarget.TransactionFilters).horizontalScroll(rememberScrollState()).padding(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 5.dp),
                     horizontalArrangement = Arrangement.spacedBy(7.dp)
                 ) {
-                    listOf("all" to "All", "debit" to "Expenses", "credit" to "Income", "refund" to "Refunds", "smart" to "Smart").forEach { (id, label) ->
+                    listOf("all" to "All", "debit" to "Expenses", "credit" to "Income", "refund" to "Refunds", "shared" to "Shared", "smart" to "Smart").forEach { (id, label) ->
                         FilterChip(
                             selected = filter == id,
                             onClick = { filter = id },
-                            label = { Text(label, fontSize = 10.sp, fontFamily = MonoFamily) },
-                            modifier = Modifier.height(34.dp),
+                            label = { Text(label, fontSize = 12.sp, fontFamily = MonoFamily) },
+                            modifier = Modifier.height(38.dp),
                             shape = RoundedCornerShape(12.dp),
                             leadingIcon = if (id == "smart") ({ Lucide.Sparkles(size = 13.dp, color = if (filter == id) DSBridge.accent() else DSBridge.inkMute()) }) else null,
                         )
@@ -240,7 +255,7 @@ fun HistoryScreen(
             } else {
                 groups.forEach { (day, entries) ->
                     item(key = "header_$day") {
-                        Text(day, fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+                        Text(day, fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold,
                             letterSpacing = .8.sp, color = DSBridge.inkMute(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
                     }
                     items(entries, key = { it.id }) { txn ->
@@ -252,6 +267,7 @@ fun HistoryScreen(
                                 txn,
                                 categories.firstOrNull { it.id == txn.categoryId },
                                 accounts.firstOrNull { it.id == txn.accountId },
+                                splits.count { it.transactionId == txn.id } - 1,
                                 onClick = { editing = txn },
                             )
                         }
@@ -291,8 +307,10 @@ fun HistoryScreen(
     }
 
     editing?.let { txn ->
-        TransactionEditSheet(txn, categories, accounts, onDismiss = { editing = null }, onSource = if (txn.source != "manual") ({ editing = null; viewingSource = txn }) else null, onSave = {
-            onUpdate(it); editing = null
+        val transactionSplits = splits.filter { it.transactionId == txn.id }
+        val recurrenceRule = recurring.firstOrNull { it.id == txn.recurringGroupId || it.templateTransactionId == txn.id }
+        TransactionEditSheet(txn, categories, accounts, friends, transactionSplits, recurrenceRule, onCreateFriend, onSettleSplit, onDismiss = { editing = null }, onSource = if (txn.source != "manual") ({ editing = null; viewingSource = txn }) else null, onSave = { updated, split, repeat ->
+            onUpdate(updated, split, repeat); editing = null
         }, onDelete = { onDelete(txn.id); editing = null })
     }
 
@@ -326,7 +344,7 @@ private fun SwipeToDeleteTransaction(
             Modifier.matchParentSize().background(DSBridge.background()).padding(horizontal = 22.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            Text("Delete", color = DS.Negative, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("Delete", color = DS.Negative, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         }
         Box(
             Modifier
@@ -404,7 +422,7 @@ private fun SwipeDismissCaptureBanner(
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(transaction.merchantRaw, color = Color.White.copy(alpha = .6f), fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(transaction.merchantRaw, color = Color.White.copy(alpha = .72f), fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             TextButton(onClick = onEdit) { Text("Edit", color = DS.Signal) }
             IconButton(onClick = onDismiss) { Lucide.X(size = 16.dp, color = Color.White.copy(alpha = .6f)) }
@@ -475,12 +493,12 @@ private fun MonthSummary(
         Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 8.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .55f))
+                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .66f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = onPrevious, modifier = Modifier.size(24.dp)) {
                             Lucide.ChevronLeft(size = 14.dp, color = Color.White.copy(alpha = .72f))
                         }
-                        Text(monthLabel, fontSize = 11.sp, color = Color.White.copy(alpha = .82f), maxLines = 1)
+                        Text(monthLabel, fontSize = 13.sp, color = Color.White.copy(alpha = .88f), maxLines = 1)
                         IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(24.dp)) {
                             Lucide.ChevronRight(size = 14.dp, color = Color.White.copy(alpha = if (canGoNext) .72f else .22f))
                         }
@@ -490,7 +508,7 @@ private fun MonthSummary(
                     Text(
                         if (delta == 0) "STEADY" else "${kotlin.math.abs(delta)}% ${if (delta > 0) "MORE" else "LESS"} SPENT",
                         fontFamily = MonoFamily,
-                        fontSize = 7.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (delta <= 0) DS.Positive else DS.Negative,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -509,8 +527,8 @@ private fun MonthSummary(
             }
             Text(
                 if (netFlow < 0) "expenses exceeded money in · $count entries" else "money retained · $count entries",
-                color = Color.White.copy(alpha = .52f),
-                fontSize = 9.sp,
+                color = Color.White.copy(alpha = .65f),
+                fontSize = 11.sp,
             )
             Spacer(Modifier.height(13.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -527,15 +545,15 @@ private fun MonthSummary(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(6.dp).clip(CircleShape).background(color))
             Spacer(Modifier.width(5.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 7.sp, color = if (onDark) Color.White.copy(alpha = .50f) else DSBridge.inkMute(), maxLines = 1)
+            Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = if (onDark) Color.White.copy(alpha = .64f) else DSBridge.inkMute(), maxLines = 1)
         }
         Spacer(Modifier.height(4.dp))
-        Text(value, fontFamily = MonoFamily, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = if (onDark) Color.White else DSBridge.ink(), maxLines = 1)
+        Text(value, fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (onDark) Color.White else DSBridge.ink(), maxLines = 1)
     }
 }
 
 @Composable
-private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, account: AccountEntity?, onClick: () -> Unit) {
+private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, account: AccountEntity?, sharedWithCount: Int, onClick: () -> Unit) {
     val expense = txn.type == "debit"
     val amountSign = when (txn.type) {
         "debit" -> "−"
@@ -548,8 +566,8 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
         else -> DSBridge.inkSoft()
     }
     Column(Modifier.fillMaxWidth().background(DSBridge.background())) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(DSBridge.surface()), contentAlignment = Alignment.Center) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 20.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(DSBridge.surface()), contentAlignment = Alignment.Center) {
             if (category != null) {
                 CategoryGlyph(category.icon, category.name, semanticColor, Modifier.size(17.dp))
             } else if (expense) Lucide.ShoppingCart(size = 17.dp, color = DS.Negative)
@@ -558,17 +576,23 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(txn.merchantRaw, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = DSBridge.ink(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
+                Text(txn.merchantRaw, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = DSBridge.ink(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, false))
                 if (!txn.isReviewed) Box(Modifier.padding(start = 6.dp).size(7.dp).clip(CircleShape).background(DS.Warning))
+                if (sharedWithCount > 0) {
+                    Spacer(Modifier.width(6.dp))
+                    Surface(shape = RoundedCornerShape(7.dp), color = DSBridge.accentBg()) {
+                        Text("SPLIT $sharedWithCount", Modifier.padding(horizontal = 6.dp, vertical = 3.dp), fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DSBridge.accent())
+                    }
+                }
             }
-            Text(listOfNotNull(category?.name ?: "Uncategorized", account?.name, txn.source.takeIf { it != "manual" }).joinToString(" · "), fontSize = 10.sp, color = DSBridge.inkMute(), maxLines = 1)
+            Text(listOfNotNull(category?.name ?: "Uncategorized", account?.name, txn.source.takeIf { it != "manual" }).joinToString(" · "), fontSize = 12.sp, color = DSBridge.inkSoft(), maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("$amountSign${formatCents(txn.amountCents)}", fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = semanticColor)
-            Text(SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(txn.timestampEpoch)), fontSize = 9.sp, color = DSBridge.inkMute())
+            Text("$amountSign${formatCents(txn.amountCents)}", fontFamily = MonoFamily, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = semanticColor)
+            Text(SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(txn.timestampEpoch)), fontSize = 11.sp, color = DSBridge.inkMute())
         }
     }
-        HorizontalDivider(Modifier.padding(start = 69.dp, end = 18.dp), color = DSBridge.inkMute().copy(alpha = .09f))
+        HorizontalDivider(Modifier.padding(start = 73.dp, end = 18.dp), color = DSBridge.inkMute().copy(alpha = .09f))
     }
 }
 
@@ -582,12 +606,36 @@ private fun HistoryRow(txn: TransactionEntity, category: CategoryEntity?, accoun
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TransactionEditSheet(txn: TransactionEntity, categories: List<CategoryEntity>, accounts: List<AccountEntity>, onDismiss: () -> Unit, onSource: (() -> Unit)?, onSave: (TransactionEntity) -> Unit, onDelete: () -> Unit) {
+private fun TransactionEditSheet(
+    txn: TransactionEntity,
+    categories: List<CategoryEntity>,
+    accounts: List<AccountEntity>,
+    friends: List<FriendEntity>,
+    existingSplits: List<TransactionSplitEntity>,
+    recurringRule: RecurringTransactionEntity?,
+    onCreateFriend: (String) -> FriendEntity,
+    onSettleSplit: (String, Long) -> Unit,
+    onDismiss: () -> Unit,
+    onSource: (() -> Unit)?,
+    onSave: (TransactionEntity, SplitDraft?, RecurrenceDraft?) -> Unit,
+    onDelete: () -> Unit,
+) {
     var merchant by remember { mutableStateOf(txn.merchantRaw) }
     var amount by remember { mutableStateOf((txn.amountCents / 100.0).toString()) }
     var type by remember { mutableStateOf(txn.type) }
     var categoryId by remember { mutableStateOf(txn.categoryId) }
     var accountId by remember { mutableStateOf(txn.accountId) }
+    var note by remember { mutableStateOf(txn.note.orEmpty()) }
+    var timestampEpoch by remember { mutableLongStateOf(txn.timestampEpoch) }
+    var split by remember(existingSplits) {
+        mutableStateOf(existingSplits.takeIf { it.isNotEmpty() }?.let { rows ->
+            SplitDraft(rows.first().splitMethod, rows.map { SplitMemberDraft(it.friendId, it.participantName, it.shareCents, it.paidCents) })
+        })
+    }
+    var recurrence by remember(recurringRule) { mutableStateOf(recurringRule?.let { RecurrenceDraft(it.interval, it.endEpoch) }) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showSplitEditor by remember { mutableStateOf(false) }
+    var showRecurrenceEditor by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val haptics = remember(context) { NudgeHaptics(context) }
@@ -602,24 +650,69 @@ private fun TransactionEditSheet(txn: TransactionEntity, categories: List<Catego
             Spacer(Modifier.height(10.dp))
             OutlinedTextField(merchant, { merchant = it }, label = { Text("Merchant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                listOf("debit" to "Expense", "credit" to "Income", "refund" to "Refund", "transfer" to "Transfer").forEach { (id, label) ->
-                    FilterChip(selected = type == id, onClick = { type = id }, label = { Text(label, fontSize = 10.sp) })
-                }
+            TransactionExtrasRow(
+                timestampEpoch,
+                split,
+                recurrence,
+                onDateClick = { showDatePicker = true },
+                onSplitClick = { if (type == "debit") showSplitEditor = true },
+                onRepeatClick = { showRecurrenceEditor = true },
+            )
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(note, { note = it }, label = { Text("Note") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Spacer(Modifier.height(10.dp))
+            val transactionTypes = remember {
+                listOf("debit" to "Expense", "credit" to "Income", "refund" to "Refund", "transfer" to "Transfer")
             }
+            ScrollableChipRow(
+                items = transactionTypes,
+                selected = transactionTypes.firstOrNull { it.first == type } ?: transactionTypes.first(),
+                onSelect = { (id, _) ->
+                    haptics.impactLight()
+                    type = id
+                    if (id != "debit") split = null
+                },
+                chipMinWidth = 86.dp,
+                modifier = Modifier.fillMaxWidth(),
+                label = { (_, label) -> Text(label, fontSize = 12.sp, maxLines = 1) },
+            )
+            Spacer(Modifier.height(8.dp))
             Text("Category", style = DSTypography.labelMedium, color = DSBridge.inkSoft())
             Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 categories.filter { it.type == if (type == "credit") "income" else "expense" }.forEach { category ->
-                    FilterChip(selected = categoryId == category.id, onClick = { categoryId = category.id }, label = { Text(category.name, fontSize = 10.sp) })
+                    FilterChip(selected = categoryId == category.id, onClick = { categoryId = category.id }, label = { Text(category.name, fontSize = 12.sp) })
                 }
             }
             Text("Account", style = DSTypography.labelMedium, color = DSBridge.inkSoft())
             Row(Modifier.fillMaxWidth().horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 accounts.filter { !it.isArchived }.forEach { account ->
-                    FilterChip(selected = accountId == account.id, onClick = { accountId = account.id }, label = { Text(account.name, fontSize = 10.sp) })
+                    FilterChip(selected = accountId == account.id, onClick = { accountId = account.id }, label = { Text(account.name, fontSize = 12.sp) })
                 }
             }
             Spacer(Modifier.height(16.dp))
+            if (existingSplits.any { it.friendId != null }) {
+                Text("Shared balances", style = DSTypography.labelMedium, color = DSBridge.inkSoft())
+                existingSplits.filter { it.friendId != null }.forEach { share ->
+                    val balance = share.paidCents - share.shareCents
+                    val outstanding = (kotlin.math.abs(balance) - share.settledCents).coerceAtLeast(0)
+                    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(share.participantName, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                            Text(
+                                when {
+                                    outstanding == 0L -> "Settled"
+                                    balance > 0 -> "You owe ${formatCents(outstanding)}"
+                                    else -> "Owes you ${formatCents(outstanding)}"
+                                },
+                                color = DSBridge.inkMute(),
+                                fontSize = 10.sp,
+                            )
+                        }
+                        if (outstanding > 0) TextButton(onClick = { onSettleSplit(share.id, outstanding) }) { Text("Mark settled") }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
             if (onSource != null) {
                 OutlinedButton(onClick = onSource, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp)) {
                     Lucide.Message(size = 18.dp)
@@ -632,7 +725,7 @@ private fun TransactionEditSheet(txn: TransactionEntity, categories: List<Catego
                 val cents = ((amount.toDoubleOrNull() ?: 0.0) * 100).roundToLong()
                 if (cents > 0 && merchant.isNotBlank()) {
                     haptics.success()
-                    onSave(txn.copy(amountCents = cents, merchantRaw = merchant.trim(), merchantNormalized = merchant.trim(), type = type, categoryId = categoryId, accountId = accountId, isReviewed = true))
+                    onSave(txn.copy(amountCents = cents, merchantRaw = merchant.trim(), merchantNormalized = merchant.trim(), type = type, categoryId = categoryId, accountId = accountId, note = note.trim().ifBlank { null }, timestampEpoch = timestampEpoch, isReviewed = true), split, recurrence)
                 }
             }, modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = DSBridge.accent())) { Text("Save changes") }
             Spacer(Modifier.height(8.dp))
@@ -649,13 +742,28 @@ private fun TransactionEditSheet(txn: TransactionEntity, categories: List<Catego
             }
         }
     }
-    if (confirmDelete) AlertDialog(
-        onDismissRequest = { confirmDelete = false },
-        title = { Text("Delete transaction?") },
-        text = { Text("The transaction and its linked source metadata will be removed. This cannot be undone.") },
-        confirmButton = { Button(onClick = { confirmDelete = false; onDelete() }, colors = ButtonDefaults.buttonColors(containerColor = DS.Negative)) { Text("Delete") } },
-        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+    if (confirmDelete) NudgeConfirmDialog(
+        title = "Delete transaction?",
+        message = "This removes the transaction and its linked source. It cannot be undone.",
+        confirmLabel = "Delete",
+        destructive = true,
+        onDismiss = { confirmDelete = false },
+        onConfirm = {
+            confirmDelete = false
+            haptics.warning()
+            onDelete()
+        },
     )
+    if (showDatePicker) TransactionDateDialog(timestampEpoch, { showDatePicker = false }) { timestampEpoch = it }
+    if (showSplitEditor) SplitExpenseDialog(
+        amountCents = ((amount.toDoubleOrNull() ?: 0.0) * 100).roundToLong(),
+        friends = friends,
+        initial = split,
+        onCreateFriend = onCreateFriend,
+        onDismiss = { showSplitEditor = false },
+        onSave = { split = it },
+    )
+    if (showRecurrenceEditor) RecurrenceDialog(recurrence, { showRecurrenceEditor = false }) { recurrence = it }
 }
 
 private fun sameMonth(epoch: Long, target: Calendar): Boolean = Calendar.getInstance().apply { timeInMillis = epoch }.let {

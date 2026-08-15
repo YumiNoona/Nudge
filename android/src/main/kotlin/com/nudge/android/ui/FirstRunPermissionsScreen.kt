@@ -30,8 +30,8 @@ private const val PRIVACY_POLICY_URL = "https://github.com/YumiNoona/Nudge/blob/
 
 /**
  * Prominent disclosure shown before Nudge asks for restricted financial-message access.
- * Camera and notification permissions are deliberately requested later, at the moment
- * the user starts receipt scanning or enables reminders.
+ * Camera access is also offered here so receipt capture never interrupts a scanning flow.
+ * Files continue to use Android's privacy-preserving system picker and need no broad access.
  */
 @Composable
 fun FirstRunPermissionsScreen(onDone: () -> Unit) {
@@ -44,6 +44,7 @@ fun FirstRunPermissionsScreen(onDone: () -> Unit) {
         ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
     val smsGranted = granted(Manifest.permission.READ_SMS) && granted(Manifest.permission.RECEIVE_SMS)
+    val cameraGranted = granted(Manifest.permission.CAMERA)
     val notificationAccessGranted =
         NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
@@ -51,6 +52,9 @@ fun FirstRunPermissionsScreen(onDone: () -> Unit) {
         refresh++
     }
     val notificationAccess = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        refresh++
+    }
+    val cameraRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         refresh++
     }
 
@@ -100,6 +104,14 @@ fun FirstRunPermissionsScreen(onDone: () -> Unit) {
                     icon = { Lucide.Bell(size = 20.dp, color = DSBridge.accent()) },
                     onClick = { notificationAccess.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
                 )
+                HorizontalDivider(color = DSBridge.background())
+                DisclosurePermissionRow(
+                    title = "Receipt camera",
+                    disclosure = "Captures bills inside Nudge for on-device text recognition. Photos are only kept when you choose to save the receipt.",
+                    granted = cameraGranted,
+                    icon = { Lucide.Camera(size = 20.dp, color = DSBridge.accent()) },
+                    onClick = { cameraRequest.launch(Manifest.permission.CAMERA) },
+                )
             }
         }
 
@@ -119,7 +131,7 @@ fun FirstRunPermissionsScreen(onDone: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(19.dp),
         ) {
-            Text(if (smsGranted || notificationAccessGranted) "Continue" else "Continue without capture", fontWeight = FontWeight.Bold)
+            Text(if (smsGranted || notificationAccessGranted || cameraGranted) "Continue" else "Continue without capture", fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(9.dp))
             Lucide.ChevronRight(size = 18.dp)
         }
