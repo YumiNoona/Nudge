@@ -36,8 +36,8 @@ android {
         applicationId = "com.nudge.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "4.7.0"
+        versionCode = 14
+        versionName = "4.8.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { debugSymbolLevel = "SYMBOL_TABLE" }

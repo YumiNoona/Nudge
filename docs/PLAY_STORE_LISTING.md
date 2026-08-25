@@ -55,7 +55,7 @@ Automatic capture is optional. Nudge remains fully usable for manual expense tra
 
 ## Suggested release notes
 
-Play-ready 4.7.0 introduces a dedicated Google Play distribution build, API 36 support, clearer permission disclosures, contextual camera and reminder access, Play-managed updates, an in-app privacy center, and release-hardening across imports and local data controls.
+Nudge 4.8.0 adds smarter debit/credit classification, real-time capture improvements, multi-page receipt scanning with item/GST review, historical transaction dates, shared-expense splits, recurring entries, safer deletion, and a more consistent transaction-entry interface.
 
 ## Screenshot sequence
 
@@ -66,4 +66,3 @@ Play-ready 4.7.0 introduces a dedicated Google Play distribution build, API 36 s
 5. Smart import — “Bring supported statements on-device”
 6. Receipt scan — “Scan receipts privately”
 7. Settings/privacy — “Your data stays under your control”
-

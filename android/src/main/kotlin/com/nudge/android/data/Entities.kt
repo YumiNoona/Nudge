@@ -37,7 +37,8 @@ data class CategoryEntity(
         parentColumns = ["id"],
         childColumns = ["category_id"],
         onDelete = ForeignKey.CASCADE
-    )]
+    )],
+    indices = [Index("category_id")]
 )
 data class SubcategoryEntity(
     @PrimaryKey val id: String,

@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-4.7.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.7.0" />
+    <img src="https://img.shields.io/badge/Version-4.8.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.8.0" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -209,7 +209,7 @@ Build a Google Play debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/play/debug/Nudge-play-v4.7.0-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v4.8.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
@@ -241,8 +241,8 @@ For each public update:
 
 1. Increase both `versionCode` and `versionName` in `android/build.gradle.kts`. Android requires every installable update to have a higher `versionCode`.
 2. Build and verify the signed release APK.
-3. Create a public GitHub Release with the matching semantic tag, such as `v4.7.0`.
-4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.7.0.apk` to that release.
+3. Create a public GitHub Release with the matching semantic tag, such as `v4.8.0`.
+4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.8.0.apk` to that release.
 
 Nudge compares the release tag with its installed `versionName`. If the tag is newer, it downloads the attached release APK inside the app, verifies its package name, version, version code and signing certificate, then hands it to Android's secure package installer. Android may show one final system confirmation before replacing the existing app. If no APK is attached, Nudge falls back to the GitHub Release page.
 

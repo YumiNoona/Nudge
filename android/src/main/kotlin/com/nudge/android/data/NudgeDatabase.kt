@@ -28,7 +28,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReceiptLineItemEntity::class,
         ReceiptTransactionLinkEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class NudgeDatabase : RoomDatabase() {
@@ -109,6 +109,12 @@ abstract class NudgeDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_subcategories_category_id` ON `subcategories` (`category_id`)")
+            }
+        }
+
         fun getInstance(context: Context): NudgeDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -116,7 +122,7 @@ abstract class NudgeDatabase : RoomDatabase() {
                     NudgeDatabase::class.java,
                     "nudge.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance

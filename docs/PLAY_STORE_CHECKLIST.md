@@ -1,4 +1,4 @@
-# Google Play release checklist — Nudge 4.7.0
+# Google Play release checklist — Nudge 4.8.0
 
 This is the operational checklist for the first Google Play release of `com.veilafk.nudge`. Complete it from top to bottom after the Play developer-account verification finishes.
 
@@ -6,7 +6,7 @@ This is the operational checklist for the first Google Play release of `com.veil
 
 - [x] Google Play package name is `com.veilafk.nudge`.
 - [x] The GitHub distribution keeps `com.nudge.android` so existing sideloaded installations remain update-compatible.
-- [x] Play candidate uses `versionName 4.7.0` and `versionCode 13`.
+- [x] Play candidate uses `versionName 4.8.0` and `versionCode 14`.
 - [x] `compileSdk` and `targetSdk` are API 36.
 - [x] Minimum Android version remains API 26 / Android 8.0.
 - [x] Play and GitHub are separate Gradle product flavors.
