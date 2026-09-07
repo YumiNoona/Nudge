@@ -8,17 +8,19 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/latin-500.css";
 import "@fontsource/jetbrains-mono/latin-600.css";
 import "@fontsource/jetbrains-mono/latin-700.css";
-import { ArrowLeft, BarChart3, Camera, Check, ChevronRight, FileUp, Github, Heart, Moon, ReceiptText, ScanLine, ShieldCheck, Smartphone, Sparkles, Sun, Tag, WalletCards, Zap } from "lucide-react";
+import { ArrowLeft, BarChart3, Camera, Check, ChevronRight, DatabaseBackup, FileUp, Moon, ReceiptText, Repeat2, ScanLine, ShieldCheck, Sparkles, Split, Sun, Tag, WalletCards, Zap } from "lucide-react";
 import "./styles.css";
 
-const github = "https://github.com/YumiNoona/Nudge";
 const features = [
   [Zap, "Automatic capture", "Reads permitted bank and UPI alerts and prepares clean entries for review."],
-  [FileUp, "Smart import", "Bring in statements, text, CSV, PDFs and images while preserving transaction dates."],
-  [ScanLine, "Receipt scan", "Capture a bill inside the app and turn legible totals and merchants into a draft."],
-  [Sparkles, "Learns corrections", "Merchant, category and account corrections improve suggestions on your device."],
-  [WalletCards, "Your accounts", "Organize cash, UPI, debit and credit sources with a focused card stack."],
-  [BarChart3, "Useful analytics", "Browse a clean month-by-month timeline, category mix and spending rhythm."],
+  [Sparkles, "Smart review", "Confirm uncertain captures, correct details, and teach Nudge better local suggestions."],
+  [FileUp, "Statement import", "Review transactions from supported PDF, CSV, text, and image statements before saving."],
+  [ScanLine, "Receipt intelligence", "Scan multi-page receipts, reconcile totals and GST, then save one expense or itemized entries."],
+  [Split, "Shared expenses", "Split costs equally, by exact amount, or by percentage and keep local balances settled."],
+  [Repeat2, "Recurring entries", "Schedule weekly, monthly, or yearly transactions without relying on a cloud account."],
+  [WalletCards, "Accounts & categories", "Organize cash, cards, UPI and wallets with custom categories, colors, icons, or emoji."],
+  [BarChart3, "Analytics & widgets", "See monthly category mix and daily cash flow, with responsive home-screen snapshots."],
+  [DatabaseBackup, "Your data, portable", "Export or restore a versioned backup, manage saved sources, or delete everything locally."],
 ] as const;
 
 function ThemeButton() {
@@ -27,7 +29,7 @@ function ThemeButton() {
   return <button className="iconButton" onClick={() => setLight(!light)} aria-label="Toggle color theme">{light ? <Moon /> : <Sun />}</button>;
 }
 function Logo() { return <a className="logo" href="/"><img src="/nudge-icon.png" alt="" /><span>Nudge</span></a>; }
-function Header() { return <header><Logo /><nav><a href="/#features">Features</a><a href="/#privacy">Privacy</a><a href="/privacy">Policy</a><a href={github}>GitHub</a></nav><ThemeButton /></header>; }
+function Header() { return <header><Logo /><nav><a href="/#features">Features</a><a href="/#privacy">Privacy</a><a href="/privacy">Policy</a></nav><ThemeButton /></header>; }
 
 function Phone() {
   const rows = [["District Dining","Food & Dining","−₹725"],["Swiggy","Food & Dining","−₹359"],["Salary","Income","₹13,000"]];
@@ -43,11 +45,11 @@ function Phone() {
 
 function Landing() {
   return <><Header/><main>
-    <section className="hero"><div className="heroCopy"><div className="pill"><span/>PRIVATE BY DESIGN</div><h1>Your money,<br/><em>one calm timeline.</em></h1><p>Nudge turns transaction alerts, statements and receipts into an organized expense history—without turning your financial life into someone else’s dataset.</p><div className="actions"><a className="primary" href={`${github}/releases`}><Smartphone/>Get Nudge<ChevronRight/></a><a className="secondary" href="#privacy"><ShieldCheck/>Our privacy promise</a></div><div className="trust"><span><Check/>Android-first</span><span><Check/>No account required</span><span><Check/>Local processing</span></div></div><Phone/></section>
+    <section className="hero"><div className="heroCopy"><div className="pill"><span/>PRIVATE BY DESIGN</div><h1>Your money,<br/><em>one calm timeline.</em></h1><p>Nudge turns transaction alerts, statements and receipts into an organized expense history—without turning your financial life into someone else’s dataset.</p><div className="actions"><a className="primary" href="#features"><Sparkles/>Explore Nudge<ChevronRight/></a><a className="secondary" href="#privacy"><ShieldCheck/>Our privacy promise</a></div><div className="trust"><span><Check/>Android-first</span><span><Check/>No account required</span><span><Check/>Local processing</span></div></div><Phone/></section>
     <section className="signal"><p>BUILT FOR THE MESSY REALITY OF MONEY</p><div><span>Bank alerts</span><i>→</i><span>UPI messages</span><i>→</i><span>Statements</span><i>→</i><span>Receipts</span></div></section>
     <section id="features" className="section"><div className="sectionHead"><div><div className="eyebrow lime">ONE APP. LESS ADMIN.</div><h2>Capture quickly.<br/>Understand clearly.</h2></div><p>Each feature has one job: reduce manual entry while keeping you in control of what becomes a transaction.</p></div><div className="featureGrid">{features.map(([Icon,title,body],i)=><article key={title} className={i===0?"featured":""}><div className="featureIcon"><Icon/></div><span>0{i+1}</span><h3>{title}</h3><p>{body}</p></article>)}</div></section>
     <section id="privacy" className="privacyBand"><div><div className="eyebrow">THE IMPORTANT PART</div><h2>Your financial data<br/>belongs to you.</h2></div><div className="privacyPoints"><Point icon={ShieldCheck} title="Processed on-device">Transaction parsing and learning happen locally.</Point><Point icon={Camera} title="Permission with purpose">Camera, files, SMS and notifications are used only for features you enable.</Point><Point icon={Tag} title="No advertising profile">Nudge does not sell personal or financial data.</Point><a href="/privacy">Read the full privacy policy <ChevronRight/></a></div></section>
-    <section className="cta"><img src="/nudge-icon.png" alt="Nudge app icon"/><div><div className="eyebrow lime">GOOGLE PLAY · COMING SOON</div><h2>Make expense tracking<br/>feel less like work.</h2></div><a className="primary" href={`${github}/releases`}>View releases<ChevronRight/></a></section>
+    <section className="cta"><img src="/nudge-icon.png" alt="Nudge app icon"/><div><div className="eyebrow lime">GOOGLE PLAY · COMING SOON</div><h2>Make expense tracking<br/>feel less like work.</h2></div><a className="primary" href="#features">Explore features<ChevronRight/></a></section>
   </main><Footer/></>;
 }
 function Point({icon:Icon,title,children}:{icon:React.ElementType,title:string,children:React.ReactNode}) { return <p><Icon/><span><b>{title}</b>{children}</span></p>; }
@@ -63,10 +65,10 @@ function Privacy() {
       <Policy id="security" n="06" title="Security and limitations"><p>Nudge uses Android platform protections and local storage controls. No software can promise absolute security. Protect your device with a secure screen lock and install updates from trusted sources.</p><p>Automatic classification can be wrong. Always review financial entries before relying on totals or reports.</p></Policy>
       <Policy id="children" n="07" title="Children"><p>Nudge is not directed to children under 13 and is not designed to knowingly collect children’s personal information.</p></Policy>
       <Policy id="changes" n="08" title="Policy changes"><p>This policy may be updated when features or legal requirements change. The effective date above will be revised, and material changes may also be highlighted in the app or release notes.</p></Policy>
-      <Policy id="contact" n="09" title="Contact"><p>For privacy questions or deletion help, open an issue in the public project repository. Do not include bank statements, card numbers, SMS contents or other sensitive financial information.</p><a className="textLink" href={`${github}/issues`}>Contact through GitHub issues <ChevronRight/></a></Policy>
+      <Policy id="contact" n="09" title="Contact"><p>For privacy questions or deletion help, use the developer contact listed on Nudge’s Google Play page. Do not include bank statements, card numbers, SMS contents or other sensitive financial information.</p></Policy>
     </article></div></main><Footer/></>;
 }
 function Policy({id,n,title,children}:{id:string,n:string,title:string,children:React.ReactNode}) { return <section id={id} className="policySection"><span>{n}</span><div><h2>{title}</h2>{children}</div></section>; }
-function Footer(){return <footer><Logo/><p>Private expense tracking for Android.</p><div><a href="/privacy">Privacy</a><a href={github}><Github/>GitHub</a><a href={`${github}/issues`}><Heart/>Support</a></div><small>Made with <span>♥</span> by Veil · © 2026 Nudge</small></footer>}
+function Footer(){return <footer><Logo/><small>Made with <span>♥</span> by Veil · © 2026 Nudge</small><div><a href="/#features">Features</a><a href="/privacy">Privacy</a></div></footer>}
 
 createRoot(document.getElementById("root")!).render(location.pathname.startsWith("/privacy") ? <Privacy/> : <Landing/>);
