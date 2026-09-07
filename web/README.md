@@ -37,11 +37,10 @@ web/
 │  ├─ main.tsx
 │  └─ styles.css
 ├─ index.html
+├─ vercel.json
 ├─ vite.config.ts
 └─ package.json
 ```
-
-The repository-level `../vercel.json` points Vercel at this folder.
 
 ## Requirements
 
@@ -69,10 +68,10 @@ The production output is generated in `dist/` and is intentionally excluded from
 ## Deploy to Vercel
 
 1. In Vercel, select **Add New → Project** and import the Nudge repository.
-2. Leave the Vercel root directory set to the repository root (`.`).
+2. Set the Vercel Root Directory to `web`.
 3. Deploy, then open **Project settings → Domains** and connect your domain.
 
-The repository-level `vercel.json` installs this folder's dependencies, builds only the landing page, publishes `web/dist`, and keeps direct links such as `/privacy` working after refresh.
+The included `vercel.json` installs and builds from this folder, publishes `dist`, and keeps direct links such as `/privacy` working after refresh.
 
 ## Google Play privacy URL
 

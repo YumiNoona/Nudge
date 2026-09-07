@@ -228,7 +228,7 @@ npm ci --prefix web
 npm run build --prefix web
 ```
 
-The production site is generated in `web/dist/`. The root `vercel.json` configures Vercel to install and build only this folder when the whole repository is imported.
+The production site is generated in `web/dist/`. In Vercel, set the project Root Directory to `web`; the folder's `vercel.json` then installs, builds, and publishes only the landing page.
 
 ## Distribution builds
 
