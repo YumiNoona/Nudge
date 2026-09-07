@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Vite and TypeScript output
+dist/
+*.tsbuildinfo
+
+# Vercel local state
+.vercel/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Logs and reports
+*.log
+coverage/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+

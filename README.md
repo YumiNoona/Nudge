@@ -20,7 +20,7 @@
 
 Nudge is a personal expense manager built around one idea: routine transaction logging should require almost no effort. The Android app can read bank SMS messages and payment-app notifications, parse transaction details on the device, reject duplicates, learn from review decisions, and place the result into a focused transaction timeline.
 
-Nudge is an Android-only product. The repository contains the mobile application plus its internal shared Kotlin parsing module; there are no web dashboards, browser bundles, or relay services.
+Nudge is an Android-first product. This repository contains the mobile application, its shared Kotlin parsing module, and the static public landing page in `web/`. The website is isolated from Gradle and has no access to app data; Nudge has no web dashboard, account service, or financial-data relay.
 
 ## Highlights
 
@@ -185,6 +185,11 @@ Keeping parsing and classification logic outside the Compose layer makes it test
 - Android device or emulator running Android 8.0 / API 26 or newer
 - Windows PowerShell or Command Prompt for the included `gradlew.bat`
 
+### Landing page
+
+- Node.js 22 or newer
+- npm
+
 ## Build and run
 
 Clone the repository:
@@ -213,6 +218,17 @@ android/build/outputs/apk/play/debug/Nudge-play-v4.8.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
+
+### Build the landing page
+
+The public landing page and browser privacy-policy route live in `web/` and are intentionally excluded from the Android build:
+
+```powershell
+npm ci --prefix web
+npm run build --prefix web
+```
+
+The production site is generated in `web/dist/`. The root `vercel.json` configures Vercel to install and build only this folder when the whole repository is imported.
 
 ## Distribution builds
 
@@ -245,6 +261,8 @@ For each public update:
 4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.8.0.apk` to that release.
 
 Nudge compares the release tag with its installed `versionName`. If the tag is newer, it downloads the attached release APK inside the app, verifies its package name, version, version code and signing certificate, then hands it to Android's secure package installer. Android may show one final system confirmation before replacing the existing app. If no APK is attached, Nudge falls back to the GitHub Release page.
+
+Release highlights are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ### Release signing
 
