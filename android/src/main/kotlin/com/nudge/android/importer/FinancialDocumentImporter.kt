@@ -30,6 +30,11 @@ data class StatementDraft(
     val timestampEpoch: Long,
 )
 
+data class StatementImportResult(
+    val drafts: List<StatementDraft>,
+    val sourceName: String,
+)
+
 data class ReceiptDraft(val amountCents: Long, val merchant: String)
 
 data class DocumentReadResult(val text: String, val warning: String? = null)
@@ -138,19 +143,26 @@ object FinancialDocumentImporter {
         return (red * 299 + green * 587 + blue * 114) / 1_000
     }
 
-    fun parseStatement(text: String, now: Long = System.currentTimeMillis()): List<StatementDraft> {
+    fun parseStatement(text: String, now: Long = System.currentTimeMillis()): List<StatementDraft> =
+        parseStatementWithSource(text, now).drafts
+
+    fun parseStatementWithSource(text: String, now: Long = System.currentTimeMillis()): StatementImportResult {
         val lines = text.lineSequence().map(String::trim).filter(String::isNotBlank).toList()
-        if (lines.isEmpty()) return emptyList()
+        if (lines.isEmpty()) return StatementImportResult(emptyList(), "Document")
         val csvRows = lines.map(::parseCsvRow)
         val headerIndex = csvRows.indexOfFirst { row -> row.any { normalizeHeader(it) in knownHeaders } }
+        val sourceName = if (headerIndex >= 0) detectExportSource(csvRows[headerIndex]) else "Statement"
         val parsed = if (headerIndex >= 0) {
             parseTabular(csvRows.drop(headerIndex + 1), csvRows[headerIndex], now)
         } else {
             parseLooseRows(lines, now)
         }
-        return parsed
+        return StatementImportResult(
+            drafts = parsed
             .filter { it.amountCents > 0 && it.merchant.isNotBlank() }
-            .distinctBy { Triple(it.amountCents, it.type, "${it.merchant.lowercase()}-${it.timestampEpoch / DAY_MS}") }
+            .distinctBy { Triple(it.amountCents, it.type, "${it.merchant.lowercase()}-${it.timestampEpoch / DAY_MS}") },
+            sourceName = sourceName,
+        )
     }
 
     fun parseReceipt(text: String): ReceiptDraft? {
@@ -264,13 +276,17 @@ object FinancialDocumentImporter {
 
     private fun parseTabular(rows: List<List<String>>, header: List<String>, now: Long): List<StatementDraft> {
         val normalized = header.map(::normalizeHeader)
-        fun index(vararg names: String) = normalized.indexOfFirst { cell -> names.any { cell == it || cell.contains(it) } }
-        val dateIndex = index("date", "transactiondate", "valuedate")
-        val merchantIndex = index("description", "narration", "particulars", "remarks", "transactiondetails", "merchant")
-        val debitIndex = index("debit", "withdrawal", "dramount")
-        val creditIndex = index("credit", "deposit", "cramount")
-        val amountIndex = index("amount", "transactionamount")
-        val typeIndex = index("type", "drcr", "debitcredit")
+        fun index(vararg names: String): Int {
+            val exact = normalized.indexOfFirst { cell -> names.any { cell == it } }
+            return if (exact >= 0) exact else normalized.indexOfFirst { cell -> names.any { cell.contains(it) } }
+        }
+        val dateIndex = index("date", "transactiondate", "valuedate", "datetime", "dateandtime", "time")
+        val merchantIndex = index("description", "narration", "particulars", "remarks", "transactiondetails", "merchant", "payee", "note", "notes", "title", "name", "item")
+        val categoryIndex = index("category", "subcategory")
+        val debitIndex = index("debit", "withdrawal", "dramount", "expense", "expenses", "spent")
+        val creditIndex = index("credit", "deposit", "cramount", "income", "incomes", "received")
+        val amountIndex = index("amount", "transactionamount", "value")
+        val typeIndex = index("type", "transactiontype", "recordtype", "drcr", "debitcredit", "incomexpense")
         return rows.mapNotNull { row ->
             val debit = row.getOrNull(debitIndex)?.toCents()
             val credit = row.getOrNull(creditIndex)?.toCents()
@@ -280,13 +296,17 @@ object FinancialDocumentImporter {
             val columnType = when {
                 debit != null && debit > 0 -> TransactionType.DEBIT
                 credit != null && credit > 0 -> TransactionType.CREDIT
-                typeCell.contains("cr") || typeCell.contains("credit") -> TransactionType.CREDIT
-                typeCell.contains("dr") || typeCell.contains("debit") -> TransactionType.DEBIT
+                typeCell.contains("income") || typeCell.contains("credit") || typeCell == "cr" -> TransactionType.CREDIT
+                typeCell.contains("refund") || typeCell.contains("reversal") -> TransactionType.REFUND
+                typeCell.contains("transfer") -> TransactionType.TRANSFER
+                typeCell.contains("expense") || typeCell.contains("debit") || typeCell == "dr" -> TransactionType.DEBIT
                 rawAmountCell.hasDebitSign() -> TransactionType.DEBIT
                 rawAmountCell.hasCreditSign() -> TransactionType.CREDIT
                 else -> null
             }
-            val rawMerchant = row.getOrNull(merchantIndex).orEmpty()
+            val rawMerchant = row.getOrNull(merchantIndex).orEmpty().ifBlank {
+                row.getOrNull(categoryIndex).orEmpty().ifBlank { "Imported transaction" }
+            }
             val type = statementSemanticType(rawMerchant, columnType) ?: return@mapNotNull null
             val amount = when (type) {
                 TransactionType.CREDIT, TransactionType.REFUND -> credit ?: rawAmount
@@ -437,19 +457,38 @@ object FinancialDocumentImporter {
     }
 
     private fun parseCsvRow(line: String): List<String> {
-        val delimiter = if (line.count { it == '\t' } > line.count { it == ',' }) '\t' else ','
+        val delimiter = listOf(',', '\t', ';').maxBy { candidate -> line.count { it == candidate } }
         val output = mutableListOf<String>()
         val cell = StringBuilder()
         var quoted = false
-        for (char in line) {
+        var index = 0
+        while (index < line.length) {
+            val char = line[index]
             when {
+                char == '"' && quoted && line.getOrNull(index + 1) == '"' -> {
+                    cell.append('"')
+                    index++
+                }
                 char == '"' -> quoted = !quoted
                 char == delimiter && !quoted -> { output += cell.toString().trim(); cell.clear() }
                 else -> cell.append(char)
             }
+            index++
         }
         output += cell.toString().trim()
         return output
+    }
+
+    private fun detectExportSource(header: List<String>): String {
+        val columns = header.map(::normalizeHeader).toSet()
+        return when {
+            "itemtype" in columns || ("item" in columns && "account" in columns && "category" in columns) -> "Bluecoins export"
+            "wallet" in columns && "category" in columns -> "Spendee export"
+            "recordtype" in columns || ("account" in columns && "currency" in columns && "datetime" in columns) -> "Wallet export"
+            "income" in columns && "expense" in columns && "account" in columns -> "Money Manager export"
+            "account" in columns && "category" in columns && ("description" in columns || "amount" in columns) -> "Monefy-style export"
+            else -> "CSV statement"
+        }
     }
 
     private fun normalizeHeader(value: String) = value.lowercase().replace(Regex("""[^a-z]"""), "")
@@ -473,10 +512,10 @@ object FinancialDocumentImporter {
         addOnFailureListener { continuation.resumeWithException(it) }
     }
 
-    private val knownHeaders = setOf("date", "transactiondate", "valuedate", "description", "narration", "particulars", "debit", "credit", "withdrawal", "deposit", "amount")
+    private val knownHeaders = setOf("date", "transactiondate", "valuedate", "datetime", "dateandtime", "description", "narration", "particulars", "remarks", "merchant", "payee", "note", "notes", "item", "debit", "credit", "withdrawal", "deposit", "expense", "income", "amount", "transactionamount", "value", "recordtype", "itemtype")
     private val DATE_PREFIX = Regex("""\b(?:\d{1,2}\s*[./-]\s*\d{1,2}\s*[./-]\s*\d{2,4}|\d{1,2}\s+\d{1,2}\s+\d{4}|\d{1,2}[- ](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[- ]\d{2,4}|\d{4}-\d{1,2}-\d{1,2})\b""", RegexOption.IGNORE_CASE)
     private val AMOUNT = Regex("""(?:₹|Rs\.?|INR)?\s*([\d,]+(?:\.\d{1,2})?)\s*(?:Cr|Dr)?\b""", RegexOption.IGNORE_CASE)
-    private val DATE_FORMATS = listOf("dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy", "dd MM yyyy", "dd/MM/yy", "dd-MM-yy", "dd.MM.yy", "dd MMM yyyy", "dd-MMM-yyyy", "dd MMM yy", "dd-MMM-yy", "yyyy-MM-dd")
+    private val DATE_FORMATS = listOf("dd/MM/yyyy HH:mm:ss", "dd/MM/yyyy HH:mm", "dd-MM-yyyy HH:mm:ss", "dd-MM-yyyy HH:mm", "yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm", "MM/dd/yyyy HH:mm:ss", "MM/dd/yyyy HH:mm", "dd/MM/yyyy", "dd-MM-yyyy", "dd.MM.yyyy", "dd MM yyyy", "MM/dd/yyyy", "yyyy/MM/dd", "dd/MM/yy", "dd-MM-yy", "dd.MM.yy", "dd MMM yyyy", "dd-MMM-yyyy", "dd MMM yy", "dd-MMM-yy", "yyyy-MM-dd")
     private val DEBIT_ROW_MARKER = Regex("""(?i)\b(?:WDL\s+TFR|WITHDRAWAL|DEBIT)\b""")
     private val CREDIT_ROW_MARKER = Regex("""(?i)\b(?:DEP\s+TFR|DEPOSIT|CREDIT)\b""")
     private val UPI_MERCHANT = Regex("""(?i)\bUPI/(?:DR|CR)/\d+/([^/]+)""")

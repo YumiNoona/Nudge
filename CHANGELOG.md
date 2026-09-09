@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.9.0 — Bring your history with you
+
+- Import transaction history from common Money Manager, Wallet, Spendee, Monefy-style, and Bluecoins CSV layouts.
+- Accept comma-, tab-, and semicolon-separated exports with flexible dates, signed amounts, income/expense columns, and quoted notes.
+- Appear in Android's share sheet as **Add to Nudge** for supported text, images, PDFs, and tabular files.
+- Scan shared content on-device with a focused animation, identify its source, and show a clear preview before anything is saved.
+- Let the user explicitly choose **Not now** or **Add** while retaining existing duplicate protection and account selection.
+
 ## 4.8.0 — Smarter capture, richer imports, calmer review
 
 Nudge 4.8.0 is a substantial local-first upgrade focused on getting transactions into the app accurately and making them easier to review.

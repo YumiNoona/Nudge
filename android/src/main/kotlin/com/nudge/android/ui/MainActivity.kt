@@ -221,7 +221,9 @@ private fun Intent?.toSharedFinancialImport(): SharedFinancialImport? {
     @Suppress("DEPRECATION")
     val stream = getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
     val sharedText = getStringExtra(Intent.EXTRA_TEXT)
-    return if (stream != null || !sharedText.isNullOrBlank()) SharedFinancialImport(stream, sharedText) else null
+    return if (stream != null || !sharedText.isNullOrBlank()) {
+        SharedFinancialImport(uri = stream, text = sharedText, mimeType = type, fromShare = true)
+    } else null
 }
 
 private enum class NavScreen {

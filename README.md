@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-4.8.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.8.0" />
+    <img src="https://img.shields.io/badge/Version-4.9.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.9.0" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -37,7 +37,7 @@ Nudge is an Android-first product. This repository contains the mobile applicati
 | Analytics | Monthly expense mix, category shares, and daily money-in/money-out rhythm |
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
 | Card scanning | On-device ML Kit recognition; the captured image is discarded and only limited card metadata is retained |
-| Smart import | Local CSV/TXT/PDF/image bank and card statement parsing, Gmail/Outlook share-in support, OCR fallback, and duplicate suppression |
+| Smart import | Local CSV/TXT/PDF/image parsing for bank statements and common expense-app exports, share-sheet text/image intake, OCR fallback, review-before-save, and duplicate suppression |
 | Receipt intelligence | Multi-page CameraX/gallery capture, on-device OCR, Indian receipt-table parsing, product quantity/rate/value extraction, GST and printed-total reconciliation, and one-expense or itemized saving |
 | Categories | Built-in and custom categories with editable colors, 200 searchable icons, and user-defined emoji glyphs |
 | Local profile | Display name and profile image stored inside app-private storage |
@@ -79,6 +79,8 @@ Bank SMS / payment notification / statement / receipt
 ```
 
 Manual transactions, statement rows, and reviewed receipt items enter the same local database and therefore appear everywhere automatic captures do. Receipt scans can remain one transaction with linked line items or become separate, linked item transactions.
+
+Nudge can also be chosen from Android's share sheet for supported text, images, PDFs, and CSV files. Shared content is scanned on-device, presented as an editable transaction preview, and saved only after the user confirms it.
 
 ## Privacy and security
 
@@ -214,7 +216,7 @@ Build a Google Play debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/play/debug/Nudge-play-v4.8.0-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v4.9.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.

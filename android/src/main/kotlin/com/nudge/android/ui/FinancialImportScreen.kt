@@ -4,6 +4,11 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -28,12 +33,18 @@ import com.nudge.android.ui.components.FloatingActionCube
 import com.nudge.android.ui.theme.*
 import com.nudge.engine.DefaultSmsParserEngine
 import com.nudge.model.TransactionType
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-data class SharedFinancialImport(val uri: Uri? = null, val text: String? = null)
+data class SharedFinancialImport(
+    val uri: Uri? = null,
+    val text: String? = null,
+    val mimeType: String? = null,
+    val fromShare: Boolean = false,
+)
 
 @Composable
 fun FinancialImportScreen(
@@ -50,6 +61,8 @@ fun FinancialImportScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var warning by remember { mutableStateOf<String?>(null) }
     var drafts by remember { mutableStateOf<List<StatementDraft>>(emptyList()) }
+    var detectedSource by remember { mutableStateOf("Document") }
+    var sharedFlow by remember { mutableStateOf(false) }
     var replaceExistingStatements by remember { mutableStateOf(false) }
     var selectedAccount by remember(accounts) {
         mutableStateOf(accounts.firstOrNull { it.isDefault && it.isActive }?.id ?: accounts.firstOrNull { it.isActive }?.id)
@@ -74,9 +87,13 @@ fun FinancialImportScreen(
     }
 
     fun parseText(text: String) {
-        val statementRows = FinancialDocumentImporter.parseStatement(text)
-        drafts = if (statementRows.isNotEmpty()) statementRows else {
+        val statementResult = FinancialDocumentImporter.parseStatementWithSource(text)
+        drafts = if (statementResult.drafts.isNotEmpty()) {
+            detectedSource = statementResult.sourceName
+            statementResult.drafts
+        } else {
             DefaultSmsParserEngine().parse(text, "EMAIL")?.let { parsed ->
+                detectedSource = if (sharedFlow) "Shared transaction text" else "Transaction message"
                 listOf(
                     StatementDraft(
                         parsed.amount,
@@ -86,6 +103,7 @@ fun FinancialImportScreen(
                     ),
                 )
             } ?: FinancialDocumentImporter.parseReceipt(text)?.let { receipt ->
+                detectedSource = if (sharedFlow) "Shared receipt" else "Receipt"
                 listOf(StatementDraft(receipt.amountCents, TransactionType.DEBIT, receipt.merchant, System.currentTimeMillis()))
             }.orEmpty()
         }
@@ -100,8 +118,13 @@ fun FinancialImportScreen(
         warning = null
         drafts = emptyList()
         scope.launch {
+            val scanStartedAt = System.currentTimeMillis()
             runCatching { FinancialDocumentImporter.readDocument(context, uri) }
                 .onSuccess { document ->
+                    if (sharedFlow) {
+                        val remaining = 850L - (System.currentTimeMillis() - scanStartedAt)
+                        if (remaining > 0) delay(remaining)
+                    }
                     warning = document.warning
                     parseText(document.text)
                 }
@@ -114,6 +137,8 @@ fun FinancialImportScreen(
         if (uri != null) processUri(uri)
     }
     val chooseDocument = {
+        sharedFlow = false
+        detectedSource = "Document"
         documentPicker.launch(arrayOf("text/csv", "text/plain", "application/pdf", "application/vnd.ms-excel", "image/*"))
     }
     fun importDetected() {
@@ -124,14 +149,22 @@ fun FinancialImportScreen(
         }
         onImport(drafts, account, replaceExistingStatements) { imported, skipped ->
             Toast.makeText(context, "Imported $imported · skipped $skipped duplicates", Toast.LENGTH_LONG).show()
-            drafts = emptyList()
-            warning = null
-            replaceExistingStatements = false
+            if (sharedFlow) onBack() else {
+                drafts = emptyList()
+                warning = null
+                replaceExistingStatements = false
+            }
         }
     }
 
     LaunchedEffect(sharedImport) {
         val shared = sharedImport ?: return@LaunchedEffect
+        sharedFlow = shared.fromShare
+        detectedSource = when {
+            shared.mimeType?.startsWith("image/") == true -> "Shared image"
+            !shared.text.isNullOrBlank() -> "Shared text"
+            else -> "Shared document"
+        }
         warning = null
         when {
             shared.uri != null -> processUri(shared.uri)
@@ -146,7 +179,7 @@ fun FinancialImportScreen(
             IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
                 Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft())
             }
-            Text("Smart import", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
+            Text(if (sharedFlow) "Review shared item" else "Smart import", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
         }
 
         if (drafts.isEmpty()) {
@@ -155,29 +188,30 @@ fun FinancialImportScreen(
                     Modifier.align(Alignment.Center).offset(y = (-26).dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Box(
+                    if (loading && sharedFlow) SharedScanAnimation(sharedImport?.mimeType) else Box(
                         Modifier.size(62.dp).background(DSBridge.accentBg(), RoundedCornerShape(20.dp)),
                         contentAlignment = Alignment.Center,
-                    ) {
-                        Lucide.FileText(size = 27.dp, color = DSBridge.accent())
-                    }
+                    ) { Lucide.FileText(size = 27.dp, color = DSBridge.accent()) }
                     Spacer(Modifier.height(20.dp))
                     Text(
-                        if (loading) "Reading on device" else "Import a statement",
+                        if (loading && sharedFlow) "Scanning your shared item" else if (loading) "Reading on device" else "Import your data",
                         color = DSBridge.ink(), fontSize = 20.sp, fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(7.dp))
                     Text(
-                        if (loading) "Finding transaction rows and checking document quality…"
-                        else "Choose a bank statement, exported text file, screenshot or receipt image.",
+                        if (loading) "Finding transaction rows and checking document quality on your device…"
+                        else "Choose a bank statement, expense-app export, shared text, screenshot or receipt image.",
                         color = DSBridge.inkMute(), fontSize = 10.sp, lineHeight = 15.sp,
                         textAlign = TextAlign.Center, modifier = Modifier.widthIn(max = 290.dp),
                     )
                     Spacer(Modifier.height(17.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        listOf("PDF", "CSV / TXT", "IMAGE", "EMAIL").forEach { format ->
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        listOf("MONEY MANAGER", "WALLET", "SPENDEE", "MONEFY", "BLUECOINS").forEach { format ->
                             Surface(shape = RoundedCornerShape(9.dp), color = DSBridge.surface()) {
-                                Text(format, Modifier.padding(horizontal = 9.dp, vertical = 6.dp), fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute())
+                                Text(format, Modifier.padding(horizontal = 9.dp, vertical = 6.dp), fontFamily = MonoFamily, fontSize = 8.sp, color = DSBridge.inkMute())
                             }
                         }
                     }
@@ -202,7 +236,7 @@ fun FinancialImportScreen(
                     Spacer(Modifier.width(11.dp))
                     Column(Modifier.weight(1f)) {
                         Text("${drafts.size} transactions found", color = DSBridge.ink(), fontWeight = FontWeight.Bold)
-                        Text(detectedDateRange ?: "Nothing is saved until you confirm", color = DSBridge.inkMute(), fontSize = 9.sp)
+                        Text("$detectedSource · ${detectedDateRange ?: "Ready to review"}", color = DSBridge.inkMute(), fontSize = 9.sp)
                     }
                     IconButton(onClick = chooseDocument) { Lucide.Upload(size = 19.dp, color = DSBridge.inkSoft()) }
                 }
@@ -268,16 +302,16 @@ fun FinancialImportScreen(
         }
         }
 
-        FloatingActionCube(
+        if (drafts.isEmpty()) FloatingActionCube(
             contentDescription = when {
                 loading -> "Reading document"
                 drafts.isEmpty() -> if (error == null) "Choose file or image" else "Choose another file"
-                else -> "Import ${drafts.size} transactions"
+                else -> "Add ${drafts.size} transactions"
             },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 18.dp),
             onClick = {
                 if (!loading) {
-                    if (drafts.isEmpty()) chooseDocument() else importDetected()
+                    chooseDocument()
                 }
             },
         ) {
@@ -285,6 +319,24 @@ fun FinancialImportScreen(
                 loading -> CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp, color = DS.InkPrimary)
                 drafts.isEmpty() -> Lucide.Upload(size = 24.dp, color = DS.InkPrimary)
                 else -> Lucide.Check(size = 24.dp, color = DS.InkPrimary)
+            }
+        } else {
+            Surface(
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp).fillMaxWidth(),
+                shape = RoundedCornerShape(22.dp),
+                color = DSBridge.surface(),
+                shadowElevation = 10.dp,
+            ) {
+                Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f).height(50.dp), shape = RoundedCornerShape(15.dp)) {
+                        Text("Not now")
+                    }
+                    Button(onClick = ::importDetected, modifier = Modifier.weight(1.6f).height(50.dp), shape = RoundedCornerShape(15.dp)) {
+                        Lucide.Check(size = 18.dp, color = DS.InkPrimary)
+                        Spacer(Modifier.width(7.dp))
+                        Text("Add ${drafts.size}", color = DS.InkPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
 
@@ -300,6 +352,34 @@ fun FinancialImportScreen(
                 onDismiss = { showAccountCreator = false },
             )
         }
+    }
+}
+
+@Composable
+private fun SharedScanAnimation(mimeType: String?) {
+    val transition = rememberInfiniteTransition(label = "sharedImportScan")
+    val progress by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1_050), repeatMode = RepeatMode.Reverse),
+        label = "scanPosition",
+    )
+    Box(
+        Modifier.width(190.dp).height(138.dp).background(DSBridge.surface(), RoundedCornerShape(24.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.fillMaxWidth(.78f).height(104.dp).background(DSBridge.accentBg(), RoundedCornerShape(17.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (mimeType?.startsWith("image/") == true) Lucide.Image(size = 36.dp, color = DSBridge.accent())
+            else Lucide.FileText(size = 36.dp, color = DSBridge.accent())
+            Box(
+                Modifier.align(Alignment.TopCenter).offset(y = (10 + progress * 82).dp).fillMaxWidth(.88f).height(2.dp)
+                    .background(DSBridge.accent(), RoundedCornerShape(2.dp)),
+            )
+        }
+        Text("ON-DEVICE SCAN", Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp), fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute(), letterSpacing = 1.sp)
     }
 }
 

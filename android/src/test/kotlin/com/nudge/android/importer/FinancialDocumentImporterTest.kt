@@ -159,6 +159,50 @@ WDL TFR
         assertEquals(0, drafts.size)
     }
 
+    @Test
+    fun importsMoneyManagerIncomeAndExpenseColumns() {
+        val result = FinancialDocumentImporter.parseStatementWithSource(
+            """Date,Account,Category,Subcategory,Note,Income,Expense
+01/09/2026,Cash,Food,Dining,Corner Cafe,,245.50
+02/09/2026,Bank,Salary,,September salary,50000.00,""",
+        )
+
+        assertEquals("Money Manager export", result.sourceName)
+        assertEquals(2, result.drafts.size)
+        assertEquals(TransactionType.DEBIT, result.drafts[0].type)
+        assertEquals(24_550L, result.drafts[0].amountCents)
+        assertEquals("Corner Cafe", result.drafts[0].merchant)
+        assertEquals(TransactionType.CREDIT, result.drafts[1].type)
+    }
+
+    @Test
+    fun importsSpendeeStyleSemicolonExport() {
+        val result = FinancialDocumentImporter.parseStatementWithSource(
+            """Date;Wallet;Category;Note;Amount;Type
+2026-09-03 18:30;Daily;Groceries;Fresh Market;-1234.00;Expense
+2026-09-04 09:00;Daily;Refund;Store refund;250.00;Refund""",
+        )
+
+        assertEquals("Spendee export", result.sourceName)
+        assertEquals(2, result.drafts.size)
+        assertEquals("Fresh Market", result.drafts[0].merchant)
+        assertEquals(TransactionType.DEBIT, result.drafts[0].type)
+        assertEquals(TransactionType.REFUND, result.drafts[1].type)
+    }
+
+    @Test
+    fun importsBluecoinsStyleQuotedNotes() {
+        val result = FinancialDocumentImporter.parseStatementWithSource(
+            "Item Type,Date,Item,Amount,Currency,Account,Category,Notes\n" +
+                "Expense,09/05/2026,Transport,-350.00,INR,UPI,Travel,\"Airport, cab\"",
+        )
+
+        assertEquals("Bluecoins export", result.sourceName)
+        assertEquals(1, result.drafts.size)
+        assertEquals("Transport", result.drafts.single().merchant)
+        assertEquals(TransactionType.DEBIT, result.drafts.single().type)
+    }
+
     private fun assertDate(epoch: Long, year: Int, month: Int, day: Int) {
         val calendar = Calendar.getInstance().apply { timeInMillis = epoch }
         assertEquals(year, calendar.get(Calendar.YEAR))

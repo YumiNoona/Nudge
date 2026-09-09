@@ -32,6 +32,8 @@ FAST MANUAL TRACKING
 IMPORT AND SCAN
 
 • Import supported PDF, text, CSV and image statements
+• Bring transaction rows from common expense-manager CSV exports
+• Share supported text, files or receipt images directly to Nudge for review
 • Preview transactions before saving
 • Scan receipts with an embedded on-device camera flow
 • On-device OCR for supported documents and images
@@ -55,7 +57,7 @@ Automatic capture is optional. Nudge remains fully usable for manual expense tra
 
 ## Suggested release notes
 
-Nudge 4.8.0 adds smarter debit/credit classification, real-time capture improvements, multi-page receipt scanning with item/GST review, historical transaction dates, shared-expense splits, recurring entries, safer deletion, and a more consistent transaction-entry interface.
+Nudge 4.9.0 adds imports from common expense-manager CSV exports, a polished Android share-sheet flow for text and images, on-device scanning animation, and an explicit review-before-save step. It also includes smarter transaction capture, multi-page receipt scanning, shared expenses, recurring entries, and local backups.
 
 ## Screenshot sequence
 

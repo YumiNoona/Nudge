@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="share_target_label">Add to Nudge</string>
     <string name="widget_compact_description">Nudge quick glance · 2 × 1</string>
     <string name="widget_snapshot_description">Nudge spending snapshot · 3 × 2</string>
     <string name="widget_breakdown_description">Nudge category breakdown · 2 × 4</string>

@@ -39,16 +39,24 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name=".ShareReceiver"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/share_target_label"
+            android:targetActivity=".ui.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-                <data android:mimeType="text/csv" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="application/vnd.ms-excel" />
+                <data android:mimeType="text/*" />
                 <data android:mimeType="image/*" />
+                <data android:mimeType="application/pdf" />
+                <data android:mimeType="application/csv" />
+                <data android:mimeType="application/vnd.ms-excel" />
             </intent-filter>
-        </activity>
+        </activity-alias>
 
         <!-- Notification Listener Service -->
         <service
