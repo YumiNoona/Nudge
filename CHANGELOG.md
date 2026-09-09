@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.9.1 — Sharper receipt review
+
+- Fix **Add as one expense** from the Android share-sheet receipt review by removing a conflicting import action layer.
+- Show save failures directly in the receipt review instead of leaving the action unresponsive.
+- Improve the receipt summary with private-processing, confidence, and detected-item indicators.
+- Scale the transaction date picker down further in both width and height.
+
 ## 4.9.0 — Bring your history with you
 
 - Import transaction history from common Money Manager, Wallet, Spendee, Monefy-style, and Bluecoins CSV layouts.

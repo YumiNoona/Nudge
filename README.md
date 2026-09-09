@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-4.9.0-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.9.0" />
+    <img src="https://img.shields.io/badge/Version-4.9.1-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.9.1" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -216,7 +216,7 @@ Build a Google Play debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/play/debug/Nudge-play-v4.9.0-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v4.9.1-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
