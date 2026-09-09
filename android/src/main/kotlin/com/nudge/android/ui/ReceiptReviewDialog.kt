@@ -123,6 +123,11 @@ fun ReceiptReviewDialog(
                                 cursorBrush = SolidColor(DSBridge.accent()), modifier = Modifier.fillMaxWidth(),
                             )
                             Text(SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(initial.purchaseTimestamp)), color = DSBridge.inkMute(), fontFamily = MonoFamily, fontSize = 11.sp)
+                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                ReceiptFactChip("ON DEVICE")
+                                ReceiptFactChip("${(initial.confidence * 100).toInt().coerceIn(0, 100)}% MATCH")
+                                ReceiptFactChip(if (items.isEmpty()) "TOTAL FOUND" else "${items.size} ITEMS FOUND")
+                            }
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Column(Modifier.weight(1f)) {
                                     Text("PRINTED TOTAL", color = DSBridge.inkMute(), fontFamily = MonoFamily, fontSize = 9.sp, letterSpacing = 1.sp)
@@ -241,6 +246,13 @@ fun ReceiptReviewDialog(
             }
         }
         }
+    }
+}
+
+@Composable
+private fun ReceiptFactChip(label: String) {
+    Surface(shape = RoundedCornerShape(9.dp), color = DSBridge.surface().copy(alpha = .72f)) {
+        Text(label, Modifier.padding(horizontal = 8.dp, vertical = 5.dp), color = DSBridge.accent(), fontFamily = MonoFamily, fontSize = 8.sp, fontWeight = FontWeight.Bold)
     }
 }
 

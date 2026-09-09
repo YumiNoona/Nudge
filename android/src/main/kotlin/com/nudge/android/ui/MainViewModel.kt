@@ -166,6 +166,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onComplete: (Boolean, String) -> Unit,
     ) {
         viewModelScope.launch {
+            try {
             val nearbyDuplicates = db.transactionDao().findPotentialDuplicates(
                 receipt.printedTotalCents,
                 "debit",
@@ -267,6 +268,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshWidget()
             withContext(Dispatchers.Main.immediate) {
                 onComplete(true, if (itemized) "Added ${createdTransactions.size} linked receipt items" else "Receipt added with ${activeItems.size} saved line items")
+            }
+            } catch (error: Exception) {
+                withContext(Dispatchers.Main.immediate) {
+                    onComplete(false, error.message?.takeIf { it.isNotBlank() } ?: "Nudge could not save this receipt. Please try again.")
+                }
             }
         }
     }

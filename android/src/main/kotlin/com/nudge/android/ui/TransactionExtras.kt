@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -93,12 +94,18 @@ fun TransactionDateDialog(initialEpoch: Long, onDismiss: () -> Unit, onSelect: (
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     ) {
-        DatePicker(
-            state = state,
-            modifier = Modifier.width(326.dp),
-            title = { Text("Transaction date", Modifier.padding(start = 18.dp, top = 14.dp, bottom = 4.dp), fontSize = 16.sp) },
-            showModeToggle = false,
-        )
+        Box(Modifier.width(300.dp).height(405.dp)) {
+            DatePicker(
+                state = state,
+                modifier = Modifier.requiredWidth(360.dp).graphicsLayer {
+                    scaleX = .83f
+                    scaleY = .83f
+                    transformOrigin = TransformOrigin(0f, 0f)
+                },
+                title = { Text("Transaction date", Modifier.padding(start = 18.dp, top = 12.dp, bottom = 2.dp), fontSize = 15.sp) },
+                showModeToggle = false,
+            )
+        }
     }
 }
 

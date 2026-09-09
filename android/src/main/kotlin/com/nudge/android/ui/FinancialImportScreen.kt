@@ -335,7 +335,7 @@ fun FinancialImportScreen(
         }
         }
 
-        if (drafts.isEmpty() && detailedReceipt == null) FloatingActionCube(
+        if (detailedReceipt == null && drafts.isEmpty()) FloatingActionCube(
             contentDescription = when {
                 loading -> "Reading document"
                 drafts.isEmpty() -> if (error == null) "Choose file or image" else "Choose another file"
@@ -353,7 +353,7 @@ fun FinancialImportScreen(
                 drafts.isEmpty() -> Lucide.Upload(size = 24.dp, color = DS.InkPrimary)
                 else -> Lucide.Check(size = 24.dp, color = DS.InkPrimary)
             }
-        } else {
+        } else if (detailedReceipt == null) {
             Surface(
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp).fillMaxWidth(),
                 shape = RoundedCornerShape(22.dp),
