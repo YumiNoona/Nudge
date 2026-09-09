@@ -92,7 +92,14 @@ fun TransactionDateDialog(initialEpoch: Long, onDismiss: () -> Unit, onSelect: (
             }) { Text("Choose") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-    ) { DatePicker(state = state, title = { Text("Transaction date", Modifier.padding(24.dp)) }) }
+    ) {
+        DatePicker(
+            state = state,
+            modifier = Modifier.width(326.dp),
+            title = { Text("Transaction date", Modifier.padding(start = 18.dp, top = 14.dp, bottom = 4.dp), fontSize = 16.sp) },
+            showModeToggle = false,
+        )
+    }
 }
 
 @Composable

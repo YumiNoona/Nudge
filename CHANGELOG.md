@@ -6,7 +6,9 @@
 - Accept comma-, tab-, and semicolon-separated exports with flexible dates, signed amounts, income/expense columns, and quoted notes.
 - Appear in Android's share sheet as **Add to Nudge** for supported text, images, PDFs, and tabular files.
 - Scan shared content on-device with a focused animation, identify its source, and show a clear preview before anything is saved.
+- Open shared receipt images in the full receipt editor with merchant, printed total, subtotal, taxes, fees, line items, account, category, and itemized-save controls.
 - Let the user explicitly choose **Not now** or **Add** while retaining existing duplicate protection and account selection.
+- Use a more compact transaction calendar that leaves more of the surrounding entry screen visible.
 
 ## 4.8.0 — Smarter capture, richer imports, calmer review
 

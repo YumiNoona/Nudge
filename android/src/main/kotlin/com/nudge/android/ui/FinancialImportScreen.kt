@@ -20,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,7 +29,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
+import com.nudge.android.data.CategoryEntity
+import com.nudge.android.importer.DetailedReceiptDraft
 import com.nudge.android.importer.FinancialDocumentImporter
+import com.nudge.android.importer.ReceiptIntelligence
+import com.nudge.android.importer.ReceiptPageDraft
 import com.nudge.android.importer.StatementDraft
 import com.nudge.android.ui.components.FloatingActionCube
 import com.nudge.android.ui.theme.*
@@ -36,8 +42,10 @@ import com.nudge.model.TransactionType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.io.File
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 data class SharedFinancialImport(
     val uri: Uri? = null,
@@ -49,9 +57,11 @@ data class SharedFinancialImport(
 @Composable
 fun FinancialImportScreen(
     accounts: List<AccountEntity>,
+    categories: List<CategoryEntity>,
     sharedImport: SharedFinancialImport?,
     onSharedImportConsumed: () -> Unit,
     onImport: (List<StatementDraft>, String, Boolean, (Int, Int) -> Unit) -> Unit,
+    onSaveReceipt: (DetailedReceiptDraft, String, String?, Boolean, (Boolean, String) -> Unit) -> Unit,
     onCreateAccount: (AccountEntity) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -63,6 +73,9 @@ fun FinancialImportScreen(
     var drafts by remember { mutableStateOf<List<StatementDraft>>(emptyList()) }
     var detectedSource by remember { mutableStateOf("Document") }
     var sharedFlow by remember { mutableStateOf(false) }
+    var sharedMimeType by remember { mutableStateOf<String?>(null) }
+    var detailedReceipt by remember { mutableStateOf<DetailedReceiptDraft?>(null) }
+    var keepReceiptPages by remember { mutableStateOf(false) }
     var replaceExistingStatements by remember { mutableStateOf(false) }
     var selectedAccount by remember(accounts) {
         mutableStateOf(accounts.firstOrNull { it.isDefault && it.isActive }?.id ?: accounts.firstOrNull { it.isActive }?.id)
@@ -126,7 +139,24 @@ fun FinancialImportScreen(
                         if (remaining > 0) delay(remaining)
                     }
                     warning = document.warning
-                    parseText(document.text)
+                    if (sharedFlow && sharedMimeType?.startsWith("image/") == true) {
+                        val receiptFolder = File(context.filesDir, "receipts").apply { mkdirs() }
+                        val destination = File(receiptFolder, "shared_${UUID.randomUUID()}.jpg")
+                        val detailed = runCatching {
+                            context.contentResolver.openInputStream(uri)?.use { input -> destination.outputStream().use(input::copyTo) }
+                                ?: error("Unable to retain the shared image")
+                            val page = ReceiptPageDraft(Uri.fromFile(destination).toString(), document.text, document.warning)
+                            ReceiptIntelligence.parse(listOf(document.text), listOf(page))
+                        }.getOrNull()
+                        if (detailed != null) {
+                            detectedSource = "Shared receipt image"
+                            keepReceiptPages = false
+                            detailedReceipt = detailed
+                        } else {
+                            destination.delete()
+                            parseText(document.text)
+                        }
+                    } else parseText(document.text)
                 }
                 .onFailure { error = it.message ?: "Nudge could not read this document. Choose another file." }
             loading = false
@@ -160,6 +190,7 @@ fun FinancialImportScreen(
     LaunchedEffect(sharedImport) {
         val shared = sharedImport ?: return@LaunchedEffect
         sharedFlow = shared.fromShare
+        sharedMimeType = shared.mimeType
         detectedSource = when {
             shared.mimeType?.startsWith("image/") == true -> "Shared image"
             !shared.text.isNullOrBlank() -> "Shared text"
@@ -182,7 +213,9 @@ fun FinancialImportScreen(
             Text(if (sharedFlow) "Review shared item" else "Smart import", style = DSTypography.headlineLarge, color = DSBridge.ink(), modifier = Modifier.align(Alignment.Center))
         }
 
-        if (drafts.isEmpty()) {
+        if (detailedReceipt != null) {
+            Spacer(Modifier.fillMaxSize())
+        } else if (drafts.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp)) {
                 Column(
                     Modifier.align(Alignment.Center).offset(y = (-26).dp),
@@ -302,7 +335,7 @@ fun FinancialImportScreen(
         }
         }
 
-        if (drafts.isEmpty()) FloatingActionCube(
+        if (drafts.isEmpty() && detailedReceipt == null) FloatingActionCube(
             contentDescription = when {
                 loading -> "Reading document"
                 drafts.isEmpty() -> if (error == null) "Choose file or image" else "Choose another file"
@@ -352,6 +385,24 @@ fun FinancialImportScreen(
                 onDismiss = { showAccountCreator = false },
             )
         }
+        detailedReceipt?.let { receipt ->
+            ReceiptReviewDialog(
+                initial = receipt,
+                accounts = accounts,
+                categories = categories,
+                onDismiss = {
+                    if (!keepReceiptPages) receipt.pages.forEach { page -> runCatching { File(Uri.parse(page.localUri).path.orEmpty()).delete() } }
+                    detailedReceipt = null
+                    if (sharedFlow) onBack()
+                },
+                onSave = { draft, accountId, categoryId, itemized, complete ->
+                    onSaveReceipt(draft, accountId, categoryId, itemized) { success, message ->
+                        if (success) keepReceiptPages = true
+                        complete(success, message)
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -364,22 +415,36 @@ private fun SharedScanAnimation(mimeType: String?) {
         animationSpec = infiniteRepeatable(tween(1_050), repeatMode = RepeatMode.Reverse),
         label = "scanPosition",
     )
+    val pulse by transition.animateFloat(
+        initialValue = .92f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(tween(1_050), repeatMode = RepeatMode.Reverse),
+        label = "scanPulse",
+    )
     Box(
-        Modifier.width(190.dp).height(138.dp).background(DSBridge.surface(), RoundedCornerShape(24.dp)),
+        Modifier.width(220.dp).height(174.dp).graphicsLayer { scaleX = pulse; scaleY = pulse }
+            .background(DSBridge.surface(), RoundedCornerShape(28.dp)),
         contentAlignment = Alignment.Center,
     ) {
+        Box(Modifier.size(150.dp).alpha(.16f + progress * .12f).background(DSBridge.accent(), CircleShape))
         Box(
-            Modifier.fillMaxWidth(.78f).height(104.dp).background(DSBridge.accentBg(), RoundedCornerShape(17.dp)),
+            Modifier.fillMaxWidth(.72f).height(124.dp).background(DSBridge.accentBg(), RoundedCornerShape(19.dp)),
             contentAlignment = Alignment.Center,
         ) {
-            if (mimeType?.startsWith("image/") == true) Lucide.Image(size = 36.dp, color = DSBridge.accent())
-            else Lucide.FileText(size = 36.dp, color = DSBridge.accent())
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (mimeType?.startsWith("image/") == true) Lucide.Image(size = 34.dp, color = DSBridge.accent())
+                else Lucide.FileText(size = 34.dp, color = DSBridge.accent())
+                Spacer(Modifier.height(12.dp))
+                repeat(3) { index ->
+                    Box(Modifier.padding(vertical = 3.dp).width((92 - index * 13).dp).height(4.dp).background(DSBridge.inkMute().copy(.18f), RoundedCornerShape(3.dp)))
+                }
+            }
             Box(
-                Modifier.align(Alignment.TopCenter).offset(y = (10 + progress * 82).dp).fillMaxWidth(.88f).height(2.dp)
-                    .background(DSBridge.accent(), RoundedCornerShape(2.dp)),
+                Modifier.align(Alignment.TopCenter).offset(y = (8 + progress * 106).dp).fillMaxWidth(.9f).height(3.dp)
+                    .background(DS.Signal, RoundedCornerShape(2.dp)),
             )
         }
-        Text("ON-DEVICE SCAN", Modifier.align(Alignment.BottomCenter).padding(bottom = 4.dp), fontFamily = MonoFamily, fontSize = 7.sp, color = DSBridge.inkMute(), letterSpacing = 1.sp)
+        Text("READING PRIVATELY ON DEVICE", Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp), fontFamily = MonoFamily, fontSize = 8.sp, color = DSBridge.inkMute(), letterSpacing = .8.sp)
     }
 }
 

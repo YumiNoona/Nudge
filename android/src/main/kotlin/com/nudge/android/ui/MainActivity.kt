@@ -431,12 +431,14 @@ private fun ExpenseNavHost(
                 NavScreen.Privacy -> PrivacyPolicyScreen(onBack = ::back)
                 NavScreen.FinancialImport -> FinancialImportScreen(
                     accounts = accounts,
+                    categories = categories,
                     sharedImport = directFinancialImport ?: sharedFinancialImport,
                     onSharedImportConsumed = {
                         if (directFinancialImport != null) directFinancialImport = null
                         else onSharedFinancialImportConsumed()
                     },
                     onImport = viewModel::importStatementTransactions,
+                    onSaveReceipt = viewModel::saveReceipt,
                     onCreateAccount = viewModel::saveAccount,
                     onBack = ::back,
                 )
