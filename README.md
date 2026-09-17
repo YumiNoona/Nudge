@@ -216,7 +216,7 @@ Build a Google Play debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/play/debug/Nudge-play-v4.9.1-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v1.0.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
