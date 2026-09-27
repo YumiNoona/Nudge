@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.9.2 — Stable calendar and smarter OCR
+
+- Replace the transaction date header with compact `day month year` controls that use a short year label such as `26`.
+- Add horizontal swipe support to the calendar body while keeping the existing previous/next buttons.
+- Let tapping the day in the date header jump back to today's date after browsing future or past months.
+- Keep the date picker body at a stable size so switching months, years, and selector modes does not reflow the dialog.
+- Add on-device Devanagari OCR alongside Latin ML Kit recognition for smarter Indian receipt and document scans.
+
 ## 4.9.1 — Sharper receipt review
 
 - Fix **Add as one expense** from the Android share-sheet receipt review by removing a conflicting import action layer.

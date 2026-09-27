@@ -10,6 +10,7 @@ import com.google.android.gms.tasks.Task
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.Text
+import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.nudge.engine.FinancialEventClassifier
 import com.nudge.engine.MerchantNormalizer
@@ -194,32 +195,41 @@ object FinancialDocumentImporter {
     }
 
     private suspend fun recognizeBitmapLayout(bitmap: Bitmap): String {
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        return try {
-            layoutText(recognizer.process(InputImage.fromBitmap(bitmap, 0)).await())
-        } finally {
-            recognizer.close()
-        }
+        return recognizeImageLayout(InputImage.fromBitmap(bitmap, 0))
     }
 
     private suspend fun recognizeUriLayout(context: Context, uri: Uri): String {
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        return recognizeImageLayout(InputImage.fromFilePath(context, uri))
+    }
+
+    private suspend fun recognizeImageLayout(image: InputImage): String {
+        val latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val devanagari = TextRecognition.getClient(DevanagariTextRecognizerOptions.Builder().build())
         return try {
-            layoutText(recognizer.process(InputImage.fromFilePath(context, uri)).await())
+            val results = listOf(
+                latin.process(image).await(),
+                devanagari.process(image).await(),
+            )
+            layoutText(results)
         } finally {
-            recognizer.close()
+            latin.close()
+            devanagari.close()
         }
     }
 
-    private fun layoutText(result: Text): String {
+    private fun layoutText(results: List<Text>): String {
         // Rebuild rows from OCR elements rather than ML Kit's paragraph lines. Indian
         // supermarket receipts are narrow tables; line-level OCR frequently joins a GST
         // cell to the next product or separates quantity/rate/amount into unrelated rows.
-        val lines = result.textBlocks.flatMap { block -> block.lines }
+        // Run Latin plus Devanagari recognition and merge boxes so Hindi/Marathi store
+        // names do not erase the numeric table that follows.
+        val lines = results.flatMap { result -> result.textBlocks.flatMap { block -> block.lines } }
             .flatMap { line -> line.elements }
             .mapNotNull { element ->
             val box = element.boundingBox ?: return@mapNotNull null
             LayoutText(element.text, box.left, box.centerY(), box.height())
+        }.distinctBy { item ->
+            "${item.text.normalizeOcrToken()}-${item.left / 8}-${item.centerY / 8}"
         }.sortedBy { it.centerY }
         val rows = mutableListOf<MutableList<LayoutText>>()
         lines.forEach { item ->
@@ -231,6 +241,8 @@ object FinancialDocumentImporter {
         }
         return rows.joinToString("\n") { row -> row.sortedBy { it.left }.joinToString(" ") { it.text } }
     }
+
+    private fun String.normalizeOcrToken(): String = lowercase(Locale.ENGLISH).replace(Regex("""[^\p{L}\p{N}]"""), "")
 
     suspend fun recognizeUri(context: Context, uri: Uri): String {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)

@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/badge/Kotlin-2.2-173B31?style=flat-square&logo=kotlin&logoColor=white" alt="Kotlin 2.2" />
     <img src="https://img.shields.io/badge/Jetpack-Compose-149A8B?style=flat-square&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
     <img src="https://img.shields.io/badge/Privacy-Local--first-D7FF3F?style=flat-square&labelColor=173B31" alt="Local-first privacy" />
-    <img src="https://img.shields.io/badge/Version-4.9.1-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.9.1" />
+    <img src="https://img.shields.io/badge/Version-4.9.2-D7FF3F?style=flat-square&labelColor=173B31" alt="Nudge version 4.9.2" />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-E38B42?style=flat-square" alt="MIT License" /></a>
   </p>
 </div>
@@ -30,15 +30,15 @@ Nudge is an Android-first product. This repository contains the mobile applicati
 | Local parsing | Layered financial-event classification, bundled bank/payment templates, heuristic fallbacks, merchant normalization, and confidence scoring |
 | Smart review | Confirm, correct, categorize, or reject uncertain captures; local rules remember merchant corrections and repeated rejection patterns |
 | Duplicate protection | Source IDs, message fingerprints, time/amount matching, and learned identities prevent rescanned messages from creating the same transaction again |
-| Manual entry | Haptic keypad, historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
+| Manual entry | Haptic keypad, swipeable historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
 | Shared expenses | Local friend list, equal/exact/percentage splits, flexible payer selection, outstanding balances, and one-tap settlement |
 | Recurring entries | Weekly, monthly, or yearly local schedules materialized on the next app launch without a cloud account |
 | Transaction timeline | Month navigation, search, type/shared/smart filters, editable entries, source-message access, and swipe-to-delete with undo |
 | Analytics | Monthly expense mix, category shares, and daily money-in/money-out rhythm |
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
 | Card scanning | On-device ML Kit recognition; the captured image is discarded and only limited card metadata is retained |
-| Smart import | Local CSV/TXT/PDF/image parsing for bank statements and common expense-app exports, share-sheet text/image intake, OCR fallback, review-before-save, and duplicate suppression |
-| Receipt intelligence | Multi-page CameraX/gallery capture, on-device OCR, Indian receipt-table parsing, product quantity/rate/value extraction, GST and printed-total reconciliation, and one-expense or itemized saving |
+| Smart import | Local CSV/TXT/PDF/image parsing for bank statements and common expense-app exports, share-sheet text/image intake, Latin + Devanagari OCR fallback, review-before-save, and duplicate suppression |
+| Receipt intelligence | Multi-page CameraX/gallery capture, Latin + Devanagari on-device OCR, Indian receipt-table parsing, product quantity/rate/value extraction, GST and printed-total reconciliation, and one-expense or itemized saving |
 | Categories | Built-in and custom categories with editable colors, 200 searchable icons, and user-defined emoji glyphs |
 | Local profile | Display name and profile image stored inside app-private storage |
 | Data ownership | Versioned JSON export/import including friends, splits, and recurring schedules; retention controls; complete local-data deletion |
@@ -259,8 +259,8 @@ For each public update:
 
 1. Increase both `versionCode` and `versionName` in `android/build.gradle.kts`. Android requires every installable update to have a higher `versionCode`.
 2. Build and verify the signed release APK.
-3. Create a public GitHub Release with the matching semantic tag, such as `v4.8.0`.
-4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.8.0.apk` to that release.
+3. Create a public GitHub Release with the matching semantic tag, such as `v4.9.2`.
+4. Attach `android/build/outputs/apk/github/release/Nudge-github-v4.9.2.apk` to that release.
 
 Nudge compares the release tag with its installed `versionName`. If the tag is newer, it downloads the attached release APK inside the app, verifies its package name, version, version code and signing certificate, then hands it to Android's secure package installer. Android may show one final system confirmation before replacing the existing app. If no APK is attached, Nudge falls back to the GitHub Release page.
 

@@ -36,8 +36,8 @@ android {
         applicationId = "com.nudge.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 16
-        versionName = "4.9.1"
+        versionCode = 17
+        versionName = "4.9.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { debugSymbolLevel = "SYMBOL_TABLE" }
@@ -146,8 +146,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.5.0")
 
-    // ML Kit — on-device card-number recognition
+    // ML Kit — on-device text recognition for card, receipt and document imports
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    implementation("com.google.mlkit:text-recognition-devanagari:16.0.1")
 
     // CameraX — embedded receipt camera preview
     val cameraXVersion = "1.6.1"

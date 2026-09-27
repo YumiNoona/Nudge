@@ -2,6 +2,7 @@ package com.nudge.android.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -15,12 +16,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.nudge.android.data.FriendEntity
 import com.nudge.android.data.RecurrenceDraft
 import com.nudge.android.data.SplitDraft
@@ -80,34 +84,234 @@ private fun ExtraChip(onClick: () -> Unit, icon: @Composable () -> Unit, label: 
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransactionDateDialog(initialEpoch: Long, onDismiss: () -> Unit, onSelect: (Long) -> Unit) {
-    val state = rememberDatePickerState(initialSelectedDateMillis = initialEpoch)
-    DatePickerDialog(
+    val seed = remember(initialEpoch) { Calendar.getInstance().apply { timeInMillis = initialEpoch } }
+    val today = remember { Calendar.getInstance() }
+    var visibleMonth by remember(initialEpoch) {
+        mutableStateOf(Calendar.getInstance().apply {
+            clear()
+            set(seed.get(Calendar.YEAR), seed.get(Calendar.MONTH), 1)
+        })
+    }
+    var selectedDay by remember(initialEpoch) { mutableIntStateOf(seed.get(Calendar.DAY_OF_MONTH)) }
+    var mode by remember { mutableStateOf(PickerMode.Day) }
+    val daysInMonth = visibleMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
+    val firstDayOffset = (visibleMonth.get(Calendar.DAY_OF_WEEK) + 5) % 7
+    val monthLabel = remember(visibleMonth.timeInMillis) {
+        SimpleDateFormat("MMM", Locale.getDefault()).format(visibleMonth.time)
+    }
+    val year = visibleMonth.get(Calendar.YEAR)
+    val yearPageStart = (year / 12) * 12
+    val shortYear = (year % 100).toString().padStart(2, '0')
+
+    fun shift(amount: Int) {
+        visibleMonth = (visibleMonth.clone() as Calendar).apply {
+            when (mode) {
+                PickerMode.Day -> add(Calendar.MONTH, amount)
+                PickerMode.Month -> add(Calendar.YEAR, amount)
+                PickerMode.Year -> add(Calendar.YEAR, amount * 12)
+            }
+        }
+        selectedDay = selectedDay.coerceAtMost(visibleMonth.getActualMaximum(Calendar.DAY_OF_MONTH))
+    }
+
+    fun jumpToToday() {
+        visibleMonth = Calendar.getInstance().apply {
+            clear()
+            set(today.get(Calendar.YEAR), today.get(Calendar.MONTH), 1)
+        }
+        selectedDay = today.get(Calendar.DAY_OF_MONTH)
+        mode = PickerMode.Day
+    }
+
+    Dialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = {
-                state.selectedDateMillis?.let { onSelect(mergePickedDate(it, initialEpoch)) }
-                onDismiss()
-            }) { Text("Choose") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     ) {
-        Box(Modifier.width(300.dp).height(405.dp)) {
-            DatePicker(
-                state = state,
-                modifier = Modifier.requiredWidth(360.dp).graphicsLayer {
-                    scaleX = .83f
-                    scaleY = .83f
-                    transformOrigin = TransformOrigin(0f, 0f)
-                },
-                title = { Text("Transaction date", Modifier.padding(start = 18.dp, top = 12.dp, bottom = 2.dp), fontSize = 15.sp) },
-                showModeToggle = false,
-            )
+        Surface(
+            modifier = Modifier.fillMaxWidth(.92f).widthIn(max = 350.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = DSBridge.surface(),
+            tonalElevation = 6.dp,
+            shadowElevation = 14.dp,
+            border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .10f)),
+        ) {
+            Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Transaction date", fontSize = 12.sp, fontFamily = MonoFamily, color = DSBridge.inkSoft())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { shift(-1) },
+                        modifier = Modifier.size(42.dp),
+                    ) { Lucide.ChevronLeft(size = 22.dp, color = DSBridge.inkSoft()) }
+                    Row(
+                        Modifier.weight(1f).height(52.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        DateHeaderPart(selectedDay.toString(), 52.dp, mode == PickerMode.Day) { jumpToToday() }
+                        DateHeaderPart(monthLabel, 78.dp, mode == PickerMode.Month) { mode = PickerMode.Month }
+                        DateHeaderPart(shortYear, 52.dp, mode == PickerMode.Year) { mode = PickerMode.Year }
+                    }
+                    IconButton(
+                        onClick = { shift(1) },
+                        modifier = Modifier.size(42.dp),
+                    ) { Lucide.ChevronRight(size = 22.dp, color = DSBridge.inkSoft()) }
+                }
+                var dragAmount by remember { mutableFloatStateOf(0f) }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(238.dp)
+                        .pointerInput(mode) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { dragAmount = 0f },
+                                onHorizontalDrag = { change, drag ->
+                                    dragAmount += drag
+                                    change.consume()
+                                },
+                                onDragEnd = {
+                                    when {
+                                        dragAmount > 42f -> shift(-1)
+                                        dragAmount < -42f -> shift(1)
+                                    }
+                                    dragAmount = 0f
+                                },
+                                onDragCancel = { dragAmount = 0f },
+                            )
+                        },
+                ) {
+                    when (mode) {
+                        PickerMode.Day -> Column(Modifier.height(238.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                listOf("M", "T", "W", "T", "F", "S", "S").forEach { label ->
+                                    Text(label, Modifier.width(38.dp), textAlign = TextAlign.Center, fontSize = 10.sp, fontFamily = MonoFamily, color = DSBridge.inkMute())
+                                }
+                            }
+                            (0 until 6).forEach { week ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    (0 until 7).forEach { dayOfWeek ->
+                                        val number = week * 7 + dayOfWeek - firstDayOffset + 1
+                                        val inMonth = number in 1..daysInMonth
+                                        val selected = inMonth && number == selectedDay
+                                        Surface(
+                                            onClick = { if (inMonth) selectedDay = number },
+                                            enabled = inMonth,
+                                            modifier = Modifier.size(37.dp),
+                                            shape = RoundedCornerShape(18.dp),
+                                            color = if (selected) DSBridge.accentBg() else Color.Transparent,
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    if (inMonth) number.toString() else "",
+                                                    fontSize = 14.sp,
+                                                    fontFamily = MonoFamily,
+                                                    color = if (selected) DSBridge.accent() else DSBridge.ink(),
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        PickerMode.Month -> Column(Modifier.height(238.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SimpleDateFormat("MMM", Locale.getDefault()).let { formatter ->
+                                (0 until 4).forEach { row ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        (0 until 3).forEach { column ->
+                                            val month = row * 3 + column
+                                            val selected = month == visibleMonth.get(Calendar.MONTH)
+                                            Surface(
+                                                onClick = {
+                                                    visibleMonth = (visibleMonth.clone() as Calendar).apply {
+                                                        set(Calendar.MONTH, month)
+                                                        selectedDay = selectedDay.coerceAtMost(getActualMaximum(Calendar.DAY_OF_MONTH))
+                                                    }
+                                                    mode = PickerMode.Day
+                                                },
+                                                modifier = Modifier.weight(1f).height(44.dp),
+                                                shape = RoundedCornerShape(16.dp),
+                                                color = if (selected) DSBridge.accentBg() else DSBridge.surfaceVariant(),
+                                            ) {
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    Text(formatter.format(Calendar.getInstance().apply { set(Calendar.MONTH, month) }.time), fontFamily = MonoFamily, fontSize = 14.sp, color = if (selected) DSBridge.accent() else DSBridge.ink())
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        PickerMode.Year -> Column(Modifier.height(238.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            (0 until 4).forEach { row ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    (0 until 3).forEach { column ->
+                                        val option = yearPageStart + row * 3 + column
+                                        val selected = option == year
+                                        Surface(
+                                            onClick = {
+                                                visibleMonth = (visibleMonth.clone() as Calendar).apply {
+                                                    set(Calendar.YEAR, option)
+                                                    selectedDay = selectedDay.coerceAtMost(getActualMaximum(Calendar.DAY_OF_MONTH))
+                                                }
+                                                mode = PickerMode.Month
+                                            },
+                                            modifier = Modifier.weight(1f).height(44.dp),
+                                            shape = RoundedCornerShape(16.dp),
+                                            color = if (selected) DSBridge.accentBg() else DSBridge.surfaceVariant(),
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(option.toString(), fontFamily = MonoFamily, fontSize = 14.sp, color = if (selected) DSBridge.accent() else DSBridge.ink())
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onDismiss, modifier = Modifier.height(42.dp)) { Text("Cancel", fontFamily = MonoFamily) }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            val picked = (visibleMonth.clone() as Calendar).apply { set(Calendar.DAY_OF_MONTH, selectedDay) }
+                            onSelect(mergePickedDate(picked.timeInMillis, initialEpoch))
+                            onDismiss()
+                        },
+                        modifier = Modifier.height(42.dp),
+                    ) { Text("Choose", fontFamily = MonoFamily, fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun DateHeaderPart(label: String, width: androidx.compose.ui.unit.Dp, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .width(width)
+            .height(48.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) DSBridge.surfaceVariant() else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            maxLines = 1,
+            textAlign = TextAlign.Center,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) DSBridge.accent() else DSBridge.ink(),
+            fontFamily = MonoFamily,
+        )
+    }
+}
+
+private enum class PickerMode { Day, Month, Year }
 
 @Composable
 fun RecurrenceDialog(current: RecurrenceDraft?, onDismiss: () -> Unit, onSelect: (RecurrenceDraft?) -> Unit) {
@@ -450,7 +654,7 @@ private fun formatFriendlyDate(epoch: Long): String {
 }
 
 private fun mergePickedDate(pickedUtcEpoch: Long, originalEpoch: Long): Long {
-    val picked = Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply { timeInMillis = pickedUtcEpoch }
+    val picked = Calendar.getInstance().apply { timeInMillis = pickedUtcEpoch }
     return Calendar.getInstance().apply {
         timeInMillis = originalEpoch
         set(Calendar.YEAR, picked.get(Calendar.YEAR))
