@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-play — Official Play refresh
+
+- Bring the Play Store build up to the latest calendar picker, receipt review, share-sheet import, and Latin + Devanagari on-device OCR improvements.
+- Add Google Play-managed in-app update prompts for the official Play edition, with a Play Store fallback from Settings.
+- Keep the GitHub APK updater limited to the GitHub distribution; the Play edition never downloads or installs APKs itself.
+
 ## 4.9.2 — Stable calendar and smarter OCR
 
 - Replace the transaction date header with compact `day month year` controls that use a short year label such as `26`.

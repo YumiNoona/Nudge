@@ -46,7 +46,7 @@ Nudge is an Android-first product. This repository contains the mobile applicati
 | Polish | Dark/light themes, JetBrains Mono typography, Lucide-style icons, semantic haptics, and Compose micro-interactions |
 | Reminders | Optional daily expense check-ins with rotating copy and Android notification-permission handling |
 | Guided start | A first-run seven-step coach-mark tour over the real Transactions and Analytics screens |
-| Distribution | Separate Google Play and GitHub builds: Play-managed delivery for the store and signed APK updates for GitHub users |
+| Distribution | Separate Google Play and GitHub builds: Play-managed delivery and in-app update prompts for the store, signed APK updates for GitHub users |
 | Support | An optional creator-tip screen; 100% goes to the creator and it unlocks no app content or benefit |
 
 ## Product flow
@@ -236,12 +236,14 @@ The production site is generated in `web/dist/`. In Vercel, set the project Root
 
 Nudge has two distribution flavors built from the same local-first codebase but intentionally uses different Android package IDs:
 
-- `play` (`com.veilafk.nudge`): no sideload/install permission; delivery and updates are managed by Google Play;
+- `play` (`com.veilafk.nudge`): no sideload/install permission; delivery, update prompts, and installs are managed by Google Play;
 - `github` (`com.nudge.android`): signed APK delivery with the existing GitHub Releases updater.
 
 The two editions can coexist on one device. Because Android treats their package IDs as different apps, Google Play cannot replace the GitHub edition and a GitHub APK cannot update the Play edition. Each distribution must keep its own package ID and signing lineage for every future update.
 
 Both builds include the optional **Tip the creator** screen. A tip is a direct peer-to-peer contribution, unlocks nothing, and is never required to use Nudge.
+
+The official Play edition uses Google Play in-app updates. When Play has a newer approved production release for the installed package, Nudge can show Google's update prompt from inside the app or open its Play Store listing from **Settings → Check for updates**. The Play edition does not fetch GitHub releases or sideload APKs.
 
 Build the Play App Bundle:
 

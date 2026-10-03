@@ -36,7 +36,7 @@ android {
         applicationId = "com.nudge.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
+        versionCode = 18
         versionName = "4.9.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -52,7 +52,7 @@ android {
         create("play") {
             dimension = "distribution"
             applicationId = "com.veilafk.nudge"
-            versionName = "1.0.0"
+            versionName = "2.0.0"
             buildConfigField("String", "DISTRIBUTION", "\"play\"")
         }
     }
@@ -137,6 +137,9 @@ dependencies {
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Google Play-managed in-app updates for the official Play distribution
+    implementation("com.google.android.play:app-update:2.1.0")
 
     // Home-screen widget
     implementation("androidx.glance:glance-appwidget:1.1.1")

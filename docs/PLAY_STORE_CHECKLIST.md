@@ -6,7 +6,8 @@ This is the operational checklist for the first Google Play release of `com.veil
 
 - [x] Google Play package name is `com.veilafk.nudge`.
 - [x] The GitHub distribution keeps `com.nudge.android` so existing sideloaded installations remain update-compatible.
-- [x] First public Play candidate uses `versionName 1.0.0` and `versionCode 16`.
+- [x] First public Play candidate used `versionName 1.0.0` and `versionCode 16`.
+- [x] Next official Play update uses `versionName 2.0.0` and `versionCode 18`.
 - [x] `compileSdk` and `targetSdk` are API 36.
 - [x] Minimum Android version remains API 26 / Android 8.0.
 - [x] Play and GitHub are separate Gradle product flavors.

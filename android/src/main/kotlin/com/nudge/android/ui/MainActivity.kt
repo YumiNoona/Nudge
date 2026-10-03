@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -44,6 +46,10 @@ import com.nudge.android.update.GitHubRelease
 import com.nudge.android.update.GitHubUpdateChecker
 import com.nudge.android.update.UpdateCheckResult
 import com.nudge.android.update.InAppUpdateInstaller
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.UpdateAvailability
 
 class MainActivity : ComponentActivity() {
     private val pendingAction = MutableStateFlow(WidgetAction.NONE)
@@ -67,9 +73,18 @@ class MainActivity : ComponentActivity() {
             var updateProgress by remember { mutableStateOf<Float?>(null) }
             var pendingInstallPermission by remember { mutableStateOf<GitHubRelease?>(null) }
             var queuedUpdate by remember { mutableStateOf<GitHubRelease?>(null) }
+            val playUpdateManager = remember { AppUpdateManagerFactory.create(this@MainActivity) }
             val scope = rememberCoroutineScope()
             val widgetAction by pendingAction.collectAsState()
             val sharedFinancialImport by pendingFinancialImport.collectAsState()
+            val playUpdateLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+                updateStatus = if (result.resultCode == Activity.RESULT_OK) {
+                    "Installing update from Google Play"
+                } else {
+                    "Google Play update was not completed"
+                }
+                checkingUpdates = false
+            }
             val installPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
                 val release = pendingInstallPermission
                 pendingInstallPermission = null
@@ -80,15 +95,48 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            fun openPlayStore() {
+                val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+                val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
+                runCatching { startActivity(market) }.getOrElse { startActivity(web) }
+            }
+
             fun checkForUpdates(manual: Boolean) {
                 if (checkingUpdates) return
                 if (BuildConfig.DISTRIBUTION == "play") {
-                    updateStatus = "Managed by Google Play"
-                    if (manual) {
-                        val market = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
-                        val web = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName"))
-                        runCatching { startActivity(market) }.getOrElse { startActivity(web) }
-                    }
+                    checkingUpdates = true
+                    updateStatus = "Checking Google Play…"
+                    playUpdateManager.appUpdateInfo
+                        .addOnSuccessListener { info ->
+                            val canUpdate = info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
+                                info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)
+                            if (canUpdate) {
+                                updateStatus = "Update available on Google Play"
+                                runCatching {
+                                    playUpdateManager.startUpdateFlowForResult(
+                                        info,
+                                        playUpdateLauncher,
+                                        AppUpdateOptions.newBuilder(AppUpdateType.IMMEDIATE).build(),
+                                    )
+                                }.onFailure {
+                                    checkingUpdates = false
+                                    updateStatus = "Open Google Play to update"
+                                    if (manual) openPlayStore()
+                                }
+                            } else {
+                                checkingUpdates = false
+                                updateStatus = "Version ${BuildConfig.VERSION_NAME} · Google Play"
+                                if (manual) {
+                                    Toast.makeText(this@MainActivity, "Google Play will show an update when it is available", Toast.LENGTH_LONG).show()
+                                    openPlayStore()
+                                }
+                            }
+                        }
+                        .addOnFailureListener {
+                            checkingUpdates = false
+                            updateStatus = "Version ${BuildConfig.VERSION_NAME} · Google Play"
+                            if (manual) openPlayStore()
+                        }
                     return
                 }
                 checkingUpdates = true
@@ -113,7 +161,7 @@ class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(onboardingDone, permissionsDone, tourDone) {
-                if (BuildConfig.DISTRIBUTION == "github" && onboardingDone && permissionsDone && tourDone) {
+                if (BuildConfig.DISTRIBUTION in setOf("github", "play") && onboardingDone && permissionsDone && tourDone) {
                     val lastCheck = prefs.getLong("last_update_check_epoch", 0L)
                     if (System.currentTimeMillis() - lastCheck >= 24L * 60L * 60L * 1_000L) {
                         prefs.edit().putLong("last_update_check_epoch", System.currentTimeMillis()).apply()
