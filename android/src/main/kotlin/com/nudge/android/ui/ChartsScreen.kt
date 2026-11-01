@@ -26,6 +26,9 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.CategoryEntity
@@ -114,13 +117,20 @@ fun ChartsScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 CategoryAnalyticsCard(categorySpending, spent)
-                DailyCashFlowCard(dailyExpense, dailyIncome, spent, income, spendDelta)
-
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                    InsightCard("AVG / DAY", formatCents(spent / daysForAverage), "daily pace", DS.Warning, Modifier.weight(1f))
-                    InsightCard("LARGEST", formatCents(largestExpense?.amountCents ?: 0), largestExpense?.merchantRaw ?: "no expense", DS.Negative, Modifier.weight(1f))
-                    InsightCard("ENTRIES", monthTransactions.size.toString(), "this month", DS.Positive, Modifier.weight(1f))
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = DSBridge.surface(),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .10f)),
+                ) {
+                    Column(Modifier.padding(horizontal = 18.dp, vertical = 4.dp)) {
+                        InsightCard("Daily average", formatCents(spent / daysForAverage), "Spending per day", DS.Warning)
+                        HorizontalDivider(color = DSBridge.inkMute().copy(alpha = .10f))
+                        InsightCard("Largest expense", formatCents(largestExpense?.amountCents ?: 0), largestExpense?.merchantRaw ?: "No expenses yet", DS.Negative)
+                        HorizontalDivider(color = DSBridge.inkMute().copy(alpha = .10f))
+                        InsightCard("Transactions", monthTransactions.size.toString(), "Recorded this month", DS.Positive)
+                    }
                 }
+                DailyCashFlowCard(dailyExpense, dailyIncome, spent, income, spendDelta)
                 Spacer(Modifier.height(112.dp))
             }
         }
@@ -150,9 +160,9 @@ private fun AnalyticsHeader(
             border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .13f)),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(36.dp)) { Lucide.ChevronLeft(size = 17.dp, color = DSBridge.inkSoft()) }
+                IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp).semantics { contentDescription = "Previous month" }) { Lucide.ChevronLeft(size = 17.dp, color = DSBridge.inkSoft()) }
                 Text(monthLabel, style = DSTypography.labelMedium, color = DSBridge.ink(), maxLines = 1)
-                IconButton(onClick = onNext, modifier = Modifier.size(36.dp)) { Lucide.ChevronRight(size = 17.dp, color = DSBridge.inkSoft()) }
+                IconButton(onClick = onNext, modifier = Modifier.size(40.dp).semantics { contentDescription = "Next month" }) { Lucide.ChevronRight(size = 17.dp, color = DSBridge.inkSoft()) }
             }
         }
     }
@@ -262,7 +272,8 @@ private fun DailyCashFlowCard(
                 }
             }
             Spacer(Modifier.height(12.dp))
-            CashFlowLineChart(expense, income, Modifier.fillMaxWidth().height(188.dp))
+            val hasFlow = expense.values.any { it > 0 } || income.values.any { it > 0 }
+            CashFlowLineChart(expense, income, Modifier.fillMaxWidth().height(if (hasFlow) 156.dp else 86.dp))
         }
     }
 }
@@ -278,19 +289,15 @@ private fun ChartLegend(label: String, color: Color) {
 
 @Composable
 private fun InsightCard(label: String, value: String, subtext: String, color: Color, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        color = DSBridge.surface(),
-        border = androidx.compose.foundation.BorderStroke(1.dp, DSBridge.inkMute().copy(alpha = .10f)),
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Box(Modifier.size(7.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.height(9.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = DSBridge.inkSoft(), maxLines = 1)
-            Text(value, fontFamily = MonoFamily, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = DSBridge.ink(), maxLines = 1)
-            Text(subtext, fontSize = 10.sp, color = DSBridge.inkMute(), maxLines = 1)
+    Row(modifier.fillMaxWidth().padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(3.dp).height(26.dp).clip(CircleShape).background(color.copy(alpha = .75f)))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, fontFamily = MonoFamily, fontSize = 12.sp, color = DSBridge.ink())
+            Text(subtext, fontFamily = MonoFamily, fontSize = 10.sp, color = DSBridge.inkMute(), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+        Spacer(Modifier.width(12.dp))
+        Text(value, fontFamily = MonoFamily, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = DSBridge.ink(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 150.dp))
     }
 }
 

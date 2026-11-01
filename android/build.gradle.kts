@@ -69,6 +69,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            // Optional isolated install for README captures; never touches a user's app data.
+            if (project.hasProperty("captureScreenshots")) applicationIdSuffix = ".screenshots"
+        }
         release {
             isMinifyEnabled = true
             signingConfig = signingConfigs.getByName("release")
@@ -167,6 +171,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.5.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

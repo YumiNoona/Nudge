@@ -1,6 +1,7 @@
 package com.nudge.android.ui.theme
 
 import android.app.Activity
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -11,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -71,6 +73,14 @@ fun NudgeTheme(
         SideEffect {
             (view.context as? Activity)?.window?.let {
                 WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = !isDark
+                WindowCompat.getInsetsController(it, view).isAppearanceLightNavigationBars = !isDark
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    it.isNavigationBarContrastEnforced = false
+                }
+                if (Build.VERSION.SDK_INT < 35) {
+                    @Suppress("DEPRECATION")
+                    it.navigationBarColor = scheme.background.toArgb()
+                }
             }
         }
     }

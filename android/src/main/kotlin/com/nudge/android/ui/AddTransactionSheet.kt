@@ -35,13 +35,13 @@ import com.nudge.android.data.FriendEntity
 import com.nudge.android.data.RecurrenceDraft
 import com.nudge.android.data.SplitDraft
 import com.nudge.android.ui.components.KeypadGrid
+import com.nudge.android.ui.components.AnimatedAmountInput
 import com.nudge.android.ui.components.applyKeypadInput
 import com.nudge.android.ui.components.ScrollableChipRow
 import com.nudge.android.ui.theme.DSBridge
 import com.nudge.android.ui.theme.DSSpace
 import com.nudge.android.ui.theme.DSTypography
 import com.nudge.android.ui.theme.Lucide
-import com.nudge.android.ui.theme.MonoFamily
 import com.nudge.android.ui.theme.CategoryGlyph
 import com.nudge.android.ui.theme.NudgeHaptics
 import androidx.compose.ui.platform.LocalContext
@@ -277,14 +277,7 @@ private fun AddTransactionSheetContent(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("₹", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DSBridge.accent())
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (amountStr.isEmpty()) "0" else amountStr,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = MonoFamily,
-                color = if (amountStr.isEmpty()) DSBridge.inkMute() else DSBridge.ink(),
-                modifier = Modifier.weight(1f)
-            )
+            AnimatedAmountInput(value = amountStr, modifier = Modifier.weight(1f))
             Surface(
                 onClick = onScanReceipt,
                 modifier = Modifier.size(42.dp),

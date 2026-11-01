@@ -39,6 +39,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nudge.android.data.AccountEntity
@@ -490,65 +492,55 @@ private fun MonthSummary(
         Modifier.fillMaxWidth().padding(horizontal = 18.dp).tourTarget(TourTarget.MonthSummary),
         style = NudgeHeroStyle.CashFlow,
     ) {
-        Column(Modifier.padding(horizontal = 18.dp, vertical = 17.dp)) {
+        Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("NET CASH FLOW", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.1.sp, color = Color.White.copy(alpha = .66f))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onPrevious, modifier = Modifier.size(24.dp)) {
-                            Lucide.ChevronLeft(size = 14.dp, color = Color.White.copy(alpha = .72f))
-                        }
-                        Text(monthLabel, fontSize = 13.sp, color = Color.White.copy(alpha = .88f), maxLines = 1)
-                        IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(24.dp)) {
-                            Lucide.ChevronRight(size = 14.dp, color = Color.White.copy(alpha = if (canGoNext) .72f else .22f))
-                        }
-                    }
+                Text("MONTHLY BALANCE", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = Color.White.copy(alpha = .60f), modifier = Modifier.weight(1f))
+                Text("$count entries", fontSize = 10.sp, color = Color.White.copy(alpha = .48f))
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp).semantics { contentDescription = "Previous month" }) {
+                    Lucide.ChevronLeft(size = 17.dp, color = Color.White.copy(alpha = .7f))
                 }
-                Surface(shape = RoundedCornerShape(9.dp), color = if (delta <= 0) DS.Positive.copy(alpha = .10f) else DS.Negative.copy(alpha = .10f)) {
-                    Text(
-                        if (delta == 0) "STEADY" else "${kotlin.math.abs(delta)}% ${if (delta > 0) "MORE" else "LESS"} SPENT",
-                        fontFamily = MonoFamily,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (delta <= 0) DS.Positive else DS.Negative,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                    )
+                Text(monthLabel, fontSize = 13.sp, color = Color.White.copy(alpha = .88f), maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f))
+                IconButton(onClick = onNext, enabled = canGoNext, modifier = Modifier.size(40.dp).semantics { contentDescription = "Next month" }) {
+                    Lucide.ChevronRight(size = 17.dp, color = Color.White.copy(alpha = if (canGoNext) .7f else .22f))
                 }
             }
-            Spacer(Modifier.height(9.dp))
+            Spacer(Modifier.height(4.dp))
             AnimatedContent(netFlow, label = "monthFlow") { value ->
                 Text(
                     "${if (value < 0) "−" else ""}$currency${formatCompactCentsPlain(kotlin.math.abs(value))}",
                     fontFamily = MonoFamily,
-                    fontSize = 29.sp,
+                    fontSize = 34.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = if (value < 0) DS.Negative else Color.White,
                 )
             }
             Text(
-                if (netFlow < 0) "expenses exceeded money in · $count entries" else "money retained · $count entries",
-                color = Color.White.copy(alpha = .65f),
+                if (netFlow < 0) "Spent beyond income" else "Left after spending",
+                color = Color.White.copy(alpha = .56f),
                 fontSize = 11.sp,
             )
-            Spacer(Modifier.height(13.dp))
+            Spacer(Modifier.height(18.dp))
+            HorizontalDivider(color = Color.White.copy(alpha = .10f))
+            Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SummaryPill("MONEY IN", "$currency${formatCompactCentsPlain(income)}", DS.Positive, Modifier.weight(1f), onDark = true)
-                SummaryPill("SPENT", "$currency${formatCompactCentsPlain(spent)}", DS.Negative, Modifier.weight(1f), onDark = true)
-                SummaryPill("REFUNDS", "$currency${formatCompactCentsPlain(refunds)}", DS.Warning, Modifier.weight(1f), onDark = true)
+                SummaryPill("Income", "$currency${formatCompactCentsPlain(income)}", DS.Positive, Modifier.weight(1f), onDark = true)
+                SummaryPill("Spent", "$currency${formatCompactCentsPlain(spent)}", DS.Negative, Modifier.weight(1f), onDark = true)
+                SummaryPill("Refunds", "$currency${formatCompactCentsPlain(refunds)}", DS.Warning, Modifier.weight(1f), onDark = true)
             }
         }
     }
 }
 
 @Composable private fun SummaryPill(label: String, value: String, color: Color, modifier: Modifier = Modifier, onDark: Boolean = false) {
-    Column(modifier.clip(RoundedCornerShape(12.dp)).background(color.copy(alpha = .08f)).padding(horizontal = 9.dp, vertical = 9.dp)) {
+    Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(6.dp).clip(CircleShape).background(color))
-            Spacer(Modifier.width(5.dp))
-            Text(label, fontFamily = MonoFamily, fontSize = 9.sp, color = if (onDark) Color.White.copy(alpha = .64f) else DSBridge.inkMute(), maxLines = 1)
+            Text(label, fontFamily = MonoFamily, fontSize = 10.sp, color = if (onDark) Color.White.copy(alpha = .56f) else DSBridge.inkMute(), maxLines = 1)
         }
         Spacer(Modifier.height(4.dp))
-        Text(value, fontFamily = MonoFamily, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (onDark) Color.White else DSBridge.ink(), maxLines = 1)
+        Text(value, fontFamily = MonoFamily, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

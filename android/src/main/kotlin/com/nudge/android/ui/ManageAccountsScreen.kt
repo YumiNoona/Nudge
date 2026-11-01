@@ -251,7 +251,7 @@ private fun AccountStackPreview(
                             .zIndex((2 - stackDepth).toFloat())
                             .shadow(12.dp, RoundedCornerShape(24.dp), spotColor = backTint.copy(alpha = .18f))
                             .clip(RoundedCornerShape(24.dp))
-                            .background(Brush.linearGradient(listOf(backTint.copy(alpha = .82f), DS.AccentDeep)))
+                            .background(Brush.linearGradient(listOf(backTint.copy(alpha = 1f), DS.AccentDeep)))
                             .padding(19.dp),
                     ) {
                         AccountCardContent(backAccount, balanceFor(backAccount.id), compact = true)
@@ -270,7 +270,7 @@ private fun AccountStackPreview(
                         }
                         .shadow(18.dp, RoundedCornerShape(24.dp), spotColor = tint.copy(alpha = .26f))
                         .clip(RoundedCornerShape(24.dp))
-                        .background(Brush.linearGradient(listOf(tint.copy(alpha = .96f), DS.AccentDeep)))
+                        .background(Brush.linearGradient(listOf(tint.copy(alpha = 1f), DS.AccentDeep)))
                         .clickable { onOpen(account) }
                         .padding(19.dp),
                 ) {

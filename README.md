@@ -22,6 +22,27 @@ Nudge is a personal expense manager built around one idea: routine transaction l
 
 Nudge is an Android-first product. This repository contains the mobile application, its shared Kotlin parsing module, and the static public landing page in `web/`. The website is isolated from Gradle and has no access to app data; Nudge has no web dashboard, account service, or financial-data relay.
 
+## Inside the app
+
+Real emulator captures in dark mode, using fictional merchants, accounts, and transactions. No personal financial data is shown.
+
+<table>
+  <tr>
+    <th>Transactions</th>
+    <th>Analytics</th>
+    <th>Accounts</th>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/transactions-dark.png" alt="Dark-mode transaction timeline with a monthly balance, income, spending, refunds, and named sample merchants" width="260" /></td>
+    <td><img src="docs/screenshots/analytics-dark.png" alt="Dark-mode analytics with expense categories, daily average, largest expense, and transaction count" width="260" /></td>
+    <td><img src="docs/screenshots/accounts-dark.png" alt="Dark-mode accounts showing fictional bank, card, and cash accounts" width="260" /></td>
+  </tr>
+</table>
+
+The balance card keeps monthly totals together without nested tiles. Analytics groups daily average, largest expense, and transaction count into a compact panel. Manual entry includes animated digits and keypad haptics.
+
+See [screenshot capture instructions](docs/screenshots/README.md) to reproduce these images with the isolated demo install.
+
 ## Highlights
 
 | Area | What Nudge provides |
@@ -30,7 +51,7 @@ Nudge is an Android-first product. This repository contains the mobile applicati
 | Local parsing | Layered financial-event classification, bundled bank/payment templates, heuristic fallbacks, merchant normalization, and confidence scoring |
 | Smart review | Confirm, correct, categorize, or reject uncertain captures; local rules remember merchant corrections and repeated rejection patterns |
 | Duplicate protection | Source IDs, message fingerprints, time/amount matching, and learned identities prevent rescanned messages from creating the same transaction again |
-| Manual entry | Haptic keypad, swipeable historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
+| Manual entry | Animated digit entry with reverse motion on backspace, haptic keypad, swipeable historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
 | Shared expenses | Local friend list, equal/exact/percentage splits, flexible payer selection, outstanding balances, and one-tap settlement |
 | Recurring entries | Weekly, monthly, or yearly local schedules materialized on the next app launch without a cloud account |
 | Transaction timeline | Month navigation, search, type/shared/smart filters, editable entries, source-message access, and swipe-to-delete with undo |

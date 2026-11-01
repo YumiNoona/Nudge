@@ -81,6 +81,9 @@ reports/
 .cache/
 tmp/
 temp/
+# Generated trailer renders are local media, not Android/app source.
+/marketing/trailer/frames/
+/marketing/trailer/nudge-trailer-frame.html
 *.tmp
 
 # Local release staging, signing workspaces, and profiling output

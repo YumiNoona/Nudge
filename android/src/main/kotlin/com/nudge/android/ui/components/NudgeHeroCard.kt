@@ -26,18 +26,18 @@ fun NudgeHeroCard(
     style: NudgeHeroStyle,
     content: @Composable BoxScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(28.dp)
+    val shape = RoundedCornerShape(24.dp)
     val accent = DSBridge.accent()
     val surface = DSBridge.surface()
     val ink = DSBridge.ink()
     val background = when (style) {
         NudgeHeroStyle.CashFlow -> Brush.linearGradient(
-            listOf(Color(0xFF0D241C), Color(0xFF214638), Color(0xFF102B21)),
+            listOf(Color(0xFF142E25), Color(0xFF19372D), Color(0xFF142E25)),
             start = Offset.Zero,
             end = Offset(1_050f, 760f),
         )
         NudgeHeroStyle.Analytics -> Brush.linearGradient(
-            listOf(surface, DSBridge.accentBg(), surface),
+            listOf(surface, surface, surface),
             start = Offset.Zero,
             end = Offset(980f, 720f),
         )
@@ -46,7 +46,7 @@ fun NudgeHeroCard(
     Box(
         modifier = modifier
             .shadow(
-                elevation = if (style == NudgeHeroStyle.CashFlow) 22.dp else 16.dp,
+                elevation = 0.dp,
                 shape = shape,
                 ambientColor = Color.Black.copy(alpha = .22f),
                 spotColor = accent.copy(alpha = if (style == NudgeHeroStyle.CashFlow) .32f else .20f),
@@ -57,9 +57,9 @@ fun NudgeHeroCard(
                 width = 1.dp,
                 brush = Brush.linearGradient(
                     if (style == NudgeHeroStyle.CashFlow) {
-                        listOf(Color.White.copy(alpha = .20f), accent.copy(alpha = .48f), Color.White.copy(alpha = .08f))
+                        listOf(Color.White.copy(alpha = .10f), Color.White.copy(alpha = .05f))
                     } else {
-                        listOf(accent.copy(alpha = .48f), ink.copy(alpha = .08f), accent.copy(alpha = .18f))
+                        listOf(ink.copy(alpha = .08f), ink.copy(alpha = .08f))
                     },
                 ),
                 shape = shape,
@@ -70,7 +70,7 @@ fun NudgeHeroCard(
                 repeat(7) { index ->
                     val shift = index * 52.dp.toPx()
                     drawLine(
-                        color = Color.White.copy(alpha = .025f),
+                        color = Color.Transparent,
                         start = Offset(size.width * .48f + shift, 0f),
                         end = Offset(size.width * .10f + shift, size.height),
                         strokeWidth = 1.dp.toPx(),
@@ -78,7 +78,7 @@ fun NudgeHeroCard(
                 }
                 drawCircle(
                     brush = Brush.radialGradient(
-                        listOf(accent.copy(alpha = .20f), Color.Transparent),
+                        listOf(accent.copy(alpha = .035f), Color.Transparent),
                         center = Offset(size.width * .86f, size.height * .04f),
                         radius = size.minDimension * .62f,
                     ),
@@ -89,7 +89,7 @@ fun NudgeHeroCard(
                 repeat(4) { index ->
                     val x = size.width * (.72f + index * .075f)
                     drawLine(
-                        color = accent.copy(alpha = .045f),
+                        color = Color.Transparent,
                         start = Offset(x, 0f),
                         end = Offset(x - size.height * .45f, size.height),
                         strokeWidth = 1.dp.toPx(),
