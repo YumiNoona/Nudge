@@ -1,0 +1,10 @@
+Nudge 3.0 makes everyday tracking clearer and more reliable.
+
+- Smarter transaction and account detection.
+- Better duplicate checks with linked SMS and notification details.
+- Clear reasons when a transaction needs review, with editable fields.
+- Improved receipt items, refunds and statement imports.
+- Refined dashboard, analytics and animated amount entry.
+- Private capture diagnostics and learned-rule controls.
+
+Your existing entries stay in place. Updates are managed by Google Play.

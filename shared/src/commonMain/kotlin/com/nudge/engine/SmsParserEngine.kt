@@ -55,7 +55,10 @@ data class ParsedTransaction(
     val confidenceScore: Float,
     val accountHint: String? = null,
     val timestampHint: String? = null, // extracted date string from message
-    val matchedRuleId: String? = null
+    val matchedRuleId: String? = null,
+    val amountConfidence: Float = confidenceScore,
+    val directionConfidence: Float = confidenceScore,
+    val merchantConfidence: Float = confidenceScore,
 )
 
 data class FuzzyMatchResult(

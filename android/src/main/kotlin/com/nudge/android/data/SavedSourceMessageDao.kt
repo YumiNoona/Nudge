@@ -23,6 +23,15 @@ interface SavedSourceMessageDao {
     @Query("SELECT * FROM saved_source_messages WHERE original_message_uri = :uri LIMIT 1")
     suspend fun getByOriginalMessageUri(uri: String): SavedSourceMessageEntity?
 
+    @Query("SELECT * FROM saved_source_messages WHERE fingerprint = :fingerprint LIMIT 1")
+    suspend fun getByFingerprint(fingerprint: String): SavedSourceMessageEntity?
+
+    @Query("SELECT * FROM saved_source_messages WHERE transaction_id = :id ORDER BY captured_at DESC")
+    suspend fun getAllByTransaction(id: String): List<SavedSourceMessageEntity>
+
+    @Query("SELECT DISTINCT t.* FROM transactions t JOIN saved_source_messages s ON s.transaction_id = t.id WHERE s.reference_hash = :hash")
+    suspend fun getTransactionsByReference(hash: String): List<TransactionEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(source: SavedSourceMessageEntity)
 

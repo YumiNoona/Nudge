@@ -75,6 +75,10 @@ fun ExpenseSettingsScreen(
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE) }
     var saveMessages by remember { mutableStateOf(prefs.getBoolean("save_transaction_messages", false)) }
+    var showCaptureHealth by remember { mutableStateOf(false) }
+    var showCaptureRules by remember { mutableStateOf(false) }
+    if (showCaptureHealth) CaptureHealthDialog(captureEnabled, smsGranted, notificationEnabled) { showCaptureHealth = false }
+    if (showCaptureRules) CaptureRulesDialog { showCaptureRules = false }
     var hideWidgetAmounts by remember { mutableStateOf(prefs.getBoolean("hide_widget_amounts", false)) }
     var remindersEnabled by remember { mutableStateOf(prefs.getBoolean(ExpenseReminderWorker.PREF_ENABLED, false)) }
     val scope = rememberCoroutineScope()
@@ -222,6 +226,11 @@ fun ExpenseSettingsScreen(
                 }
             }
 
+            SettingsGroup {
+                SettingsRow({ m, c, s, sw -> Lucide.Info(m, c, s, sw) }, "Capture health", "Connection status & recent activity", true) { showCaptureHealth = true }
+                HorizontalDivider(color = DSBridge.background())
+                SettingsRow({ m, c, s, sw -> Lucide.Tag(m, c, s, sw) }, "Learned rules", "Edit or forget merchant corrections", true) { showCaptureRules = true }
+            }
             Text("MESSAGE SAVING", fontFamily = MonoFamily, fontSize = 10.sp, letterSpacing = 1.sp, color = DSBridge.inkSoft(), modifier = Modifier.padding(top = 12.dp))
             SettingsGroup {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {

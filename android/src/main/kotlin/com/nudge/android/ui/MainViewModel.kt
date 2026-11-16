@@ -1,6 +1,7 @@
 package com.nudge.android.ui
 
 import android.app.Application
+import android.content.Context
 import android.content.ContentUris
 import android.net.Uri
 import android.provider.Telephony
@@ -308,15 +309,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val categorizer = DefaultCategorizationEngine()
             var imported = 0
             var skipped = 0
+            val consumedMatches = hashSetOf<String>()
             drafts.forEach { draft ->
                 val normalized = MerchantNormalizer.normalize(draft.merchant).normalized
-                val duplicate = existing.any { transaction ->
-                    transaction.amountCents == draft.amountCents &&
+                val duplicate = existing.firstOrNull { transaction ->
+                    transaction.id !in consumedMatches && transaction.accountId == accountId && transaction.currency == "INR" &&
+                        transaction.amountCents == draft.amountCents &&
                         transaction.type == draft.type.name.lowercase() &&
-                        kotlin.math.abs(transaction.timestampEpoch - draft.timestampEpoch) < 36L * 60L * 60L * 1_000L &&
+                        transaction.timestampEpoch == draft.timestampEpoch &&
                         MerchantNormalizer.normalize(transaction.merchantRaw).normalized.equals(normalized, ignoreCase = true)
                 }
-                if (duplicate) {
+                if (duplicate != null) {
+                    consumedMatches += duplicate.id
                     skipped++
                     return@forEach
                 }
@@ -345,7 +349,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     timestampEpoch = draft.timestampEpoch,
                 )
                 db.transactionDao().insert(transaction)
-                existing += transaction
                 imported++
             }
             refreshWidget()
@@ -735,12 +738,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             .filter { !it.isReviewed && it.id != transaction.id && it.type == transaction.type }
             .filter { CaptureLearning.sameMerchant(it.merchantNormalized ?: it.merchantRaw, merchant) }
             .forEach { pending ->
+                val source = db.savedSourceMessageDao().getByTransaction(pending.id)
+                val assessment = CaptureAssessment.fromJson(source?.assessmentJson)?.copy(category = .98f, merchant = .98f)
+                if (source != null && assessment != null) db.savedSourceMessageDao().upsert(source.copy(assessmentJson = assessment.toJson()))
                 db.transactionDao().update(
                     pending.copy(
                         merchantNormalized = merchant,
                         categoryId = categoryId,
-                        confidenceScore = maxOf(pending.confidenceScore, .96f),
-                        isReviewed = true,
+                        confidenceScore = assessment?.overall ?: pending.confidenceScore,
+                        isReviewed = assessment?.let { !it.needsReview } ?: false,
                         updatedAt = System.currentTimeMillis(),
                     ),
                 )
@@ -956,6 +962,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Room clears every current table in dependency-safe order and checkpoints the WAL.
             // This is both faster and less error-prone than maintaining a manual SQL list.
             db.clearAllTables()
+            getApplication<Application>().getSharedPreferences("nudge_prefs", Context.MODE_PRIVATE)
+                .edit().remove(CaptureDiagnostics.KEY).apply()
             // Clearing user data must leave the app usable in the same session. Recreate the
             // built-in expense/income categories and selectable accounts immediately.
             DefaultsSeeder.seedIfEmpty(db)

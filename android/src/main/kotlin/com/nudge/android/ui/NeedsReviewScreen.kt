@@ -4,6 +4,11 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -48,6 +53,9 @@ fun NeedsReviewSwipeScreen(
     onCreateCategory: (transactionId: String, name: String, type: CategoryType, icon: String?, color: String?) -> Unit,
     decryptSource: (SavedSourceMessageEntity?) -> String?,
     onDismiss: (transactionId: String) -> Unit,
+    onCorrect: (TransactionEntity) -> Unit,
+    onRemoveDuplicate: (String) -> Unit,
+    allTransactions: List<TransactionEntity>,
     onBack: () -> Unit
 ) {
     val queue = remember { mutableStateListOf<TransactionEntity>().apply { addAll(transactions) } }
@@ -60,6 +68,8 @@ fun NeedsReviewSwipeScreen(
     var showCategoryPicker by remember { mutableStateOf(false) }
     var showCreateCategory by remember { mutableStateOf(false) }
     var showSource by remember { mutableStateOf(false) }
+    var showCorrection by remember { mutableStateOf(false) }
+    var showComparison by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val haptics = remember(context) { NudgeHaptics(context) }
@@ -230,7 +240,14 @@ fun NeedsReviewSwipeScreen(
                         color = DSBridge.inkMute(),
                         textAlign = TextAlign.Center
                     )
-                    if (transaction.confidenceScore < .7f) {
+                    val evidence = sources.filter { it.transactionId == transaction.id }
+                    val assessment = evidence.firstNotNullOfOrNull { CaptureAssessment.fromJson(it.assessmentJson) }
+                    if (assessment != null) {
+                        Spacer(Modifier.height(12.dp))
+                        assessment.reasons.forEach { reason -> Text(reason, color = DS.Warning, fontSize = 11.sp, textAlign = TextAlign.Center) }
+                        Text("${evidence.size} linked source${if (evidence.size == 1) "" else "s"}", color = DSBridge.inkMute(), fontSize = 10.sp)
+                        if (assessment.possibleDuplicateId != null) TextButton(onClick = { showComparison = true }) { Text("Compare payments") }
+                    } else if (transaction.confidenceScore < .7f) {
                         Spacer(Modifier.height(12.dp))
                         Surface(shape = RoundedCornerShape(50.dp), color = DSBridge.warningBg()) {
                             Text(
@@ -257,7 +274,8 @@ fun NeedsReviewSwipeScreen(
                         }
                     }
 
-                    Spacer(Modifier.height(24.dp))
+                    TextButton(onClick = { showCorrection = true }) { Text("Edit details", color = DSBridge.accent()) }
+                    Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(30.dp)) {
                         ReviewAction(
                             label = "Reject",
@@ -323,8 +341,65 @@ fun NeedsReviewSwipeScreen(
     }
 
     if (showSource) {
-        SourceMessageSheet(current, source, decryptSource(source), account, category, onDismiss = { showSource = false })
+        LinkedSourcesSheet(current, sources.filter { it.transactionId == current.id }, account, category, decryptSource, onDismiss = { showSource = false })
     }
+    if (showCorrection) ReviewCorrectionSheet(current, accounts, categories, onDismiss = { showCorrection = false }) { corrected ->
+        showCorrection = false
+        advance(true) { onCorrect(corrected) }
+    }
+    if (showComparison) {
+        val assessment = sources.filter { it.transactionId == current.id }.firstNotNullOfOrNull { CaptureAssessment.fromJson(it.assessmentJson) }
+        val other = allTransactions.firstOrNull { it.id == assessment?.possibleDuplicateId }
+        AlertDialog(onDismissRequest = { showComparison = false }, title = { Text("Compare payments") },
+            text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("New: ${current.merchantRaw} · ${formatCents(current.amountCents)}")
+                Text("${java.util.Date(current.timestampEpoch)} · ${account?.name.orEmpty()}", fontSize = 11.sp)
+                if (other != null) {
+                    Text("Existing: ${other.merchantRaw} · ${formatCents(other.amountCents)}")
+                    Text("${java.util.Date(other.timestampEpoch)} · ${accounts.firstOrNull { it.id == other.accountId }?.name.orEmpty()}", fontSize = 11.sp)
+                } else Text("The earlier entry is no longer available. Review this payment normally.")
+                Text("Repeated payments can be legitimate. Removing this entry will not teach Nudge to reject the merchant.", fontSize = 11.sp)
+            } },
+            confirmButton = { TextButton(onClick = { showComparison = false; showCorrection = true }) { Text("Keep & review") } },
+            dismissButton = { if (other != null) TextButton(onClick = { showComparison = false; advance(false) { onRemoveDuplicate(current.id) } }) { Text("Remove duplicate") } })
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReviewCorrectionSheet(transaction: TransactionEntity, accounts: List<AccountEntity>, categories: List<CategoryEntity>, onDismiss: () -> Unit, onSave: (TransactionEntity) -> Unit) {
+    var amount by remember(transaction.id) { mutableStateOf(java.math.BigDecimal.valueOf(transaction.amountCents, 2).toPlainString()) }
+    var merchant by remember(transaction.id) { mutableStateOf(transaction.merchantRaw) }
+    var accountId by remember(transaction.id) { mutableStateOf(transaction.accountId) }
+    var categoryId by remember(transaction.id) { mutableStateOf(transaction.categoryId) }
+    var type by remember(transaction.id) { mutableStateOf(transaction.type) }
+    var date by remember(transaction.id) { mutableLongStateOf(transaction.timestampEpoch) }
+    var showDate by remember { mutableStateOf(false) }
+    val cents = runCatching { amount.toBigDecimal().movePointRight(2).longValueExact() }.getOrNull()
+    val activeAccounts = accounts.filter { it.isActive && !it.isArchived }
+    val options = categories.filter { !it.isArchived && it.type == if (type == "credit") "income" else "expense" }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = DSBridge.surface()) {
+        Column(Modifier.fillMaxWidth().heightIn(max = 650.dp).verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Review details", style = DSTypography.titleLarge)
+            OutlinedTextField(amount, { amount = it }, label = { Text("Amount") }, prefix = { Text("₹") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(merchant, { merchant = it }, label = { Text("Merchant") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            TextButton(onClick = { showDate = true }) { Text(java.text.SimpleDateFormat("d MMM yyyy", Locale.getDefault()).format(java.util.Date(date))) }
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("debit" to "Expense", "credit" to "Income", "refund" to "Refund", "transfer" to "Transfer").forEach { (id, label) -> FilterChip(type == id, { type = id; categoryId = null }, label = { Text(label) }) }
+            }
+            Text("Account", style = DSTypography.labelMedium)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                activeAccounts.forEach { account -> FilterChip(accountId == account.id, { accountId = account.id }, label = { Text(account.name) }) }
+            }
+            Text("Category", style = DSTypography.labelMedium)
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                options.forEach { category -> FilterChip(categoryId == category.id, { categoryId = category.id }, label = { Text(category.name) }) }
+            }
+            Button(onClick = { onSave(transaction.copy(amountCents = cents!!, merchantRaw = merchant.trim(), merchantNormalized = merchant.trim(), accountId = accountId, categoryId = categoryId, type = type, timestampEpoch = date, isReviewed = true)) },
+                enabled = cents != null && cents > 0 && merchant.isNotBlank() && activeAccounts.any { it.id == accountId } && (type == "transfer" || options.any { it.id == categoryId }), modifier = Modifier.fillMaxWidth()) { Text("Save & confirm") }
+        }
+    }
+    if (showDate) TransactionDateDialog(date, { showDate = false }) { date = it }
 }
 
 @Composable

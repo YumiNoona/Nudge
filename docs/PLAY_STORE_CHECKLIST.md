@@ -1,6 +1,6 @@
-# Google Play release checklist — Nudge 4.9.0
+# Google Play release checklist — Nudge 3.0.0
 
-This is the operational checklist for the first Google Play release of `com.veilafk.nudge`. Complete it from top to bottom after the Play developer-account verification finishes.
+This is the operational checklist for the official Google Play edition, `com.veilafk.nudge`. Existing production is 2.0.0 (18); the next update is 3.0.0 (19). Keep account-bound declarations accurate for the final build.
 
 ## 1. Build identity and signing
 
@@ -8,13 +8,14 @@ This is the operational checklist for the first Google Play release of `com.veil
 - [x] The GitHub distribution keeps `com.nudge.android` so existing sideloaded installations remain update-compatible.
 - [x] First public Play candidate used `versionName 1.0.0` and `versionCode 16`.
 - [x] Next official Play update uses `versionName 2.0.0` and `versionCode 18`.
+- [x] Current official Play candidate uses `versionName 3.0.0` and `versionCode 19`.
 - [x] `compileSdk` and `targetSdk` are API 36.
 - [x] Minimum Android version remains API 26 / Android 8.0.
 - [x] Play and GitHub are separate Gradle product flavors.
 - [x] The Play manifest does not request `REQUEST_INSTALL_PACKAGES` or silent-update permissions.
 - [ ] Back up the existing Nudge release keystore and passwords in two secure, separate locations.
 - [ ] In **Play Console → Test and release → App integrity**, enroll in Play App Signing.
-- [ ] If GitHub-release users must migrate to the Play build without uninstalling, provide the existing Nudge release key as the Play app-signing key when Play Console offers that first-release choice. Do not let Play create an unrelated app-signing identity.
+- [x] GitHub and Play use separate package IDs; migration between editions uses export/import rather than an in-place Android update.
 - [ ] After enrollment, create a separate upload key for future Play uploads and register its certificate with Play Console.
 
 Build the candidate:
@@ -71,9 +72,11 @@ Do not upload an APK to Google Play. Keep the GitHub APK workflow separate:
 - [ ] If this is a new personal developer account, run a closed test with at least 12 opted-in testers continuously for 14 days, then apply for production access.
 - [ ] Use staged production rollout rather than 100% on the first day.
 
-## 5. Required external actions
+## 5. Account-bound actions
 
-Codex cannot complete these account-bound actions for you: identity verification, signing-key enrollment choices, tester opt-in, policy-form attestations, asset upload, or pressing **Start rollout**. Everything else in this repository is prepared for those steps.
+Identity verification, signing-key enrollment choices, tester opt-in and policy-form attestations require the account owner's input. An authorized signed bundle can be uploaded as a release draft. Inspect all Console validation messages before submitting for review or starting rollout.
+
+For 3.0.0, use `docs/releases/3.0.0-play.txt` as the English release notes. The upgrade uses Room migration 6 → 7 to preserve existing transactions and saved sources. Capture diagnostics stay on-device, and no new permissions or external data service are introduced.
 
 ## Official references
 

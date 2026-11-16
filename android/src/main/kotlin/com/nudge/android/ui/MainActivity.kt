@@ -453,6 +453,9 @@ private fun ExpenseNavHost(
                     onCreateCategory = viewModel::createCategoryForTransaction,
                     decryptSource = viewModel::decryptSourceBody,
                     onDismiss = viewModel::rejectTransaction,
+                    onCorrect = viewModel::updateTransaction,
+                    onRemoveDuplicate = viewModel::deleteTransaction,
+                    allTransactions = transactions,
                     onBack = ::back
                 )
                 NavScreen.Accounts -> ManageAccountsScreen(

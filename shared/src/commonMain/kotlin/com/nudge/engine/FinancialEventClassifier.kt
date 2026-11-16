@@ -19,6 +19,7 @@ object FinancialEventClassifier {
 
         // A card repayment moves money between the user's accounts. "Received" here is not income.
         if (isCreditCardRepayment(value)) return Result(TransactionType.TRANSFER, .99f, "credit-card repayment")
+        if (OWN_TRANSFER.containsMatchIn(value)) return Result(TransactionType.TRANSFER, .97f, "explicit own-account transfer")
 
         // Reversals/refunds win over the word credited because they reverse an earlier expense.
         if (REFUND.containsMatchIn(value) && COMPLETED_REFUND.containsMatchIn(value)) {
@@ -55,6 +56,7 @@ object FinancialEventClassifier {
         return card && settlement
     }
 
+    private val OWN_TRANSFER = Regex("""\b(?:self[- ]transfer|transfer(?:red)?\s+(?:between\s+your\s+accounts|to\s+(?:your\s+)?(?:own\s+account|self))|(?:loaded|added|paid).{0,45}\bwallet\b.{0,45}\bfrom\s+your\s+(?:bank\s+)?(?:account|card))\b""")
     private val REFUND = Regex("""\b(?:refund(?:ed)?|reversal|reversed|revoked transaction)\b""")
     private val COMPLETED_REFUND = Regex("""\b(?:credited|received|processed|completed|successful|reversed|refunded|has been|was)\b""")
     private val DEBIT_EXPLICIT = Regex(

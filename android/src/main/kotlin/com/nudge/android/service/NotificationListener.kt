@@ -18,10 +18,12 @@ import com.nudge.engine.FinancialMessageCandidate
  * Delegates actual parsing to NotificationParsingWorker (defined in ParsingWorkers.kt).
  */
 class NudgeNotificationListener : NotificationListenerService() {
+    @Volatile private var connected = false
 
     companion object {
         private var instance: NudgeNotificationListener? = null
         fun getInstance(): NudgeNotificationListener? = instance
+        fun isConnected(): Boolean = instance?.connected == true
         fun isListening(context: Context): Boolean {
             val flat = android.provider.Settings.Secure.getString(
                 context.contentResolver,
@@ -37,6 +39,7 @@ class NudgeNotificationListener : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        connected = false
         super.onDestroy()
         instance = null
     }
@@ -48,8 +51,14 @@ class NudgeNotificationListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        connected = true
         // Covers notifications that arrived while Android was reconnecting the listener.
         activeNotifications.orEmpty().forEach(::queueNotification)
+    }
+
+    override fun onListenerDisconnected() {
+        connected = false
+        super.onListenerDisconnected()
     }
 
     private fun queueNotification(sbn: StatusBarNotification) {
@@ -82,7 +91,7 @@ class NudgeNotificationListener : NotificationListenerService() {
 
         WorkManager.getInstance(this)
             .enqueueUniqueWork(
-                "notif_parse_${sbn.key.hashCode()}_${fullText.hashCode()}_${sbn.postTime / 60_000L}",
+                "notif_parse_${sbn.key.hashCode()}_${fullText.hashCode()}_${sbn.postTime}",
                 ExistingWorkPolicy.KEEP,
                 work
             )

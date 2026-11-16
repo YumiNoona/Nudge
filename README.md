@@ -49,8 +49,8 @@ See [screenshot capture instructions](docs/screenshots/README.md) to reproduce t
 |---|---|
 | Automatic capture | Real-time bank SMS and notification-listener ingestion for debit, credit, refund, card, wallet, and UPI alerts |
 | Local parsing | Layered financial-event classification, bundled bank/payment templates, heuristic fallbacks, merchant normalization, and confidence scoring |
-| Smart review | Confirm, correct, categorize, or reject uncertain captures; local rules remember merchant corrections and repeated rejection patterns |
-| Duplicate protection | Source IDs, message fingerprints, time/amount matching, and learned identities prevent rescanned messages from creating the same transaction again |
+| Smart review | Field-specific amount/direction/merchant/account/category checks, editable details, possible-duplicate comparison, and local merchant corrections |
+| Duplicate protection | Exact source fingerprints, hashed payment references, account-aware cross-source matching, linked SMS/notification evidence, and reviewable possible duplicates |
 | Manual entry | Animated digit entry with reverse motion on backspace, haptic keypad, swipeable historical date selection, notes, repeat schedules, expense/income/refund types, category grid, account grid, and merchant |
 | Shared expenses | Local friend list, equal/exact/percentage splits, flexible payer selection, outstanding balances, and one-tap settlement |
 | Recurring entries | Weekly, monthly, or yearly local schedules materialized on the next app launch without a cloud account |
@@ -59,7 +59,8 @@ See [screenshot capture instructions](docs/screenshots/README.md) to reproduce t
 | Accounts | Cash, savings, credit card, debit card, UPI, and wallet accounts in an animated stacked carousel |
 | Card scanning | On-device ML Kit recognition; the captured image is discarded and only limited card metadata is retained |
 | Smart import | Local CSV/TXT/PDF/image parsing for bank statements and common expense-app exports, share-sheet text/image intake, Latin + Devanagari OCR fallback, review-before-save, and duplicate suppression |
-| Receipt intelligence | Multi-page CameraX/gallery capture, Latin + Devanagari on-device OCR, Indian receipt-table parsing, product quantity/rate/value extraction, GST and printed-total reconciliation, and one-expense or itemized saving |
+| Receipt intelligence | Multi-page CameraX/gallery capture, Latin + Devanagari on-device OCR, Indian receipt-table parsing, repeated-product preservation, conservative page stitching, reconciliation-aware confidence, and one-expense or itemized saving |
+| Capture health | Local connection status, bounded message-free capture activity, and editable/forgettable learned merchant rules in Settings |
 | Categories | Built-in and custom categories with editable colors, 200 searchable icons, and user-defined emoji glyphs |
 | Local profile | Display name and profile image stored inside app-private storage |
 | Data ownership | Versioned JSON export/import including friends, splits, and recurring schedules; retention controls; complete local-data deletion |
@@ -237,7 +238,7 @@ Build a Google Play debug APK:
 The APK is written to:
 
 ```text
-android/build/outputs/apk/play/debug/Nudge-play-v1.0.0-debug.apk
+android/build/outputs/apk/play/debug/Nudge-play-v3.0.0-debug.apk
 ```
 
 For interactive development, open the repository root in Android Studio, select the `android` run configuration, and run it on an API 26+ device.
@@ -267,6 +268,8 @@ Both builds include the optional **Tip the creator** screen. A tip is a direct p
 The official Play edition uses Google Play in-app updates. When Play has a newer approved production release for the installed package, Nudge can show Google's update prompt from inside the app or open its Play Store listing from **Settings → Check for updates**. The Play edition does not fetch GitHub releases or sideload APKs.
 
 Build the Play App Bundle:
+
+The current official Play candidate is **3.0.0 (19)**. It updates the existing `com.veilafk.nudge` installation in place using the existing signing configuration, including the database migration. GitHub's separate edition keeps its own version name. See [the changelog](CHANGELOG.md) and [capture quality notes](docs/detection-quality.md) for the detection and review improvements.
 
 ```powershell
 .\gradlew.bat :android:bundlePlayRelease

@@ -317,13 +317,12 @@ fun HistoryScreen(
     }
 
     viewingSource?.let { txn ->
-        val source = sources.firstOrNull { it.transactionId == txn.id }
-        SourceMessageSheet(
+        LinkedSourcesSheet(
             txn,
-            source,
-            decryptSource(source),
+            sources.filter { it.transactionId == txn.id },
             accounts.firstOrNull { it.id == txn.accountId },
             categories.firstOrNull { it.id == txn.categoryId },
+            decryptSource,
             onDismiss = { viewingSource = null }
         )
     }

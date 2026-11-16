@@ -52,7 +52,8 @@ android {
         create("play") {
             dimension = "distribution"
             applicationId = "com.veilafk.nudge"
-            versionName = "2.0.0"
+            versionCode = 19
+            versionName = "3.0.0"
             buildConfigField("String", "DISTRIBUTION", "\"play\"")
         }
     }

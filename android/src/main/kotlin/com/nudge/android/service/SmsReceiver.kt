@@ -44,7 +44,7 @@ class SmsReceiver : BroadcastReceiver() {
 
             WorkManager.getInstance(context)
                 .enqueueUniqueWork(
-                    "sms_parse_${senderId.hashCode()}_${body.hashCode()}_${receivedAt / 60_000L}",
+                    "sms_parse_${senderId.hashCode()}_${body.hashCode()}_$receivedAt",
                     ExistingWorkPolicy.KEEP,
                     work
                 )

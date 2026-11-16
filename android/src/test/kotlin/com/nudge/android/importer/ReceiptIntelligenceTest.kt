@@ -5,6 +5,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ReceiptIntelligenceTest {
+    @Test fun identicalPurchasedItemsArePreserved() {
+        val receipt = requireNotNull(ReceiptIntelligence.parse(listOf("CORNER CAFE\nCoffee 1 x 100.00 100.00\nCoffee 1 x 100.00 100.00\nSUB TOTAL 200.00\nGRAND TOTAL 200.00")))
+        assertEquals(2, receipt.items.size)
+        assertEquals(20000L, receipt.itemTotalCents)
+    }
+    @Test fun oneRepeatedLineAcrossPagesIsNotEnoughToDiscardAnItem() {
+        val stitched = ReceiptIntelligence.stitchPages(listOf("CAFE\nCoffee 100.00", "Coffee 100.00\nTOTAL 200.00"))
+        assertEquals(2, Regex("Coffee").findAll(stitched).count())
+    }
+    @Test fun inconsistentTotalsLowerConfidenceEvenWithMatchingSubtotal() {
+        val receipt = requireNotNull(ReceiptIntelligence.parse(listOf("CAFE\nCoffee 1 x 100.00 100.00\nSUB TOTAL 100.00\nGRAND TOTAL 200.00")))
+        assertTrue(receipt.confidence < .7f)
+    }
     @Test
     fun stitchesLongReceiptPagesWithoutDuplicatingOverlap() {
         val stitched = ReceiptIntelligence.stitchPages(

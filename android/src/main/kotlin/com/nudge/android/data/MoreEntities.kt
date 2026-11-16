@@ -56,7 +56,9 @@ data class SenderWhitelistEntity(
         onDelete = ForeignKey.CASCADE
     )],
     indices = [
-        Index(value = ["transaction_id"], unique = true),
+        Index(value = ["transaction_id"]),
+        Index(value = ["reference_hash"]),
+        Index(value = ["fingerprint"]),
         Index(value = ["message_timestamp"]),
         Index(value = ["source_type"])
     ]
@@ -73,5 +75,8 @@ data class SavedSourceMessageEntity(
     @ColumnInfo(name = "message_timestamp") val messageTimestamp: Long,
     @ColumnInfo(name = "captured_at") val capturedAt: Long,
     @ColumnInfo(name = "confidence") val confidence: Float,
-    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
+    @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(name = "fingerprint") val fingerprint: String? = null,
+    @ColumnInfo(name = "reference_hash") val referenceHash: String? = null,
+    @ColumnInfo(name = "assessment_json") val assessmentJson: String? = null,
 )

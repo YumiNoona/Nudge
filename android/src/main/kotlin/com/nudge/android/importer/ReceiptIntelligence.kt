@@ -56,10 +56,10 @@ object ReceiptIntelligence {
         val stitched = pages.first().toMutableList()
         pages.drop(1).forEach { next ->
             val maxOverlap = minOf(12, stitched.size, next.size)
-            val overlap = (maxOverlap downTo 1).firstOrNull { count ->
+            val overlap = (maxOverlap downTo 2).firstOrNull { count ->
                 val tail = stitched.takeLast(count)
                 val head = next.take(count)
-                tail.zip(head).count { (a, b) -> lineSimilarity(a, b) >= .78f } >= maxOf(1, count - 1)
+                tail.zip(head).all { (a, b) -> lineSimilarity(a, b) >= .92f }
             } ?: 0
             stitched += next.drop(overlap)
         }
@@ -88,12 +88,14 @@ object ReceiptIntelligence {
         val itemCeiling = (subtotal ?: (printedTotal + discount - tax).takeIf { it > 0 } ?: printedTotal)
             .coerceAtLeast(printedTotal)
         val itemLines = productSection(lines)
+        // Repeated purchases are real line items; page overlap was handled above.
         val items = itemLines.mapNotNull { parseItemLine(it, itemCeiling) }
-            .distinctBy { Triple(normalizeComparable(it.name), it.quantity, it.lineTotalCents) }
         val merchant = detectMerchant(lines)
         val purchaseDate = detectDate(lines, now)
+        val calculated = (subtotal ?: items.sumOf { it.lineTotalCents }) - discount + tax + fee + tip + rounding
         val structuralConfidence = when {
-            items.isNotEmpty() && subtotal != null && abs((subtotal - items.sumOf { it.lineTotalCents })) <= 200 -> .94f
+            items.isNotEmpty() && abs(printedTotal - calculated) > 100 -> .55f
+            items.isNotEmpty() && subtotal != null && abs((subtotal - items.sumOf { it.lineTotalCents })) <= 100 -> .94f
             items.isNotEmpty() -> .84f
             else -> .66f
         }

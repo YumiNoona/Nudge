@@ -8,6 +8,15 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DefaultSmsParserEngineTest {
+    @Test fun explicitlyOwnAccountMovementIsTransfer() {
+        val result = assertNotNull(DefaultSmsParserEngine().parse("INR 500 transferred to your own account via UPI", "HDFCBK"))
+        assertEquals(TransactionType.TRANSFER, result.type)
+    }
+    @Test fun directionConfidenceDoesNotIncreaseAmountConfidence() {
+        val result = assertNotNull(DefaultSmsParserEngine().parse("INR 200 paid to CORNER CAFE via UPI", "GPAY"))
+        assertTrue(result.directionConfidence >= .9f)
+        assertTrue(result.amountConfidence < result.directionConfidence)
+    }
     private val parser = DefaultSmsParserEngine()
 
     @Test

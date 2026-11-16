@@ -12,14 +12,15 @@ class SmsParsingWorker(context: Context, params: WorkerParameters) : CoroutineWo
     override suspend fun doWork() = withContext(Dispatchers.IO) {
         val sender = inputData.getString("sender_id") ?: return@withContext Result.failure()
         val body = inputData.getString("message_body") ?: return@withContext Result.failure()
-        val resolved = resolveSmsSource(applicationContext, sender, body)
+        val receivedAt = inputData.getLong("received_at", System.currentTimeMillis())
+        val resolved = resolveSmsSource(applicationContext, sender, body, receivedAt)
         val messageId = inputData.getString("message_id") ?: resolved?.first
         val messageUri = inputData.getString("message_uri") ?: resolved?.second
         TransactionCaptureProcessor(applicationContext).process(
             rawText = body,
             sourceId = sender,
             source = "sms",
-            receivedAt = inputData.getLong("received_at", System.currentTimeMillis()),
+            receivedAt = receivedAt,
             sourceMetadata = TransactionCaptureProcessor.SourceMetadata(
                 sender = sender,
                 originalMessageId = messageId,
@@ -30,17 +31,22 @@ class SmsParsingWorker(context: Context, params: WorkerParameters) : CoroutineWo
     }
 }
 
-private fun resolveSmsSource(context: Context, sender: String, body: String): Pair<String, String>? = runCatching {
+private fun resolveSmsSource(context: Context, sender: String, body: String, receivedAt: Long): Pair<String, String>? = runCatching {
     context.contentResolver.query(
         Telephony.Sms.CONTENT_URI,
-        arrayOf(Telephony.Sms._ID),
+        arrayOf(Telephony.Sms._ID, Telephony.Sms.DATE, Telephony.Sms.DATE_SENT),
         "${Telephony.Sms.ADDRESS} = ? AND ${Telephony.Sms.BODY} = ?",
         arrayOf(sender, body),
         "${Telephony.Sms.DATE} DESC"
     )?.use { cursor ->
-        if (!cursor.moveToFirst()) return@use null
-        val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID))
-        id.toString() to ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id).toString()
+        val candidates = mutableListOf<Pair<String, Long>>()
+        while (cursor.moveToNext()) {
+            val id = cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms._ID)).toString()
+            candidates += id to cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE))
+            candidates += id to cursor.getLong(cursor.getColumnIndexOrThrow(Telephony.Sms.DATE_SENT))
+        }
+        val id = com.nudge.android.data.CaptureIdentity.closestMessage(candidates, receivedAt) ?: return@use null
+        id to ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, id.toLong()).toString()
     }
 }.getOrNull()
 

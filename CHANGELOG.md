@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.0-play — Clearer capture and safer review
+
+- Assess amount, transaction direction, merchant, account and category separately, and explain uncertain detections before approval.
+- Merge matching payment references while preserving linked SMS and notification evidence; flag ambiguous repeats for review.
+- Improve account matching, own-account transfer detection, partial-refund matching and repeated receipt-item handling.
+- Edit detected fields from the review screen, inspect linked sources, and manage learned merchant rules.
+- Add private, on-device capture diagnostics without storing message bodies in the activity log.
+- Refine dashboard and analytics cards, animate amount entry, and preserve existing data through the database upgrade.
+- Official Play release: version 3.0.0, version code 19. GitHub remains a separate distribution.
+
 ## 2.0.0-play — Official Play refresh
 
 - Bring the Play Store build up to the latest calendar picker, receipt review, share-sheet import, and Latin + Devanagari on-device OCR improvements.

@@ -28,7 +28,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         ReceiptLineItemEntity::class,
         ReceiptTransactionLinkEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class NudgeDatabase : RoomDatabase() {
@@ -115,6 +115,18 @@ abstract class NudgeDatabase : RoomDatabase() {
             }
         }
 
+        internal val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE saved_source_messages ADD COLUMN fingerprint TEXT")
+                db.execSQL("ALTER TABLE saved_source_messages ADD COLUMN reference_hash TEXT")
+                db.execSQL("ALTER TABLE saved_source_messages ADD COLUMN assessment_json TEXT")
+                db.execSQL("DROP INDEX IF EXISTS index_saved_source_messages_transaction_id")
+                db.execSQL("CREATE INDEX index_saved_source_messages_transaction_id ON saved_source_messages(transaction_id)")
+                db.execSQL("CREATE INDEX index_saved_source_messages_reference_hash ON saved_source_messages(reference_hash)")
+                db.execSQL("CREATE INDEX index_saved_source_messages_fingerprint ON saved_source_messages(fingerprint)")
+            }
+        }
+
         fun getInstance(context: Context): NudgeDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -122,7 +134,7 @@ abstract class NudgeDatabase : RoomDatabase() {
                     NudgeDatabase::class.java,
                     "nudge.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .build()
                 INSTANCE = instance
                 instance

@@ -67,6 +67,9 @@ class DefaultSmsParserEngine : SmsParserEngine {
             return result.copy(
                 type = semanticType,
                 merchantNormalized = normResult.normalized.takeUnless { it.equals("EE", ignoreCase = true) } ?: "Unknown merchant",
+                amountConfidence = result.confidenceScore,
+                directionConfidence = direction?.confidence ?: .45f,
+                merchantConfidence = if (normResult.normalized == "Unknown merchant") .2f else normResult.confidence,
                 confidenceScore = (result.confidenceScore * 0.65f + normResult.confidence * 0.15f + (direction?.confidence ?: .45f) * .20f).coerceIn(0f, 1f)
             )
         }
@@ -84,6 +87,9 @@ class DefaultSmsParserEngine : SmsParserEngine {
                 type = semanticType,
                 merchantRaw = merchant,
                 merchantNormalized = normResult.normalized.takeUnless { it.equals("EE", ignoreCase = true) } ?: "Unknown merchant",
+                amountConfidence = fallback.confidenceScore,
+                directionConfidence = direction.confidence,
+                merchantConfidence = if (normResult.normalized == "Unknown merchant") .2f else normResult.confidence,
                 confidenceScore = (fallback.confidenceScore * 0.55f + normResult.confidence * 0.15f + direction.confidence * .30f).coerceIn(0f, 1f)
             )
         }
